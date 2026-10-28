@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kairo — launcher Android TV</title>
+<meta name="description" content="Kairo, le launcher Android TV complet qui reste fluide sur les petites box. Sans compte Google, sans pub.">
+<meta property="og:title" content="Kairo — launcher Android TV">
+<meta property="og:description" content="L'accueil façon Google TV, vos recommandations, une personnalisation poussée — fluide même sur une box à 2 Go.">
+<meta property="og:image" content="assets/banner.png">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d1a;
+    --bg-2: #11152a;
+    --card: rgba(255, 255, 255, 0.04);
+    --line: rgba(255, 255, 255, 0.09);
+    --text: #eef1fb;
+    --muted: #9aa3bf;
+    --accent: #60cdff;
+    --accent-2: #2563eb;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+  /* En-tête */
+  nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); background: rgba(11, 13, 26, 0.72); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
+  .brand img { width: 30px; height: 30px; border-radius: 8px; }
+  nav .links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
+  nav .links a { text-decoration: none; transition: color .2s; }
+  nav .links a:hover { color: var(--text); }
+
+  /* Héros */
+  .hero { position: relative; padding: 96px 0 72px; text-align: center; }
+  .hero::before {
+    content: ""; position: absolute; inset: -20% -10% auto; height: 720px; z-index: -1;
+    background:
+      radial-gradient(600px 320px at 30% 30%, rgba(37, 99, 235, .35), transparent 70%),
+      radial-gradient(520px 300px at 72% 20%, rgba(96, 205, 255, .22), transparent 70%),
+      radial-gradient(480px 300px at 50% 80%, rgba(124, 58, 237, .20), transparent 70%);
+    filter: blur(10px);
+  }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; color: var(--muted); background: var(--card); }
+  .pill b { color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.04; letter-spacing: -0.035em; margin: 22px 0 18px; font-weight: 800; }
+  h1 .grad { background: linear-gradient(100deg, #fff 10%, var(--accent) 55%, #818cf8 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { max-width: 660px; margin: 0 auto; font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); }
+  .cta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 12px; font-weight: 600; font-size: 15px; text-decoration: none; transition: transform .15s, box-shadow .2s, background .2s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: linear-gradient(135deg, var(--accent-2), #3b82f6 60%, var(--accent)); box-shadow: 0 10px 30px -10px rgba(59, 130, 246, .7); }
+  .btn.ghost { border: 1px solid var(--line); background: var(--card); }
+  .shot { margin: 64px auto 0; max-width: 1040px; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 40px 120px -40px rgba(37, 99, 235, .55), 0 0 0 8px rgba(255, 255, 255, .02); }
+  .shot img { display: block; width: 100%; height: auto; }
+
+  /* Chiffres */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 72px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .stat { background: var(--bg-2); padding: 26px 22px; text-align: center; }
+  .stat b { display: block; font-size: 30px; letter-spacing: -0.02em; }
+  .stat span { color: var(--muted); font-size: 14px; }
+
+  /* Sections */
+  section { padding: 96px 0 0; }
+  .eyebrow { color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+  h2 { font-size: clamp(30px, 4.4vw, 44px); letter-spacing: -0.03em; line-height: 1.1; margin: 10px 0 14px; }
+  .sub { color: var(--muted); max-width: 640px; margin: 0 0 40px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; transition: border-color .2s, transform .2s; }
+  .card:hover { border-color: rgba(96, 205, 255, .35); transform: translateY(-2px); }
+  .card .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, rgba(37, 99, 235, .35), rgba(96, 205, 255, .18)); margin-bottom: 16px; }
+  .card .ico svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  /* Galerie */
+  .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: 48px; align-items: center; }
+  .split.rev { grid-template-columns: 1.25fr 1fr; }
+  .split.rev .text { order: 2; }
+  .frame { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 80px -40px rgba(0, 0, 0, .9); }
+  .frame img { display: block; width: 100%; height: auto; }
+  ul.checks { list-style: none; padding: 0; margin: 18px 0 0; }
+  ul.checks li { position: relative; padding-left: 28px; margin: 10px 0; color: #cdd3e6; }
+  ul.checks li::before { content: ""; position: absolute; left: 0; top: 7px; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, var(--accent) 35%, rgba(96, 205, 255, .18) 40%); }
+
+  /* Performance */
+  .perf { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .bar { margin-top: 16px; }
+  .bar .row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  .bar .track { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 99px; }
+  .fill.before { width: 100%; background: linear-gradient(90deg, #f97316, #ef4444); }
+  .fill.after { width: 36%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
+
+  /* Installation */
+  .steps { counter-reset: step; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .step { position: relative; padding-top: 58px; }
+  .step::before { counter-increment: step; content: counter(step); position: absolute; top: 22px; left: 24px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--accent-2); }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13.5px; background: rgba(255, 255, 255, .06); padding: 2px 7px; border-radius: 6px; }
+
+  footer { margin-top: 110px; padding: 40px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+  @media (max-width: 900px) {
+    .grid, .steps { grid-template-columns: 1fr 1fr; }
+    .split, .split.rev { grid-template-columns: 1fr; gap: 28px; }
+    .split.rev .text { order: 0; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .perf { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .wrap { padding: 0 16px; }
+    nav .links { display: none; }
+    .grid, .steps { grid-template-columns: 1fr; }
+    .hero { padding-top: 64px; }
+    section { padding-top: 72px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn, .card { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="assets/icon.png" alt="">Kairo</a>
+    <div class="links">
+      <a href="#fonctions">Fonctions</a>
+      <a href="#performance">Performance</a>
+      <a href="#installation">Installation</a>
+      <a href="https://github.com/vantaflow/kairo">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="pill"><b>Nouveau</b> Launcher Android TV · gratuit et open source</span>
+    <h1>Le launcher complet.<br><span class="grad">Fluide sur les petites box.</span></h1>
+    <p class="lead">L'accueil épuré de Google TV, les recommandations de vos applis et une personnalisation poussée — sans compte Google, sans pub, et à 34&nbsp;ms par image sur une box à 2&nbsp;Go.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/vantaflow/kairo/releases/latest">Télécharger l'APK</a>
+      <a class="btn ghost" href="https://github.com/vantaflow/kairo">Voir le code</a>
+    </div>
+    <div class="shot"><img src="assets/reco.jpg" alt="Accueil Kairo avec recommandations et fond héros" loading="eager"></div>
+
+    <div class="stats">
+      <div class="stat"><b>34 ms</b><span>par image en navigation</span></div>
+      <div class="stat"><b>~3 Mo</b><span>pour toute l'appli</span></div>
+      <div class="stat"><b>0</b><span>compte, pub ou traqueur</span></div>
+      <div class="stat"><b>15</b><span>sections de réglages</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="fonctions">
+  <div class="wrap">
+    <div class="eyebrow">Fonctions</div>
+    <h2>Tout ce qu'un écran d'accueil devrait faire.</h2>
+    <p class="sub">Pensé pour la télécommande, réglable dans les moindres détails, et testé sur une vraie box d'entrée de gamme.</p>
+    <div class="grid">
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z M10 9l5 3-5 3z"/></svg></div><h3>À suivre & recommandations</h3><p>Reprenez Netflix, YouTube, SmartTube, TiviMate… là où vous vous étiez arrêté, avec l'ordre que vous choisissez.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6"/></svg></div><h3>Fond « héros »</h3><p>L'affiche du contenu sélectionné s'installe en fond, floutée et fondue en dégradé.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.5 0-1-.8-1.4-.8-2.3 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4c0-4.7-4-8.6-9-8.6z"/></svg></div><h3>Thèmes sur mesure</h3><p>Couleurs, contour et zoom au focus, arrondis, taille des tuiles, fonds Pixabay, dégradés ou couleurs unies.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M10 14h4 M10 17h4"/></svg></div><h3>Télécommande maîtrisée</h3><p>Touches YouTube, Netflix, Prime Video et Disney+ réassignables vers l'appli de votre choix.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 18z"/></svg></div><h3>Heure & météo</h3><p>Heure synchronisée sur un serveur de temps fiable, météo Open-Meteo par IP ou par ville.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M13 7a4 4 0 1 1-8 0a4 4 0 1 1 8 0z M2 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg></div><h3>Profils & enfants</h3><p>Un profil enfant limité à ses favoris, réglages verrouillés par code.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0 M5 12a10 10 0 0 1 14 0 M8.5 15.5a5 5 0 0 1 7 0 M12 19h.01"/></svg></div><h3>Réseau & box</h3><p>Wi-Fi, Ethernet, HDMI-CEC et paramètres Android accessibles en deux clics.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M18 11a7 7 0 1 1-14 0a7 7 0 1 1 14 0z M20 20l-4.2-4.2"/></svg></div><h3>Recherche & dictée</h3><p>Trouvez une appli ou un contenu, à la voix ou au clavier.</p></div>
+      <div class="card"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12 M7 10l5 5 5-5 M4 20h16"/></svg></div><h3>Sauvegarde & mises à jour</h3><p>Exportez vos réglages, installez la nouvelle version depuis GitHub sans quitter le canapé.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap split">
+    <div class="text">
+      <div class="eyebrow">Réglages</div>
+      <h2>Un panneau, pas un labyrinthe.</h2>
+      <p class="sub">Les réglages s'ouvrent sur le côté, par-dessus l'accueil : chaque changement se voit en direct.</p>
+      <ul class="checks">
+        <li>Fonds, thème, disposition, recommandations</li>
+        <li>Profils, sauvegarde, mémoire, mise à jour</li>
+        <li>Raccourcis vers les paramètres de la box</li>
+      </ul>
+    </div>
+    <div class="frame"><img src="assets/settings-section.jpg" alt="Panneau des réglages de Kairo" loading="lazy"></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap split rev">
+    <div class="text">
+      <div class="eyebrow">Applications</div>
+      <h2>Toutes vos applis, bien rangées.</h2>
+      <p class="sub">Favoris en tête, applis masquables, menu d'actions d'un appui long : favori, infos, Play Store, désinstaller.</p>
+      <ul class="checks">
+        <li>Bannières officielles des applis TV</li>
+        <li>Accès direct au Play Store</li>
+        <li>Applis masquées à la demande</li>
+      </ul>
+    </div>
+    <div class="frame"><img src="assets/apps.jpg" alt="Grille des applications" loading="lazy"></div>
+  </div>
+</section>
+
+<section id="performance">
+  <div class="wrap">
+    <div class="eyebrow">Performance</div>
+    <h2>Optimisé image par image.</h2>
+    <p class="sub">Chaque écran a été profilé avec les traces système de la box (Mecool KM7 Plus, Android 14, 2 Go, 32 bits).</p>
+    <div class="perf">
+      <div class="card">
+        <h3>Navigation dans les recommandations</h3>
+        <p>Temps médian par image</p>
+        <div class="bar"><div class="row"><span>Avant</span><span>~95 ms</span></div><div class="track"><div class="fill before"></div></div></div>
+        <div class="bar"><div class="row"><span>Kairo aujourd'hui</span><span>34 ms</span></div><div class="track"><div class="fill after"></div></div></div>
+      </div>
+      <div class="card">
+        <h3>Ce qui fait la différence</h3>
+        <ul class="checks">
+          <li>Fonds figés dans une texture, jamais redessinés en naviguant</li>
+          <li>Zoom et contour au dessin : aucune recomposition au focus</li>
+          <li>Une affiche décodée une seule fois, en RGB 565</li>
+          <li>Suivi d'accessibilité Compose coupé (≈ 100 ms gagnées par seconde)</li>
+          <li>Build R8, profil de démarrage, compilation à l'avance</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="installation">
+  <div class="wrap">
+    <div class="eyebrow">Installation</div>
+    <h2>Prêt en trois étapes.</h2>
+    <p class="sub">Android TV 11 ou plus récent.</p>
+    <div class="steps">
+      <div class="card step"><h3>Télécharger</h3><p>Récupérez l'APK de la <a href="https://github.com/vantaflow/kairo/releases/latest">dernière version</a>.</p></div>
+      <div class="card step"><h3>Installer</h3><p>Avec Downloader, une clé USB ou <code>adb install</code>.</p></div>
+      <div class="card step"><h3>Adopter</h3><p>Ouvrez Kairo, puis <b>Réglages › Écran d'accueil par défaut</b>.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="assets/icon.png" alt="">Kairo</a>
+    <span>Fait pour les box modestes et les gens exigeants · <a href="https://github.com/vantaflow/kairo">GitHub</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
