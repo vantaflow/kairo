@@ -1,5 +1,6 @@
 package com.tvhome.launcher.settings
 
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Brush
@@ -158,12 +159,38 @@ fun SettingsScreen(
     }
 }
 
+/** Position de [section] dans la liste du menu : titre, puis pour chaque groupe son intitulé et ses sections. */
+private fun menuIndexOf(section: Section): Int {
+    var index = 1
+    for (group in Group.entries) {
+        index++ // intitulé du groupe
+        for (s in Section.entries.filter { it.group == group }) {
+            if (s == section) return index
+            index++
+        }
+    }
+    return 0
+}
+
 /** Liste des sections du panneau, avec icônes ; la dernière section ouverte reprend le focus. */
 @Composable
 private fun SettingsMenu(selected: Section, onOpen: (Section) -> Unit) {
     val initial = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { initial.requestFocus() } }
+    val listState = rememberLazyListState()
+    var menuHasFocus by remember { mutableStateOf(false) }
+    // Au retour d'une section, sa ligne peut être hors écran (donc pas encore composée) :
+    // on fait défiler jusqu'à elle, puis on redemande le focus jusqu'à ce qu'il soit posé.
+    LaunchedEffect(Unit) {
+        listState.scrollToItem(menuIndexOf(selected))
+        repeat(30) {
+            if (menuHasFocus) return@LaunchedEffect
+            withFrameNanos { }
+            runCatching { initial.requestFocus() }
+        }
+    }
     LazyColumn(
+        state = listState,
+        modifier = Modifier.onFocusChanged { menuHasFocus = it.hasFocus },
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
