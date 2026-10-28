@@ -151,6 +151,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showRowTitles = booleanPreferencesKey("show_row_titles")
         val clockSize = intPreferencesKey("clock_size")
         val tileWidth = intPreferencesKey("tile_width")
+        val heroTransition = stringPreferencesKey("hero_transition")
+        val animationPercent = intPreferencesKey("animation_percent")
         val weatherEnabled = booleanPreferencesKey("weather_enabled")
         val weatherCity = stringPreferencesKey("weather_city")
         val useFahrenheit = booleanPreferencesKey("use_fahrenheit")
@@ -230,6 +232,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             showRowTitles = it[Keys.showRowTitles] ?: d.showRowTitles,
             clockSizeSp = it[Keys.clockSize] ?: d.clockSizeSp,
             tileWidthDp = it[Keys.tileWidth] ?: d.tileWidthDp,
+            heroTransition = it[Keys.heroTransition] ?: d.heroTransition,
+            animationPercent = it[Keys.animationPercent] ?: d.animationPercent,
         )
     }
 
@@ -241,6 +245,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             it[Keys.showRowTitles] = layout.showRowTitles
             it[Keys.clockSize] = layout.clockSizeSp
             it[Keys.tileWidth] = layout.tileWidthDp
+            it[Keys.heroTransition] = layout.heroTransition
+            it[Keys.animationPercent] = layout.animationPercent
         }
     }
 

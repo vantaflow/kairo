@@ -36,6 +36,8 @@ private val Palette = listOf(
 private val Radii = listOf(0, 4, 8, 12, 16, 24)
 private val Scales = listOf(1.0f to "Aucun", 1.05f to "Léger", 1.1f to "Normal", 1.15f to "Fort", 1.2f to "Très fort")
 private val ClockSizes = listOf(48 to "Petite", 72 to "Normale", 96 to "Grande", 120 to "Très grande")
+private val AnimationSpeeds = listOf(60 to "Rapide", 100 to "Normale", 150 to "Douce", 200 to "Très douce")
+private val HeroTransitions = listOf("fade" to "Fondu", "zoom" to "Zoom doux", "slide" to "Glissement", "none" to "Aucune")
 private val TileWidths = listOf(160 to "Petites", 192 to "Normales", 224 to "Grandes", 256 to "Très grandes")
 
 /** Réglages du thème personnalisé : couleurs, arrondi et zoom des tuiles. */
@@ -105,6 +107,23 @@ fun LayoutSettings(vm: SettingsViewModel) {
         }
         item {
             Choices("Taille des tuiles", TileWidths, layout.tileWidthDp) { vm.setHomeLayout(layout.copy(tileWidthDp = it)) }
+        }
+        item {
+            Choices("Vitesse des animations", AnimationSpeeds, layout.animationPercent) {
+                vm.setHomeLayout(layout.copy(animationPercent = it))
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Changement de l'image de fond", color = OnBackgroundMuted)
+                ChoiceRow {
+                    HeroTransitions.forEach { (id, label) ->
+                        ChoiceChip(selected = layout.heroTransition == id, onClick = { vm.setHomeLayout(layout.copy(heroTransition = id)) }) {
+                            Text(label)
+                        }
+                    }
+                }
+            }
         }
         item {
             ChoiceChip(selected = false, onClick = { vm.setHomeLayout(HomeLayout()) }) { Text("Rétablir l'affichage par défaut") }

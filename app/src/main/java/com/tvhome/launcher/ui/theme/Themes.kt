@@ -48,7 +48,14 @@ data class HomeLayout(
     val showRowTitles: Boolean = true,
     val clockSizeSp: Int = 72,
     val tileWidthDp: Int = 192,
-)
+    /** Transition du fond « héros » d'un contenu à l'autre : fade, zoom, slide ou none. */
+    val heroTransition: String = "fade",
+    /** Durée des animations en % de la normale : 60 rapide, 100 normale, 150 douce, 200 très douce. */
+    val animationPercent: Int = 100,
+) {
+    /** Durée [baseMs] ajustée à la vitesse choisie. */
+    fun ms(baseMs: Int): Int = baseMs * animationPercent / 100
+}
 
 val LocalHomeLayout = staticCompositionLocalOf { HomeLayout() }
 
