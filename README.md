@@ -11,6 +11,7 @@
   <a href="https://github.com/vantaflow/kairo/releases/latest"><img alt="Dernière version" src="https://img.shields.io/github/v/release/vantaflow/kairo?label=version&color=2563eb"></a>
   <img alt="Android TV 11+" src="https://img.shields.io/badge/Android%20TV-11%2B-3ddc84">
   <img alt="Kotlin + Compose" src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7f52ff">
+  <img alt="Code Downloader 5568887" src="https://img.shields.io/badge/Downloader-5568887-f97316">
   <img alt="APK ~3 Mo" src="https://img.shields.io/badge/APK-~3%20Mo-60cdff">
   <a href="https://vantaflow.github.io/kairo/"><img alt="Site" src="https://img.shields.io/badge/site-vantaflow.github.io%2Fkairo-111827"></a>
 </p>
@@ -82,7 +83,7 @@ Kairo est écrit en Kotlin avec Jetpack Compose et chaque écran a été profil�
 
 ## Installation
 
-1. Dans **Downloader** sur la box, tapez l'adresse **`vantaflow.github.io/kairo/apk`** : la dernière version se télécharge et s'installe.
+1. Dans **Downloader** sur la box, tapez le code **`5568887`** (ou l'adresse `vantaflow.github.io/kairo/apk`) : la dernière version se télécharge et s'installe.
    Lien direct : <https://github.com/vantaflow/kairo/releases/latest/download/kairo.apk>
 2. Ou installez-le par clé USB ou `adb install kairo.apk`.
 3. Ouvrez Kairo puis **Réglages › Écran d'accueil par défaut**.
