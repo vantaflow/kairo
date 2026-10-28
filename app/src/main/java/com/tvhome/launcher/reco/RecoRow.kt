@@ -7,7 +7,9 @@ import androidx.compose.foundation.focusable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import com.tvhome.launcher.home.FOCUS_ZOOM_MS
 import com.tvhome.launcher.home.drawFocusRing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -121,7 +123,7 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
             .onFocusChanged {
                 if (focused.value == it.isFocused) return@onFocusChanged
                 focused.value = it.isFocused
-                scope.launch { scale.animateTo(if (it.isFocused) theme.focusScale else 1f, tween(120)) }
+                scope.launch { scale.animateTo(if (it.isFocused) theme.focusScale else 1f, tween(FOCUS_ZOOM_MS, easing = FastOutSlowInEasing)) }
             }
             .onKeyEvent { e ->
                 val code = e.key.nativeKeyCode
@@ -228,7 +230,7 @@ fun HeroBackground(
         if (shown != null) {
             // Fondu appliqué au calque (texture déjà prête) : ni recomposition ni redessin par image.
             val alpha = remember(shown) { Animatable(0f) }
-            LaunchedEffect(shown) { alpha.animateTo(1f, tween(250)) }
+            LaunchedEffect(shown) { alpha.animateTo(1f, tween(400)) }
             Box(
                 Modifier
                     .fillMaxSize()
