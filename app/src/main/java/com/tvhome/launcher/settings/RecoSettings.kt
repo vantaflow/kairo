@@ -1,12 +1,17 @@
 package com.tvhome.launcher.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -20,9 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
-import androidx.tv.material3.OutlinedButton
 import com.tvhome.launcher.reco.EPG_PERMISSIONS
-import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
 import com.tvhome.launcher.apps.AppInfo
 import com.tvhome.launcher.reco.recoApps
@@ -71,33 +74,32 @@ fun RecoSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
         apps.forEachIndexed { index, pkg ->
             item(key = "app-$pkg") {
                 val hidden = pkg in hiddenApps
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("${index + 1}", color = OnBackgroundMuted, fontSize = 16.sp)
                     Text(
-                        "${index + 1}. ${labels[pkg] ?: pkg}",
-                        color = OnBackground,
-                        fontSize = 20.sp,
-                        modifier = Modifier.width(260.dp),
+                        labels[pkg] ?: pkg,
+                        color = if (hidden) OnBackgroundMuted else OnBackground,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
                     )
-                    OutlinedButton(onClick = { vm.moveRecoApp(pkg, -1, apps) }, enabled = index > 0) { Text("Monter") }
-                    OutlinedButton(onClick = { vm.moveRecoApp(pkg, +1, apps) }, enabled = index < apps.lastIndex) {
-                        Text("Descendre")
-                    }
-                    OutlinedButton(onClick = { vm.setRecoAppHidden(pkg, !hidden) }) {
-                        Text(if (hidden) "Afficher" else "Masquer")
-                    }
+                    SmallButton("↑", { vm.moveRecoApp(pkg, -1, apps) }, enabled = index > 0)
+                    SmallButton("↓", { vm.moveRecoApp(pkg, +1, apps) }, enabled = index < apps.lastIndex)
+                    SmallButton(if (hidden) "Afficher" else "Masquer", { vm.setRecoAppHidden(pkg, !hidden) })
                 }
             }
+            // Rangées de l'appli : un interrupteur par rangée.
             items(channels.filter { it.packageName == pkg && it.programs.isNotEmpty() }, key = { "ch-${it.id}" }) { channel ->
-                val chHidden = channel.id in hiddenChannels
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(start = 32.dp),
-                ) {
-                    Text(channel.name, color = OnBackgroundMuted, modifier = Modifier.width(228.dp))
-                    OutlinedButton(onClick = { vm.setChannelHidden(channel.id, !chHidden) }) {
-                        Text(if (chHidden) "Afficher la rangée" else "Masquer la rangée")
-                    }
+                Box(Modifier.padding(start = 24.dp)) {
+                    SwitchRow(channel.name, checked = channel.id !in hiddenChannels, onChange = { vm.setChannelHidden(channel.id, !it) })
                 }
             }
         }

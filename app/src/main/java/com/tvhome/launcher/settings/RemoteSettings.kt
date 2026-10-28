@@ -1,5 +1,6 @@
 package com.tvhome.launcher.settings
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -120,14 +121,19 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(bindings.entries.sortedBy { it.key }, key = { it.key }) { entry ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(
                         "${keyLabel(entry.key)} → ${labels[entry.value] ?: entry.value}",
                         color = OnBackground,
-                        modifier = Modifier.width(420.dp),
+                        maxLines = 2,
+                        modifier = Modifier.weight(1f),
                     )
-                    OutlinedButton(onClick = { pendingKey = entry.key }) { Text("Changer") }
-                    OutlinedButton(onClick = { vm.setKeyBinding(entry.key, null) }) { Text("Supprimer") }
+                    SmallButton("Changer", { pendingKey = entry.key })
+                    SmallButton("Retirer", { vm.setKeyBinding(entry.key, null) })
                 }
             }
         }
