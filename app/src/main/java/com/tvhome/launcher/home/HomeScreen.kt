@@ -1,5 +1,8 @@
 package com.tvhome.launcher.home
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusProperties
@@ -117,7 +120,8 @@ fun HomeScreen(
             )
             // Rangée sélectionnée calée en haut de la liste (comme Google TV) : jamais à moitié
             // coupée sous l'en-tête. Les rangées horizontales gardent le défilement par défaut.
-            val rowSpec = LocalBringIntoViewSpec.current
+            val defaultSpec = LocalBringIntoViewSpec.current
+            val rowSpec = remember(defaultSpec) { SmoothRowSpec(defaultSpec) }
             // La carte sélectionnée est calée sous le titre de sa rangée (titre ≈ 52 dp).
             val topGap = with(LocalDensity.current) { 76.dp.toPx() }
             val columnSpec = remember(topGap) { TopAlignedSpec(topGap) }
@@ -253,8 +257,20 @@ fun HomeScreen(
 /** Fait défiler la liste pour que l'élément sélectionné commence à [gap] du haut. */
 @OptIn(ExperimentalFoundationApi::class)
 private class TopAlignedSpec(private val gap: Float) : BringIntoViewSpec {
+    override val scrollAnimationSpec: AnimationSpec<Float> = ScrollAnimation
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = offset - gap
 }
+
+/** Défilement des rangées : même position que par défaut, animation plus douce. */
+@OptIn(ExperimentalFoundationApi::class)
+private class SmoothRowSpec(private val base: BringIntoViewSpec) : BringIntoViewSpec {
+    override val scrollAnimationSpec: AnimationSpec<Float> = ScrollAnimation
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
+        base.calculateScrollDistance(offset, size, containerSize)
+}
+
+/** Défilement doux (départ franc, arrivée en douceur), proche de Google TV. */
+private val ScrollAnimation: AnimationSpec<Float> = tween(350, easing = FastOutSlowInEasing)
 
 /** Touches du mode déplacement : ← → déplacent le favori, OK / Entrée / Retour terminent. */
 private fun Modifier.moveKeys(pkg: String, onMove: (String, Int) -> Unit, onDone: () -> Unit) =

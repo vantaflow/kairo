@@ -2,6 +2,7 @@ package com.tvhome.launcher.home
 
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -39,6 +40,9 @@ import com.tvhome.launcher.remote.RemoteAction
 import com.tvhome.launcher.remote.remoteActionFor
 import com.tvhome.launcher.ui.theme.LocalLauncherTheme
 
+/** Durée du zoom au focus (tuiles et cartes) : assez lente pour rester douce, comme Google TV. */
+const val FOCUS_ZOOM_MS = 200
+
 /**
  * Tuile d'appli 16:9 au style Google TV : zoom et contour au focus.
  * Volontairement légère (un seul zoom animé, pas d'ombre) : la box n'a qu'une petite carte graphique.
@@ -59,7 +63,7 @@ fun AppTile(
     val focused = remember { mutableStateOf(false) }
     var longFired by remember { mutableStateOf(false) }
     // Lu seulement dans graphicsLayer : l'animation ne recompose pas la tuile.
-    val scale = animateFloatAsState(if (focused.value) theme.focusScale else 1f, tween(120), label = "zoom")
+    val scale = animateFloatAsState(if (focused.value) theme.focusScale else 1f, tween(FOCUS_ZOOM_MS, easing = FastOutSlowInEasing), label = "zoom")
 
     Box(
         modifier
