@@ -1,0 +1,11 @@
+build/
+.gradle/
+build-remote/
+local.properties
+*.iml
+.idea/
+secrets.properties
+__pycache__/
+keystore/
+remote.properties
+.superpowers/

@@ -1,0 +1,42 @@
+package com.tvhome.launcher.ui.theme
+
+import androidx.compose.runtime.staticCompositionLocalOf
+
+/** Thème visuel du launcher : accent, contour de focus, arrondi des tuiles et zoom. */
+data class LauncherTheme(
+    val id: String,
+    val name: String,
+    val accent: Long,
+    val focusBorder: Long,
+    val tileRadiusDp: Int,
+    val focusScale: Float,
+)
+
+val Themes: List<LauncherTheme> = listOf(
+    LauncherTheme("google-tv", "Google TV", accent = 0xFF8AB4F8, focusBorder = 0xFFFFFFFF, tileRadiusDp = 12, focusScale = 1.1f),
+    LauncherTheme("bleu-nuit", "Bleu nuit", accent = 0xFF7FB2FF, focusBorder = 0xFF7FB2FF, tileRadiusDp = 16, focusScale = 1.08f),
+    LauncherTheme("ambre", "Ambre", accent = 0xFFFFB74D, focusBorder = 0xFFFFB74D, tileRadiusDp = 12, focusScale = 1.1f),
+    LauncherTheme("minimal", "Minimal", accent = 0xFFE8EAED, focusBorder = 0xFFE8EAED, tileRadiusDp = 4, focusScale = 1.05f),
+)
+
+fun themeById(id: String?): LauncherTheme = Themes.firstOrNull { it.id == id } ?: Themes.first()
+
+const val CUSTOM_THEME_ID = "custom"
+
+/** Thème effectif : le thème personnalisé si choisi, sinon un thème prédéfini. */
+fun themeFor(id: String?, custom: LauncherTheme): LauncherTheme =
+    if (id == CUSTOM_THEME_ID) custom else themeById(id)
+
+/** Éléments et tailles de l'accueil réglables par l'utilisateur. */
+data class HomeLayout(
+    val showClock: Boolean = true,
+    val showDate: Boolean = true,
+    val showFavoritesLabel: Boolean = true,
+    val showRowTitles: Boolean = true,
+    val clockSizeSp: Int = 72,
+    val tileWidthDp: Int = 192,
+)
+
+val LocalHomeLayout = staticCompositionLocalOf { HomeLayout() }
+
+val LocalLauncherTheme = staticCompositionLocalOf { Themes.first() }

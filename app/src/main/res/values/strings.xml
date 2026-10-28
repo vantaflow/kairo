@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="key_remap_service_label">Kairo – touches de la télécommande</string>
+    <string name="key_remap_description">Permet d\'ouvrir l\'appli de votre choix avec les touches YouTube, Netflix, Prime Video, Disney+ et les autres touches d\'applis de la télécommande.</string>
+</resources>
