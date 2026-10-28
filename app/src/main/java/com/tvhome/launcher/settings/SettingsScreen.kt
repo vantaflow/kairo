@@ -47,6 +47,7 @@ import com.tvhome.launcher.network.NetworkMonitor
 import com.tvhome.launcher.network.NetworkSettings
 import com.tvhome.launcher.system.BoxSettings
 import com.tvhome.launcher.ui.theme.Background
+import com.tvhome.launcher.ui.theme.SurfaceColor
 import com.tvhome.launcher.ui.theme.OnBackground
 import com.tvhome.launcher.ui.theme.OnBackgroundMuted
 import kotlinx.coroutines.flow.Flow
@@ -71,7 +72,6 @@ enum class Section(val title: String, val group: Group, val icon: TvIcon, val de
     Android("Paramètres Android", Group.Box, TvIcon.Android, "Raccourcis vers les paramètres de la box."),
 }
 
-private val PanelColor = Color(0xFF1A1C21)
 
 /**
  * Réglages en panneau latéral à droite, par-dessus l'accueil (inspiré de Projectivy) :
@@ -104,7 +104,7 @@ fun SettingsScreen(
                 .padding(16.dp)
                 .width(480.dp)
                 .fillMaxHeight()
-                .background(PanelColor, RoundedCornerShape(24.dp))
+                .background(SurfaceColor, RoundedCornerShape(24.dp))
                 // Le focus reste dans le panneau tant qu'il est ouvert.
                 .focusGroup()
                 .focusProperties { exit = { FocusRequester.Cancel } },

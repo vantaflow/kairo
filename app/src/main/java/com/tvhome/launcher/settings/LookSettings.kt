@@ -46,7 +46,7 @@ fun ThemeSettings(vm: SettingsViewModel) {
                 Text("Personnalisé")
             }
         }
-        Text("Le thème change l'accent, le contour de sélection, l'arrondi et le zoom des tuiles.", color = OnBackgroundMuted)
+        Text("Le thème change les couleurs des écrans, de l'en-tête et de ce panneau, l'accent, le contour de sélection, l'arrondi et le zoom des tuiles.", color = OnBackgroundMuted)
         CustomThemeEditor(vm)
     }
 }

@@ -19,7 +19,9 @@ git commit -qam "chore: version $VERSION"
 scripts/remote_build.sh :app:assembleRelease
 APK="build-remote/kairo-$VERSION.apk"
 cp build-remote/app-release.apk "$APK"
+# Nom fixe pour le lien permanent …/releases/latest/download/kairo.apk (Downloader, site).
+cp build-remote/app-release.apk build-remote/kairo.apk
 
 git push -q origin master
-gh release create "v$VERSION" "$APK" --repo vantaflow/kairo --title "Kairo $VERSION" --generate-notes
+gh release create "v$VERSION" "$APK" build-remote/kairo.apk --repo vantaflow/kairo --title "Kairo $VERSION" --generate-notes
 echo "Version $VERSION publiée."
