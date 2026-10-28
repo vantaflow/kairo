@@ -1,5 +1,24 @@
 package com.tvhome.launcher.settings
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -99,19 +118,14 @@ fun FieldWithButton(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, color = OnBackgroundMuted, fontSize = 16.sp)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BasicTextField(
+            TvInput(
                 value = value,
                 onValueChange = onValueChange,
-                singleLine = true,
-                visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-                textStyle = TextStyle(color = OnBackground, fontSize = 18.sp),
-                cursorBrush = SolidColor(Color.White),
+                secret = secret,
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .widthIn(min = 240.dp, max = 560.dp)
-                    .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
-                    .padding(14.dp),
+                    .fillMaxWidth(),
             )
             OutlinedButton(onClick = onButton) { Text(buttonText) }
         }
@@ -169,3 +183,87 @@ fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, desc
     }
 }
 
+
+/** Petit bouton des listes de réglages : tient à plusieurs sur une ligne du panneau. */
+@Composable
+fun SmallButton(text: String, onClick: () -> Unit, enabled: Boolean = true) {
+    androidx.tv.material3.OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+    ) {
+        Text(text, fontSize = 15.sp, maxLines = 1)
+    }
+}
+
+/**
+ * Champ texte adapté à la télécommande : au repos, une case sélectionnable (sans clavier) ;
+ * OK ouvre la saisie et le clavier, « Valider » ou la sortie du champ la referment.
+ * Évite que le clavier surgisse dès que le focus arrive sur un réglage.
+ */
+@Composable
+fun TvInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    secret: Boolean = false,
+    placeholder: String = "",
+    fontSize: androidx.compose.ui.unit.TextUnit = 18.sp,
+) {
+    var editing by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
+    val box = remember { FocusRequester() }
+    val field = remember { FocusRequester() }
+    val accent = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(10.dp)
+    val frame = Modifier
+        .background(Color.White.copy(alpha = if (focused || editing) 0.14f else 0.08f), shape)
+        .border(2.dp, if (focused || editing) accent else Color.Transparent, shape)
+        .padding(14.dp)
+    val shown = if (secret) "•".repeat(value.length) else value
+    if (editing) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+            textStyle = TextStyle(color = OnBackground, fontSize = fontSize),
+            cursorBrush = SolidColor(Color.White),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { editing = false }),
+            modifier = modifier
+                .focusRequester(field)
+                .onFocusChanged { if (!it.isFocused && editing) editing = false }
+                .then(frame),
+        )
+        LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
+    } else {
+        Box(
+            modifier
+                .focusRequester(box)
+                .onFocusChanged { focused = it.isFocused }
+                .onPreviewKeyEvent { e ->
+                    val code = e.key.nativeKeyCode
+                    val enter = code == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                        code == android.view.KeyEvent.KEYCODE_ENTER || code == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
+                    if (enter && e.type == KeyEventType.KeyUp) editing = true
+                    enter
+                }
+                .focusable()
+                .then(frame),
+        ) {
+            Text(
+                shown.ifEmpty { placeholder },
+                color = if (shown.isEmpty()) OnBackgroundMuted else OnBackground,
+                fontSize = fontSize,
+                maxLines = 1,
+            )
+        }
+    }
+    // Retour sur la case après la saisie, pour continuer à naviguer depuis le champ.
+    var wasEditing by remember { mutableStateOf(false) }
+    LaunchedEffect(editing) {
+        if (wasEditing && !editing) runCatching { box.requestFocus() }
+        wasEditing = editing
+    }
+}

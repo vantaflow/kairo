@@ -17,7 +17,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.tvhome.launcher.apps.AppInfo
 import com.tvhome.launcher.ui.theme.OnBackground
@@ -52,9 +51,9 @@ fun FavoritesSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedButton(onClick = { vm.moveFavoriteBy(pkg, -1) }, enabled = index > 0) { Text("←") }
-                OutlinedButton(onClick = { vm.moveFavoriteBy(pkg, +1) }, enabled = index < favorites.lastIndex) { Text("→") }
-                OutlinedButton(onClick = { vm.removeFavorite(pkg) }) { Text("Retirer") }
+                SmallButton("←", { vm.moveFavoriteBy(pkg, -1) }, enabled = index > 0)
+                SmallButton("→", { vm.moveFavoriteBy(pkg, +1) }, enabled = index < favorites.lastIndex)
+                SmallButton("Retirer", { vm.removeFavorite(pkg) })
             }
         }
     }

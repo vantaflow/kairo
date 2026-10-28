@@ -1,5 +1,6 @@
 package com.tvhome.launcher.settings
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,18 +53,7 @@ import kotlinx.coroutines.withContext
 /** Champ texte utilisable à la télécommande (le clavier Android s'ouvre au clic). */
 @Composable
 fun TvTextField(value: String, onChange: (String) -> Unit, width: Int = 360, secret: Boolean = false) {
-    BasicTextField(
-        value = value,
-        onValueChange = onChange,
-        singleLine = true,
-        visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-        textStyle = TextStyle(color = OnBackground, fontSize = 16.sp),
-        cursorBrush = SolidColor(Color.White),
-        modifier = Modifier
-            .width(width.dp)
-            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
-            .padding(12.dp),
-    )
+    TvInput(value, onChange, Modifier.width(width.dp), secret = secret, fontSize = 16.sp)
 }
 
 @Composable
@@ -83,13 +73,21 @@ fun ProfileSettings() {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { Text("Profil actif : ${current.name}", color = OnBackground, fontSize = 20.sp) }
         items(profiles, key = { it.id }) { p ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(p.name + if (p.kids) " (enfant)" else "", color = OnBackground, modifier = Modifier.width(240.dp))
-                OutlinedButton(onClick = { scope.launch { c.prefs.switchProfile(p.id) } }, enabled = p.id != current.id) {
-                    Text("Utiliser")
-                }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    p.name + if (p.kids) " (enfant)" else "",
+                    color = OnBackground,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                SmallButton("Utiliser", { scope.launch { c.prefs.switchProfile(p.id) } }, enabled = p.id != current.id)
                 if (p.id != DEFAULT_PROFILE_ID) {
-                    OutlinedButton(onClick = { scope.launch { c.prefs.removeProfile(p.id) } }) { Text("Supprimer") }
+                    SmallButton("Supprimer", { scope.launch { c.prefs.removeProfile(p.id) } })
                 }
             }
         }
@@ -176,22 +174,21 @@ fun UpdateSettings() {
     val c = container()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val savedToken by c.prefs.githubToken.collectAsStateWithLifecycle("")
-    var token by remember(savedToken) { mutableStateOf(savedToken) }
+    // Dépôt public : le jeton n'est plus nécessaire (gardé s'il avait été enregistré).
+    val token by c.prefs.githubToken.collectAsStateWithLifecycle("")
     var release by remember { mutableStateOf<Release?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val updater = remember { Updater(context) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Version installée : ${BuildConfig.VERSION_NAME}", color = OnBackground, fontSize = 20.sp)
-        FieldWithButton("Jeton GitHub (lecture)", token, { token = it }, "Enregistrer", { scope.launch { c.prefs.setGithubToken(token) } }, secret = true)
         Button(onClick = {
             scope.launch {
                 message = "Recherche…"
                 val latest = withContext(Dispatchers.IO) { updater.latest(token) }
                 release = latest?.takeIf { isNewer(it.tag, BuildConfig.VERSION_NAME) }
                 message = when {
-                    latest == null -> "Impossible de lire les versions (jeton ou réseau)."
+                    latest == null -> "Impossible de joindre GitHub (vérifiez le réseau)."
                     release == null -> "Kairo est à jour (${latest.tag})."
                     else -> "Nouvelle version ${latest.tag} disponible."
                 }
@@ -209,7 +206,7 @@ fun UpdateSettings() {
             }) { Text("Installer ${r.tag}") }
         }
         Text(
-            "Le dépôt est privé : créez un jeton « fine-grained » en lecture seule sur ce dépôt (Contents: Read).",
+            "Les versions sont publiées sur github.com/vantaflow/kairo. Sur une autre box, installez Kairo avec le code Downloader 5568887.",
             color = OnBackgroundMuted,
         )
     }
