@@ -1,5 +1,10 @@
 package com.tvhome.launcher.reco
 
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.runtime.key
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
@@ -72,6 +77,7 @@ import com.tvhome.launcher.ui.theme.OnBackground
 
 private val Scrim = Color(0xFF101216)
 private const val HERO_DEBOUNCE_MS = 300L
+private const val HERO_LOAD_WAIT_MS = 600L
 private const val POSTER_W = 640
 private const val POSTER_H = 360
 private const val HERO_WIDTH = 0.7f
@@ -99,9 +105,10 @@ fun RecoRow(
     programs: List<Program>,
     appLabels: Map<String, String>,
     onClick: (Program) -> Unit,
+    modifier: Modifier = Modifier,
     onFocused: (Program) -> Unit,
 ) {
-    Column {
+    Column(modifier) {
         if (LocalHomeLayout.current.showRowTitles) {
             Text(title, fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
         }
@@ -129,6 +136,7 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
     val cardShape = RoundedCornerShape(theme.tileRadiusDp.dp)
     // Même principe que AppTile : focus et zoom lus seulement au dessin, rien n'est recomposé.
     val focused = remember { mutableStateOf(false) }
+    val zoomMs = LocalHomeLayout.current.ms(FOCUS_ZOOM_MS)
     val scale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     Box(
@@ -141,7 +149,7 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
             .onFocusChanged {
                 if (focused.value == it.isFocused) return@onFocusChanged
                 focused.value = it.isFocused
-                scope.launch { scale.animateTo(if (it.isFocused) theme.focusScale else 1f, tween(FOCUS_ZOOM_MS, easing = FastOutSlowInEasing)) }
+                scope.launch { scale.animateTo(if (it.isFocused) theme.focusScale else 1f, tween(zoomMs, easing = FastOutSlowInEasing)) }
             }
             .onKeyEvent { e ->
                 val code = e.key.nativeKeyCode
@@ -225,11 +233,16 @@ private fun blurredRequest(context: Context, uri: String?) =
 /**
  * Fond « héros » à la Google TV : l'image du contenu sélectionné, floue et fondue vers le fond,
  * en haut à droite. Sans contenu sélectionné, [fallback] (le fond d'écran) est affiché.
+ *
+ * Deux calques : l'image précédente et la nouvelle. La transition ([transition] : fade, zoom,
+ * slide ou none) ne démarre qu'une fois la nouvelle image chargée, et n'anime que des propriétés
+ * de calque (opacité, zoom, décalage) : ni recomposition ni redessin pendant l'animation.
  */
 @Composable
 fun HeroBackground(
     focused: State<Program?>,
     appLabels: Map<String, String>,
+    transition: String = "fade",
     fallback: @Composable () -> Unit,
 ) {
     // On attend que la sélection se pose (D-pad maintenu) avant de charger une image plein écran.
@@ -240,47 +253,86 @@ fun HeroBackground(
             program = it
         }
     }
-    val context = LocalContext.current
-    val shown = program?.takeIf { it.posterUri != null }
+    var current by remember { mutableStateOf<Program?>(null) }
+    var previous by remember { mutableStateOf<Program?>(null) }
+    var loadedUri by remember { mutableStateOf<String?>(null) }
+    val progress = remember { Animatable(1f) }
+    val target = program?.takeIf { it.posterUri != null }
+    val heroMs = LocalHomeLayout.current.ms(if (transition == "zoom") 650 else 450)
+    LaunchedEffect(target?.posterUri) {
+        if (target?.posterUri == current?.posterUri) return@LaunchedEffect
+        previous = current
+        current = target
+        progress.snapTo(0f)
+        // Nouvelle image prête (ou 0,6 s au plus) avant de lancer la transition.
+        if (target != null) withTimeoutOrNull(HERO_LOAD_WAIT_MS) { snapshotFlow { loadedUri }.first { it == target.posterUri } }
+        if (transition == "none") progress.snapTo(1f)
+        else progress.animateTo(1f, tween(heroMs, easing = FastOutSlowInEasing))
+        previous = null
+    }
+    val slidePx = with(LocalDensity.current) { 80.dp.toPx() }
     Box(Modifier.fillMaxSize()) {
         // Fond d'écran figé dans une texture : rien n'est redessiné pendant la navigation.
         Box(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) { fallback() }
-        if (shown != null) {
-            // Fondu appliqué au calque (texture déjà prête) : ni recomposition ni redessin par image.
-            val alpha = remember(shown) { Animatable(0f) }
-            LaunchedEffect(shown) { alpha.animateTo(1f, tween(400)) }
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        this.alpha = alpha.value
-                        compositingStrategy = CompositingStrategy.Offscreen
-                    }
-                    .background(Scrim),
-            ) {
-                // Image en haut à droite seulement, floue, fondue vers le fond sur ses bords.
-                AsyncImage(
-                    model = remember(shown.posterUri) { blurredRequest(context, shown.posterUri) },
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .fillMaxWidth(HERO_WIDTH)
-                        .fillMaxHeight(HERO_HEIGHT)
-                        .drawWithCache {
-                            val left = Brush.horizontalGradient(0f to Scrim, 0.5f to Scrim.copy(alpha = 0.35f), 0.8f to Color.Transparent)
-                            val bottom = Brush.verticalGradient(0.45f to Color.Transparent, 1f to Scrim)
-                            // Haut assombri : l'heure et les boutons restent lisibles.
-                            val top = Brush.verticalGradient(0f to Scrim.copy(alpha = 0.75f), 0.3f to Color.Transparent)
-                            onDrawWithContent {
-                                drawContent()
-                                drawRect(left)
-                                drawRect(bottom)
-                                drawRect(top)
-                            }
-                        },
-                )
+        previous?.let { p ->
+            key(p.posterUri) {
+                HeroLayer(p) {
+                    val t = progress.value
+                    alpha = 1f - t
+                    if (transition == "slide") translationX = -slidePx / 2 * t
+                }
             }
         }
+        current?.let { p ->
+            key(p.posterUri) {
+                HeroLayer(p, onLoaded = { loadedUri = p.posterUri }) {
+                    val t = progress.value
+                    alpha = t
+                    when (transition) {
+                        "zoom" -> { val z = 1.08f - 0.08f * t; scaleX = z; scaleY = z }
+                        "slide" -> translationX = slidePx * (1f - t)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Un calque du fond héros : image floue en haut à droite, fondue vers le fond sur ses bords. */
+@Composable
+private fun HeroLayer(program: Program, onLoaded: () -> Unit = {}, animate: GraphicsLayerScope.() -> Unit) {
+    val context = LocalContext.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                animate()
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .background(Scrim),
+    ) {
+        AsyncImage(
+            model = remember(program.posterUri) { blurredRequest(context, program.posterUri) },
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            onSuccess = { onLoaded() },
+            onError = { onLoaded() },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .fillMaxWidth(HERO_WIDTH)
+                .fillMaxHeight(HERO_HEIGHT)
+                .drawWithCache {
+                    val left = Brush.horizontalGradient(0f to Scrim, 0.5f to Scrim.copy(alpha = 0.35f), 0.8f to Color.Transparent)
+                    val bottom = Brush.verticalGradient(0.45f to Color.Transparent, 1f to Scrim)
+                    // Haut assombri : l'heure et les boutons restent lisibles.
+                    val top = Brush.verticalGradient(0f to Scrim.copy(alpha = 0.75f), 0.3f to Color.Transparent)
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(left)
+                        drawRect(bottom)
+                        drawRect(top)
+                    }
+                },
+        )
     }
 }

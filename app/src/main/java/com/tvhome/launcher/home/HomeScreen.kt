@@ -1,5 +1,14 @@
 package com.tvhome.launcher.home
 
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.animation.core.animate
+import androidx.compose.foundation.MutatePriority
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.composed
 import androidx.compose.runtime.key
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -93,7 +102,7 @@ fun HomeScreen(
     val layout = LocalHomeLayout.current
 
     Box(Modifier.fillMaxSize()) {
-        HeroBackground(heroProgram, appLabels) {
+        HeroBackground(heroProgram, appLabels, layout.heroTransition) {
             // Couche à part : le fond n'est pas redessiné à chaque mouvement du focus.
             WallpaperLayer(state.wallpaper, Modifier.graphicsLayer(), imageUrl = state.wallpaperImageUrl)
         }
@@ -124,24 +133,49 @@ fun HomeScreen(
             // Rangée sélectionnée calée en haut de la liste (comme Google TV) : jamais à moitié
             // coupée sous l'en-tête. Les rangées horizontales gardent le défilement par défaut.
             val defaultSpec = LocalBringIntoViewSpec.current
-            val rowSpec = remember(defaultSpec) { SmoothRowSpec(defaultSpec) }
-            // Écart mesuré sur la box : le titre de la rangée sélectionnée reste visible et la
-            // rangée précédente sort entièrement de l'écran.
-            val topGap = with(LocalDensity.current) { 28.dp.toPx() }
-            val columnSpec = remember(topGap) { TopAlignedSpec(topGap) }
-            CompositionLocalProvider(LocalBringIntoViewSpec provides columnSpec) {
+            val scrollMs = layout.ms(SCROLL_MS)
+            val rowSpec = remember(defaultSpec, scrollMs) { SmoothRowSpec(defaultSpec, scrollAnimation(scrollMs)) }
+            // Défilement vertical piloté par rangée (titre compris), pas par carte : la rangée qui
+            // reçoit le focus se cale juste sous l'en-tête, quel que soit l'écart titre / cartes.
+            val rowMargin = with(LocalDensity.current) { 14.dp.toPx() }
+            val scrollScope = rememberCoroutineScope()
+            var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
+            fun Modifier.alignRowOnFocus(): Modifier = composed {
+                var row by remember { mutableStateOf<LayoutCoordinates?>(null) }
+                onPlaced { row = it }.onFocusChanged { state ->
+                    val r = row ?: return@onFocusChanged
+                    val v = viewport ?: return@onFocusChanged
+                    if (!state.hasFocus || !r.isAttached || !v.isAttached) return@onFocusChanged
+                    val delta = r.positionInRoot().y - v.positionInRoot().y - rowMargin
+                    val target = (columnState.value + delta).toInt().coerceIn(0, columnState.maxValue)
+                    // Priorité haute : la demande de défilement automatique d'Android (qui arrive juste
+                    // après et ne bouge rien) n'interrompt plus l'animation.
+                    scrollScope.launch {
+                        val distance = (target - columnState.value).toFloat()
+                        if (distance == 0f) return@launch
+                        columnState.scroll(MutatePriority.PreventUserInput) {
+                            var done = 0f
+                            animate(0f, distance, animationSpec = scrollAnimation(scrollMs)) { value, _ ->
+                                done += scrollBy(value - done)
+                            }
+                        }
+                    }
+                }
+            }
+            CompositionLocalProvider(LocalBringIntoViewSpec provides NoVerticalAutoScroll) {
             // Toutes les rangées sont construites une fois (Column, pas LazyColumn) : monter ou
             // descendre ne fait que déplacer l'image, sans construire 7 cartes pendant l'animation.
             Column(
                 Modifier
                     .clipToBounds()
+                    .onPlaced { viewport = it }
                     .verticalScroll(columnState)
                     .padding(top = 24.dp, bottom = 480.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                    Column {
+                    Column(Modifier.alignRowOnFocus()) {
                         if (layout.showFavoritesLabel || movingFavorite != null) {
                             Text(
                                 if (movingFavorite != null) "Favoris · ← → pour déplacer, OK pour terminer" else "Favoris",
@@ -197,7 +231,7 @@ fun HomeScreen(
                 if (otherApps.isNotEmpty()) {
                     key("all-apps") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                        Column {
+                        Column(Modifier.alignRowOnFocus()) {
                             if (layout.showRowTitles) {
                                 Text("Toutes les applis", fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
                             }
@@ -223,7 +257,9 @@ fun HomeScreen(
                 if (state.watchNext.isNotEmpty()) {
                     key("watch-next") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            RecoRow("À suivre", state.watchNext, appLabels, onProgramClick) { heroProgram.value = it }
+                            RecoRow("À suivre", state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
+                                heroProgram.value = it
+                            }
                         }
                     }
                 }
@@ -236,6 +272,7 @@ fun HomeScreen(
                             programs = channel.programs,
                             appLabels = appLabels,
                             onClick = onProgramClick,
+                            modifier = Modifier.alignRowOnFocus(),
                         ) { heroProgram.value = it }
                     }
                     }
@@ -264,23 +301,27 @@ fun HomeScreen(
     }
 }
 
-/** Fait défiler la liste pour que l'élément sélectionné commence à [gap] du haut. */
 @OptIn(ExperimentalFoundationApi::class)
-private class TopAlignedSpec(private val gap: Float) : BringIntoViewSpec {
-    override val scrollAnimationSpec: AnimationSpec<Float> = ScrollAnimation
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = offset - gap
+private object NoVerticalAutoScroll : BringIntoViewSpec {
+    // Le défilement vertical est fait par alignRowOnFocus (rangée entière, titre compris).
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
 }
 
 /** Défilement des rangées : même position que par défaut, animation plus douce. */
 @OptIn(ExperimentalFoundationApi::class)
-private class SmoothRowSpec(private val base: BringIntoViewSpec) : BringIntoViewSpec {
-    override val scrollAnimationSpec: AnimationSpec<Float> = ScrollAnimation
+private class SmoothRowSpec(
+    private val base: BringIntoViewSpec,
+    override val scrollAnimationSpec: AnimationSpec<Float>,
+) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
         base.calculateScrollDistance(offset, size, containerSize)
 }
 
+/** Durée normale du défilement (ajustée par la vitesse des animations). */
+private const val SCROLL_MS = 350
+
 /** Défilement doux (départ franc, arrivée en douceur), proche de Google TV. */
-private val ScrollAnimation: AnimationSpec<Float> = tween(350, easing = FastOutSlowInEasing)
+private fun scrollAnimation(ms: Int): AnimationSpec<Float> = tween(ms, easing = FastOutSlowInEasing)
 
 /** Touches du mode déplacement : ← → déplacent le favori, OK / Entrée / Retour terminent. */
 private fun Modifier.moveKeys(pkg: String, onMove: (String, Int) -> Unit, onDone: () -> Unit) =
