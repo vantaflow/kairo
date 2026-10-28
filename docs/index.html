@@ -69,6 +69,10 @@
   .shot { margin: 64px auto 0; max-width: 1040px; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 40px 120px -40px rgba(37, 99, 235, .55), 0 0 0 8px rgba(255, 255, 255, .02); }
   .shot img { display: block; width: 100%; height: auto; }
 
+  .dl-code { margin: 18px 0 0; color: var(--muted); font-size: 15px; }
+  .dl-code b { color: var(--text); }
+  .dl-code b:last-child { color: var(--accent); letter-spacing: .08em; }
+
   /* Chiffres */
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 72px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
   .stat { background: var(--bg-2); padding: 26px 22px; text-align: center; }
@@ -174,6 +178,7 @@
       <a class="btn primary" href="https://github.com/vantaflow/kairo/releases/latest/download/kairo.apk">Télécharger l'APK</a>
       <a class="btn ghost" href="https://github.com/vantaflow/kairo">Voir le code</a>
     </div>
+    <p class="dl-code">Sur la box, dans <b>Downloader</b> : code <b>5568887</b></p>
     <div class="shot"><img src="assets/reco.jpg" alt="Accueil Kairo avec recommandations et fond héros" loading="eager"></div>
 
     <div class="stats">
@@ -300,7 +305,7 @@
     <h2>Prêt en trois étapes.</h2>
     <p class="sub">Android TV 11 ou plus récent.</p>
     <div class="steps">
-      <div class="card step"><h3>Télécharger</h3><p>Dans <b>Downloader</b>, tapez <code>vantaflow.github.io/kairo/apk</code>, ou récupérez l'APK de la <a href="https://github.com/vantaflow/kairo/releases/latest">dernière version</a>.</p></div>
+      <div class="card step"><h3>Télécharger</h3><p>Dans <b>Downloader</b>, tapez le code <code>5568887</code> (ou <code>vantaflow.github.io/kairo/apk</code>), ou récupérez l'APK de la <a href="https://github.com/vantaflow/kairo/releases/latest">dernière version</a>.</p></div>
       <div class="card step"><h3>Installer</h3><p>Downloader l'installe directement ; sinon clé USB ou <code>adb install</code>.</p></div>
       <div class="card step"><h3>Adopter</h3><p>Ouvrez Kairo, puis <b>Réglages › Écran d'accueil par défaut</b>.</p></div>
     </div>
