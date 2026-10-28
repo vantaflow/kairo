@@ -1,5 +1,9 @@
 package com.tvhome.launcher.home
 
+import androidx.compose.runtime.key
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import com.tvhome.launcher.reco.rememberRowState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.AnimationSpec
@@ -27,7 +31,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -83,8 +86,8 @@ fun HomeScreen(
     onMoveDone: () -> Unit = {},
 ) {
     val requesters = remember(state.favorites.size) { List(state.favorites.size) { FocusRequester() } }
-    val rowState = rememberLazyListState()
-    val columnState = rememberLazyListState()
+    val rowState = rememberRowState()
+    val columnState = rememberScrollState()
     // Contenu sélectionné : lu seulement par le fond « héros », pour ne pas recomposer tout l'accueil.
     val heroProgram = remember { mutableStateOf<Program?>(null) }
     val layout = LocalHomeLayout.current
@@ -122,17 +125,21 @@ fun HomeScreen(
             // coupée sous l'en-tête. Les rangées horizontales gardent le défilement par défaut.
             val defaultSpec = LocalBringIntoViewSpec.current
             val rowSpec = remember(defaultSpec) { SmoothRowSpec(defaultSpec) }
-            // La carte sélectionnée est calée sous le titre de sa rangée (titre ≈ 52 dp).
-            val topGap = with(LocalDensity.current) { 76.dp.toPx() }
+            // Écart mesuré sur la box : le titre de la rangée sélectionnée reste visible et la
+            // rangée précédente sort entièrement de l'écran.
+            val topGap = with(LocalDensity.current) { 28.dp.toPx() }
             val columnSpec = remember(topGap) { TopAlignedSpec(topGap) }
             CompositionLocalProvider(LocalBringIntoViewSpec provides columnSpec) {
-            LazyColumn(
-                state = columnState,
-                contentPadding = PaddingValues(top = 24.dp, bottom = 480.dp),
+            // Toutes les rangées sont construites une fois (Column, pas LazyColumn) : monter ou
+            // descendre ne fait que déplacer l'image, sans construire 7 cartes pendant l'animation.
+            Column(
+                Modifier
+                    .clipToBounds()
+                    .verticalScroll(columnState)
+                    .padding(top = 24.dp, bottom = 480.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
-                modifier = Modifier.clipToBounds(),
             ) {
-                item(key = "favorites") {
+                key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                     Column {
                         if (layout.showFavoritesLabel || movingFavorite != null) {
@@ -188,13 +195,14 @@ fun HomeScreen(
                     }
                 }
                 if (otherApps.isNotEmpty()) {
-                    item(key = "all-apps") {
+                    key("all-apps") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                         Column {
                             if (layout.showRowTitles) {
                                 Text("Toutes les applis", fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
                             }
                             LazyRow(
+                                state = rememberRowState(),
                                 contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(18.dp),
                             ) {
@@ -213,13 +221,14 @@ fun HomeScreen(
                     }
                 }
                 if (state.watchNext.isNotEmpty()) {
-                    item(key = "watch-next") {
+                    key("watch-next") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                             RecoRow("À suivre", state.watchNext, appLabels, onProgramClick) { heroProgram.value = it }
                         }
                     }
                 }
-                items(state.recoRows, key = { "channel-${it.id}" }) { channel ->
+                state.recoRows.forEach { channel ->
+                    key("channel-${channel.id}") {
                     val app = appLabels[channel.packageName]
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                         RecoRow(
@@ -228,6 +237,7 @@ fun HomeScreen(
                             appLabels = appLabels,
                             onClick = onProgramClick,
                         ) { heroProgram.value = it }
+                    }
                     }
                 }
             }
@@ -247,7 +257,7 @@ fun HomeScreen(
     LaunchedEffect(requesters, focus.resetToken) {
         if (requesters.isEmpty()) return@LaunchedEffect
         val target = focus.index.coerceIn(0, requesters.lastIndex)
-        columnState.scrollToItem(0)
+        columnState.scrollTo(0)
         rowState.scrollToItem(target)
         withFrameNanos { }
         runCatching { requesters[target].requestFocus() }

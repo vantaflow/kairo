@@ -1,5 +1,9 @@
 package com.tvhome.launcher.reco
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
+import androidx.compose.foundation.ExperimentalFoundationApi
 import android.content.Context
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.compose.animation.core.Animatable
@@ -75,6 +79,19 @@ private const val HERO_HEIGHT = 0.75f
 private const val HERO_SAMPLE_W = 160
 private const val HERO_SAMPLE_H = 90
 
+/** Cartes préparées à l'avance quand la rangée est préchargée : toutes celles visibles à l'écran. */
+private const val ROW_PREFETCH_ITEMS = 7
+
+/**
+ * État d'une rangée horizontale de l'accueil. Quand la liste verticale précharge la rangée
+ * suivante (pendant les temps morts), toutes ses cartes visibles sont construites d'avance :
+ * descendre ne construit plus 7 cartes d'un coup au milieu de l'animation.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun rememberRowState(): LazyListState =
+    rememberLazyListState(prefetchStrategy = remember { LazyListPrefetchStrategy(ROW_PREFETCH_ITEMS) })
+
 /** Rangée de recommandations (« À suivre » ou une chaîne d'appli). */
 @Composable
 fun RecoRow(
@@ -89,6 +106,7 @@ fun RecoRow(
             Text(title, fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
         }
         LazyRow(
+            state = rememberRowState(),
             contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
