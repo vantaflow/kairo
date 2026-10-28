@@ -114,6 +114,14 @@
   .step::before { counter-increment: step; content: counter(step); position: absolute; top: 22px; left: 24px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--accent-2); }
   code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13.5px; background: rgba(255, 255, 255, .06); padding: 2px 7px; border-radius: 6px; }
 
+  /* Galerie */
+  .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .gallery figure { margin: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--bg-2); }
+  .gallery img { display: block; width: 100%; height: auto; }
+  .gallery figcaption { padding: 12px 16px; color: var(--muted); font-size: 14px; }
+  .card.ultra { padding: 40px; background: linear-gradient(135deg, rgba(220, 38, 38, .16), rgba(37, 99, 235, .12)); }
+  .cta.left { justify-content: flex-start; margin-top: 8px; }
+
   footer { margin-top: 110px; padding: 40px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
   footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 
@@ -123,6 +131,10 @@
     .split.rev .text { order: 0; }
     .stats { grid-template-columns: 1fr 1fr; }
     .perf { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .gallery { grid-template-columns: 1fr; }
+    .card.ultra { padding: 24px; }
   }
   @media (max-width: 600px) {
     .wrap { padding: 0 16px; }
@@ -145,7 +157,9 @@
     <div class="links">
       <a href="#fonctions">Fonctions</a>
       <a href="#performance">Performance</a>
+      <a href="#galerie">Captures</a>
       <a href="#installation">Installation</a>
+      <a href="#ultra-tv">Ultra TV</a>
       <a href="https://github.com/vantaflow/kairo">GitHub</a>
     </div>
   </div>
@@ -202,7 +216,7 @@
         <li>Raccourcis vers les paramètres de la box</li>
       </ul>
     </div>
-    <div class="frame"><img src="assets/settings-section.jpg" alt="Panneau des réglages de Kairo" loading="lazy"></div>
+    <div class="frame"><img src="assets/settings.jpg" alt="Panneau des réglages de Kairo" loading="lazy"></div>
   </div>
 </section>
 
@@ -248,6 +262,38 @@
   </div>
 </section>
 
+<section id="galerie">
+  <div class="wrap">
+    <div class="eyebrow">Captures</div>
+    <h2>Sur une vraie télé.</h2>
+    <p class="sub">Toutes les captures viennent d'une Mecool KM7 Plus (Android 14, 2&nbsp;Go).</p>
+    <div class="gallery">
+      <figure><img src="assets/home.jpg" alt="Accueil" loading="lazy"><figcaption>Accueil : favoris, toutes les applis, À suivre</figcaption></figure>
+      <figure><img src="assets/reco-rows.jpg" alt="Rangées de recommandations" loading="lazy"><figcaption>Rangées de recommandations des applis</figcaption></figure>
+      <figure><img src="assets/settings-theme.jpg" alt="Réglages du thème" loading="lazy"><figcaption>Thèmes et personnalisation</figcaption></figure>
+      <figure><img src="assets/move.jpg" alt="Déplacer un favori" loading="lazy"><figcaption>Déplacer un favori, comme sur Google TV</figcaption></figure>
+      <figure><img src="assets/search.jpg" alt="Recherche" loading="lazy"><figcaption>Recherche d'applis et de contenus</figcaption></figure>
+      <figure><img src="assets/apps.jpg" alt="Applications" loading="lazy"><figcaption>Toutes les applications</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="ultra-tv">
+  <div class="wrap">
+    <div class="card ultra">
+      <div>
+        <div class="eyebrow">Du même auteur</div>
+        <h2>Ultra TV</h2>
+        <p class="sub">Le lecteur IPTV pour Android TV / Google TV, smartphone, tablette, Windows et Mac : Xtream Codes et M3U, guide TV, replay, pause du direct, profils. Ses contenus remontent directement dans « À suivre » de Kairo.</p>
+        <div class="cta left">
+          <a class="btn primary" href="https://vantaflow.github.io/ultra-tv/">Découvrir Ultra TV</a>
+          <a class="btn ghost" href="https://github.com/vantaflow/ultra-tv">Code sur GitHub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="installation">
   <div class="wrap">
     <div class="eyebrow">Installation</div>
@@ -264,7 +310,7 @@
 <footer>
   <div class="wrap">
     <a class="brand" href="#"><img src="assets/icon.png" alt="">Kairo</a>
-    <span>Fait pour les box modestes et les gens exigeants · <a href="https://github.com/vantaflow/kairo">GitHub</a></span>
+    <span>Fait pour les box modestes et les gens exigeants · <a href="https://github.com/vantaflow/kairo">GitHub</a> · <a href="https://vantaflow.github.io/ultra-tv/">Ultra TV</a></span>
   </div>
 </footer>
 

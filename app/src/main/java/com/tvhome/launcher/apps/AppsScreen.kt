@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
@@ -35,6 +36,8 @@ fun AppsScreen(
     apps: List<AppInfo>,
     showHidden: Boolean,
     onShowHiddenChange: (Boolean) -> Unit,
+    /** Applis masquées : estompées et marquées quand elles sont affichées. */
+    hidden: Set<String> = emptySet(),
     onLaunch: (AppInfo) -> Unit,
     onLongClick: (AppInfo) -> Unit,
     /** null = bouton Play Store masqué (profil enfant). */
@@ -46,7 +49,12 @@ fun AppsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Applications", fontSize = 32.sp, color = OnBackground)
             Spacer(Modifier.weight(1f))
-            Text("Afficher les applis masquées", color = OnBackgroundMuted)
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Afficher les applis masquées (${hidden.size})", color = OnBackgroundMuted)
+                if (hidden.isEmpty()) {
+                    Text("Aucune : appui long sur une appli › Masquer", fontSize = 13.sp, color = OnBackgroundMuted.copy(alpha = 0.7f))
+                }
+            }
             Spacer(Modifier.width(12.dp))
             Switch(checked = showHidden, onCheckedChange = onShowHiddenChange)
             Spacer(Modifier.width(24.dp))
@@ -59,7 +67,11 @@ fun AppsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             items(apps, key = { it.packageName }) { app ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val isHidden = app.packageName in hidden
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = if (isHidden) Modifier.alpha(0.45f) else Modifier,
+                ) {
                     AppTile(
                         app = app,
                         onClick = { onLaunch(app) },
@@ -67,7 +79,12 @@ fun AppsScreen(
                         width = 200.dp,
                         modifier = if (app == apps.first()) Modifier.focusRequester(first) else Modifier,
                     )
-                    Text(app.label, color = OnBackgroundMuted, maxLines = 1, modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        if (isHidden) "Masquée · ${app.label}" else app.label,
+                        color = OnBackgroundMuted,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
             }
         }

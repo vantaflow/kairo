@@ -1,5 +1,13 @@
 package com.tvhome.launcher.home
 
+import android.view.KeyEvent as NativeKeyEvent
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -62,6 +70,10 @@ fun HomeScreen(
     onOpenSearch: () -> Unit = {},
     /** Applis hors favoris, pour la rangée « Toutes les applis » (vide = rangée masquée). */
     otherApps: List<AppInfo> = emptyList(),
+    /** Favori en cours de déplacement : ← → le déplacent, OK ou Retour terminent. */
+    movingFavorite: String? = null,
+    onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
+    onMoveDone: () -> Unit = {},
 ) {
     val requesters = remember(state.favorites.size) { List(state.favorites.size) { FocusRequester() } }
     val rowState = rememberLazyListState()
@@ -104,9 +116,9 @@ fun HomeScreen(
                 item(key = "favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                     Column {
-                        if (layout.showFavoritesLabel) {
+                        if (layout.showFavoritesLabel || movingFavorite != null) {
                             Text(
-                                "Favoris",
+                                if (movingFavorite != null) "Favoris · ← → pour déplacer, OK pour terminer" else "Favoris",
                                 fontSize = 20.sp,
                                 color = OnBackground,
                                 modifier = Modifier.padding(start = 72.dp, bottom = 12.dp),
@@ -119,21 +131,29 @@ fun HomeScreen(
                             modifier = Modifier.testTag("favorites"),
                         ) {
                             itemsIndexed(state.favorites, key = { _, app -> app.packageName }) { index, app ->
-                                AppTile(
-                                    app = app,
-                                    onClick = { onLaunch(app) },
-                                    onLongClick = { onFavoriteLongClick(app) },
-                                    width = layout.tileWidthDp.dp,
-                                    modifier = Modifier
-                                        .testTag("favorite-$index")
-                                        .focusRequester(requesters[index])
-                                        .onFocusChanged {
-                                            if (it.isFocused) {
-                                                focus.index = index
-                                                heroProgram.value = null
+                                val moving = app.packageName == movingFavorite
+                                Box(contentAlignment = Alignment.Center) {
+                                    AppTile(
+                                        app = app,
+                                        onClick = { onLaunch(app) },
+                                        onLongClick = { onFavoriteLongClick(app) },
+                                        width = layout.tileWidthDp.dp,
+                                        modifier = Modifier
+                                            .testTag("favorite-$index")
+                                            .focusRequester(requesters[index])
+                                            .onFocusChanged {
+                                                if (it.isFocused) {
+                                                    focus.index = index
+                                                    heroProgram.value = null
+                                                }
                                             }
-                                        },
-                                )
+                                            .then(if (moving) Modifier.moveKeys(app.packageName, onMoveFavorite, onMoveDone) else Modifier),
+                                    )
+                                    if (moving) {
+                                        Text("‹", fontSize = 34.sp, color = OnBackground, modifier = Modifier.align(Alignment.CenterStart).offset(x = (-16).dp))
+                                        Text("›", fontSize = 34.sp, color = OnBackground, modifier = Modifier.align(Alignment.CenterEnd).offset(x = 16.dp))
+                                    }
+                                }
                             }
                         }
                     }
@@ -187,6 +207,14 @@ fun HomeScreen(
         }
     }
 
+    // Favori déplacé : il garde le focus et reste visible pendant qu'il change de place.
+    LaunchedEffect(movingFavorite, state.favorites) {
+        val index = state.favorites.indexOfFirst { it.packageName == movingFavorite }
+        if (index < 0 || index > requesters.lastIndex) return@LaunchedEffect
+        rowState.animateScrollToItem((index - 1).coerceAtLeast(0))
+        runCatching { requesters[index].requestFocus() }
+    }
+
     // Focus restauré à l'arrivée sur l'accueil, et ramené sur la 1re tuile par la touche Home.
     LaunchedEffect(requesters, focus.resetToken) {
         if (requesters.isEmpty()) return@LaunchedEffect
@@ -203,3 +231,17 @@ fun HomeScreen(
 private class TopAlignedSpec(private val gap: Float) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = offset - gap
 }
+
+/** Touches du mode déplacement : ← → déplacent le favori, OK / Entrée / Retour terminent. */
+private fun Modifier.moveKeys(pkg: String, onMove: (String, Int) -> Unit, onDone: () -> Unit) =
+    onPreviewKeyEvent { e ->
+        when (e.key.nativeKeyCode) {
+            NativeKeyEvent.KEYCODE_DPAD_LEFT -> { if (e.type == KeyEventType.KeyDown) onMove(pkg, -1); true }
+            NativeKeyEvent.KEYCODE_DPAD_RIGHT -> { if (e.type == KeyEventType.KeyDown) onMove(pkg, +1); true }
+            NativeKeyEvent.KEYCODE_DPAD_CENTER, NativeKeyEvent.KEYCODE_ENTER, NativeKeyEvent.KEYCODE_NUMPAD_ENTER,
+            NativeKeyEvent.KEYCODE_BACK -> { if (e.type == KeyEventType.KeyUp) onDone(); true }
+            // Haut / bas bloqués : on reste sur le favori tant qu'on le déplace.
+            NativeKeyEvent.KEYCODE_DPAD_UP, NativeKeyEvent.KEYCODE_DPAD_DOWN -> true
+            else -> false
+        }
+    }

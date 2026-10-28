@@ -98,6 +98,8 @@ class HomeActivity : ComponentActivity() {
     /** Écran demandé par un appui sur Home : on revient toujours à l'accueil. */
     private var destination by mutableStateOf(Destination.Home)
     private var actionsFor by mutableStateOf<AppInfo?>(null)
+    /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
+    private var movingFavorite by mutableStateOf<String?>(null)
     private var searchWithVoice by mutableStateOf(false)
     /** Réglages déverrouillés par le PIN du profil enfant (reverrouillés au retour à l'accueil). */
     private var settingsUnlocked by mutableStateOf(false)
@@ -219,11 +221,15 @@ class HomeActivity : ComponentActivity() {
                     onFavoriteLongClick = { if (!profile.kids) actionsFor = it },
                     onOpenApps = { destination = Destination.Apps },
                     onOpenSettings = { destination = Destination.Settings },
+                    movingFavorite = movingFavorite,
+                    onMoveFavorite = appsViewModel::moveFavoriteBy,
+                    onMoveDone = { movingFavorite = null },
                 )
             }
             Destination.Apps -> {
                 val allApps by appsViewModel.apps.collectAsStateWithLifecycle()
                 val showHidden by appsViewModel.showHidden.collectAsStateWithLifecycle()
+                val hiddenApps by appsViewModel.hidden.collectAsStateWithLifecycle()
                 val home by homeViewModel.state.collectAsStateWithLifecycle()
                 // Profil enfant : seulement ses favoris.
                 val apps = if (profile.kids) home.favorites else allApps
@@ -231,6 +237,7 @@ class HomeActivity : ComponentActivity() {
                     apps = apps,
                     showHidden = showHidden,
                     onShowHiddenChange = { appsViewModel.showHidden.value = it },
+                    hidden = hiddenApps,
                     onLaunch = launch,
                     onLongClick = { if (!profile.kids) actionsFor = it },
                     onOpenPlayStore = if (profile.kids) null else ({ openPlayStore(null) }),
@@ -285,6 +292,7 @@ class HomeActivity : ComponentActivity() {
                 },
                 onDismiss = { actionsFor = null },
                 onPlayStore = { openPlayStore(app.packageName) },
+                onMove = if (destination == Destination.Home) ({ movingFavorite = app.packageName }) else null,
             )
         }
     }
