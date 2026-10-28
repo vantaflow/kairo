@@ -183,12 +183,20 @@ class HomeViewModel(
 
     private fun startWallpaperRotation() {
         val next = nextWallpaper ?: return
+        // Dernier changement d'image : au retour sur l'accueil, on attend la fin de l'intervalle
+        // au lieu de changer d'image à chaque fois.
+        var lastQuery: String? = null
+        var lastChangeMs = 0L
         viewModelScope.launch {
             combine(prefs.wallpaper, foreground, ::Pair).collectLatest { (config, visible) ->
                 if (config !is WallpaperConfig.Pixabay || !visible) return@collectLatest
+                val interval = config.intervalMin.coerceAtLeast(5) * 60_000L
                 while (true) {
+                    val elapsed = System.currentTimeMillis() - lastChangeMs
+                    if (config.query == lastQuery && elapsed in 0 until interval) delay(interval - elapsed)
                     withContext(ioDispatcher) { next(config.query) }?.let { prefs.setPixabayCurrent(it) }
-                    delay(config.intervalMin.coerceAtLeast(5) * 60_000L)
+                    lastQuery = config.query
+                    lastChangeMs = System.currentTimeMillis()
                 }
             }
         }

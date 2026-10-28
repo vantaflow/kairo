@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
@@ -49,6 +50,8 @@ fun AppTile(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     width: Dp = 192.dp,
+    /** Appli masquée : image estompée (le contour de focus, lui, reste bien visible). */
+    dimmed: Boolean = false,
 ) {
     val theme = LocalLauncherTheme.current
     val shape = RoundedCornerShape(theme.tileRadiusDp.dp)
@@ -92,23 +95,43 @@ fun AppTile(
                 }
             }
             .focusable()
-            .clip(shape)
-            .background(Color(0xFF202329))
+            // Contour à l'extérieur de la tuile, séparé par un liseré sombre : visible même
+            // sur les tuiles blanches (Navigateur, YouTube, Play Store…).
             .drawWithContent {
                 drawContent()
-                if (focused.value) {
-                    val stroke = 3.dp.toPx()
-                    drawRoundRect(
-                        color = Color(theme.focusBorder),
-                        topLeft = Offset(stroke / 2, stroke / 2),
-                        size = Size(size.width - stroke, size.height - stroke),
-                        cornerRadius = CornerRadius(theme.tileRadiusDp.dp.toPx()),
-                        style = Stroke(stroke),
-                    )
-                }
-            },
+                if (focused.value) drawFocusRing(Color(theme.focusBorder), theme.tileRadiusDp.dp.toPx())
+            }
+            .clip(shape)
+            .background(Color(0xFF202329)),
     ) {
         // Un seul nœud d'accessibilité par tuile (voir ProgramCard).
-        AppTileImage(app, Modifier.clearAndSetSemantics { contentDescription = app.label })
+        AppTileImage(
+            app,
+            Modifier
+                .clearAndSetSemantics { contentDescription = app.label }
+                .then(if (dimmed) Modifier.alpha(0.45f) else Modifier),
+        )
     }
+}
+
+/** Anneau de focus autour de l'élément (hors de ses bords), avec un liseré sombre entre les deux. */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFocusRing(color: Color, radiusPx: Float) {
+    val gap = 2.dp.toPx()
+    val stroke = 3.dp.toPx()
+    val dark = gap + 0.5f
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.55f),
+        topLeft = Offset(-dark / 2, -dark / 2),
+        size = Size(size.width + dark, size.height + dark),
+        cornerRadius = CornerRadius(radiusPx + dark / 2),
+        style = Stroke(dark),
+    )
+    val o = gap + stroke / 2
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(-o, -o),
+        size = Size(size.width + 2 * o, size.height + 2 * o),
+        cornerRadius = CornerRadius(radiusPx + o),
+        style = Stroke(stroke),
+    )
 }

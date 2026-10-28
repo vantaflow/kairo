@@ -221,6 +221,21 @@ class HomeViewModelTest {
         assertEquals(1, calls)
     } }
 
+    @Test(timeout = 20_000)
+    fun pixabayNotChangedOnEachReturnHome() = runTest(UnconfinedTestDispatcher()) { withVm {
+        val prefs = prefs()
+        prefs.setWallpaper(com.tvhome.launcher.settings.WallpaperConfig.Pixabay("nature", 30))
+        var calls = 0
+        nextWallpaper = { calls++; "https://img/$calls.jpg" }
+        val vm = vm(prefs)
+        vm.state.first { it.wallpaperImageUrl != null }
+        // Lancer une appli puis revenir : même image tant que l'intervalle n'est pas écoulé.
+        vm.setForeground(false)
+        vm.setForeground(true)
+        kotlinx.coroutines.yield()
+        assertEquals(1, calls)
+    } }
+
     @Test
     fun noEpgAccessGivesNoRows() = runTest(UnconfinedTestDispatcher()) { withVm {
         val state = vm(prefs()).state.first { it.timeText.isNotEmpty() }

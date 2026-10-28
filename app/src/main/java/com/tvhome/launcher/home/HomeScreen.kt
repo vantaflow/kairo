@@ -1,5 +1,9 @@
 package com.tvhome.launcher.home
 
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.ExperimentalComposeUiApi
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.Alignment
@@ -55,7 +59,7 @@ import com.tvhome.launcher.wallpaper.WallpaperLayer
  * Accueil « Épuré » (maquette C2) : heure, favoris, « À suivre » puis une rangée par chaîne.
  * Quand un contenu recommandé a le focus, son image remplit le fond (style Google TV).
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun HomeScreen(
     state: HomeUiState,
@@ -97,7 +101,18 @@ fun HomeScreen(
                 // Sur l'en-tête (Applications, Réglages), le fond reprend le fond d'écran.
                 modifier = Modifier
                     .padding(horizontal = 72.dp)
-                    .onFocusChanged { if (it.hasFocus) heroProgram.value = null },
+                    .onFocusChanged { if (it.hasFocus) heroProgram.value = null }
+                    // Bas depuis l'en-tête : retour sur le favori quitté, pas sur le plus proche à l'écran.
+                    .focusProperties {
+                        exit = { direction ->
+                            if (direction == FocusDirection.Down && requesters.isNotEmpty()) {
+                                requesters[focus.index.coerceIn(0, requesters.lastIndex)]
+                            } else {
+                                FocusRequester.Default
+                            }
+                        }
+                    }
+                    .focusGroup(),
                 netState = netState,
             )
             // Rangée sélectionnée calée en haut de la liste (comme Google TV) : jamais à moitié
@@ -122,6 +137,15 @@ fun HomeScreen(
                                 fontSize = 20.sp,
                                 color = OnBackground,
                                 modifier = Modifier.padding(start = 72.dp, bottom = 12.dp),
+                            )
+                        }
+                        if (state.favorites.isEmpty()) {
+                            Text(
+                                "Aucun favori pour l'instant : appui long sur une appli › Ajouter aux favoris" +
+                                    " (profil enfant : un parent les ajoute dans Réglages › Favoris).",
+                                fontSize = 16.sp,
+                                color = OnBackground.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(start = 72.dp, end = 72.dp, top = 8.dp),
                             )
                         }
                         LazyRow(

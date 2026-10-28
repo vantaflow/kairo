@@ -6,10 +6,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawWithContent
+import com.tvhome.launcher.home.drawFocusRing
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.KeyEventType
@@ -131,28 +131,22 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
                 enter
             }
             .focusable()
+            // Contour de focus hors de la carte (visible même sur une affiche blanche).
+            .drawWithContent {
+                drawContent()
+                if (focused.value) drawFocusRing(Color(theme.focusBorder), theme.tileRadiusDp.dp.toPx())
+            }
             .clip(cardShape)
             .background(Color(0xFF202329))
             .drawWithCache {
-                // Barre de progression et contour préparés une fois par taille, dessinés par-dessus le texte.
+                // Barre de progression préparée une fois par taille, dessinée par-dessus le texte.
                 val barHeight = 4.dp.toPx()
-                val stroke = 3.dp.toPx()
-                val radius = CornerRadius(theme.tileRadiusDp.dp.toPx())
                 onDrawWithContent {
                     drawContent()
                     program.progressPercent?.let { pct ->
                         val top = size.height - barHeight
                         drawRect(Color.White.copy(alpha = 0.25f), Offset(0f, top), Size(size.width, barHeight))
                         drawRect(Color.White, Offset(0f, top), Size(size.width * pct / 100f, barHeight))
-                    }
-                    if (focused.value) {
-                        drawRoundRect(
-                            color = Color(theme.focusBorder),
-                            topLeft = Offset(stroke / 2, stroke / 2),
-                            size = Size(size.width - stroke, size.height - stroke),
-                            cornerRadius = radius,
-                            style = Stroke(stroke),
-                        )
                     }
                 }
             }

@@ -19,7 +19,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
@@ -68,20 +67,18 @@ fun AppsScreen(
         ) {
             items(apps, key = { it.packageName }) { app ->
                 val isHidden = app.packageName in hidden
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = if (isHidden) Modifier.alpha(0.45f) else Modifier,
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     AppTile(
                         app = app,
                         onClick = { onLaunch(app) },
                         onLongClick = { onLongClick(app) },
                         width = 200.dp,
+                        dimmed = isHidden,
                         modifier = if (app == apps.first()) Modifier.focusRequester(first) else Modifier,
                     )
                     Text(
                         if (isHidden) "Masquée · ${app.label}" else app.label,
-                        color = OnBackgroundMuted,
+                        color = if (isHidden) OnBackgroundMuted.copy(alpha = 0.6f) else OnBackgroundMuted,
                         maxLines = 1,
                         modifier = Modifier.padding(top = 8.dp),
                     )
