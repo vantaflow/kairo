@@ -45,6 +45,17 @@ class AppsViewModel(
         }
     }
 
+    /** Déplace un favori d'une position vers la gauche (-1) ou la droite (+1). */
+    fun moveFavoriteBy(pkg: String, delta: Int) {
+        viewModelScope.launch {
+            val list = prefs.favorites.first()
+            val index = list.indexOf(pkg)
+            if (index < 0) return@launch
+            val target = (index + delta).coerceIn(0, list.lastIndex)
+            if (target != index) prefs.moveFavorite(pkg, target)
+        }
+    }
+
     fun toggleHidden(pkg: String) {
         viewModelScope.launch {
             prefs.setHidden(pkg, pkg !in prefs.hidden.first())

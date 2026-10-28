@@ -53,14 +53,23 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - Réseau (Wi-Fi / Ethernet), raccourci HDMI-CEC et accès direct aux paramètres Android de la box.
 - Profils (dont un **profil enfant** verrouillé par code), sauvegarde et restauration, nettoyage mémoire, mise à jour depuis GitHub.
 
-![Panneau des réglages](docs/assets/settings-section.jpg)
+| Menu des réglages | Section Thème |
+| --- | --- |
+| ![Menu des réglages](docs/assets/settings.jpg) | ![Réglages du thème](docs/assets/settings-theme.jpg) |
 
 **Et aussi**
+- **Favoris à déplacer directement sur l'accueil**, comme sur Google TV : appui long › Déplacer, puis ← →.
 - Toutes les applis, applis masquées, accès au Play Store.
 - Recherche dans les applis et les contenus, avec dictée vocale.
 - Écran de veille Kairo (images, heure, météo).
 
-![Toutes les applications](docs/assets/apps.jpg)
+| Toutes les applications | Recherche |
+| --- | --- |
+| ![Toutes les applications](docs/assets/apps.jpg) | ![Recherche](docs/assets/search.jpg) |
+| **Rangées de recommandations** | **Déplacer un favori** |
+| ![Rangées de recommandations](docs/assets/reco-rows.jpg) | ![Déplacer un favori](docs/assets/move.jpg) |
+
+<sub>Captures prises sur une Mecool KM7 Plus.</sub>
 
 ## Comment rester fluide sur une petite box
 
@@ -110,6 +119,10 @@ Le dépôt contient aussi `scripts/remote.py` pour compiler sur un serveur dista
 ## Vie privée
 
 Kairo n'a ni compte, ni publicité, ni statistiques. Les seuls appels réseau : la météo (Open-Meteo, position approximative par IP via geojs / ipwho.is), les images Pixabay si vous les choisissez, l'heure NTP et la vérification des mises à jour sur GitHub.
+
+## Du même auteur
+
+📺 **[Ultra TV](https://github.com/vantaflow/ultra-tv)** — lecteur IPTV pour Android TV / Google TV, smartphone, tablette, Windows et Mac : Xtream Codes et M3U, guide TV, replay, pause du direct, profils. Ses recommandations s'affichent directement dans Kairo. → [Site d'Ultra TV](https://vantaflow.github.io/ultra-tv/)
 
 ---
 

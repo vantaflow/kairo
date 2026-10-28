@@ -1,5 +1,6 @@
 package com.tvhome.launcher.settings
 
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.focus.focusProperties
@@ -129,7 +130,27 @@ fun SettingsScreen(
                     color = OnBackgroundMuted,
                     modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 4.dp, bottom = 12.dp),
                 )
-                Box(Modifier.weight(1f).fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 20.dp)) {
+                // À l'ouverture, le focus va au premier réglage de la section : l'élément du menu
+                // qui l'avait disparaît, sinon le focus retomberait sur l'accueil derrière.
+                val contentFocus = remember(section) { FocusRequester() }
+                var contentHasFocus by remember(section) { mutableStateOf(false) }
+                LaunchedEffect(section) {
+                    // Le contenu peut arriver après quelques images (listes, données chargées).
+                    repeat(30) {
+                        if (contentHasFocus) return@LaunchedEffect
+                        withFrameNanos { }
+                        runCatching { contentFocus.requestFocus() }
+                    }
+                }
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
+                        .focusRequester(contentFocus)
+                        .onFocusChanged { contentHasFocus = it.hasFocus }
+                        .focusGroup(),
+                ) {
                     SectionContent(section, vm, installedApps, networkMonitor, networkState)
                 }
             }

@@ -32,6 +32,8 @@ fun AppActionsDialog(
     onUninstall: () -> Unit,
     onDismiss: () -> Unit,
     onPlayStore: () -> Unit = {},
+    /** Déplacer le favori directement sur l'accueil (null = action absente). */
+    onMove: (() -> Unit)? = null,
 ) {
     val first = remember { FocusRequester() }
     Dialog(onDismissRequest = onDismiss) {
@@ -46,6 +48,7 @@ fun AppActionsDialog(
             Action(if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris", Modifier.focusRequester(first)) {
                 onToggleFavorite(); onDismiss()
             }
+            if (isFavorite && onMove != null) Action("Déplacer") { onMove(); onDismiss() }
             Action(if (isHidden) "Afficher" else "Masquer") { onToggleHidden(); onDismiss() }
             Action("Infos de l'appli") { onAppInfo(); onDismiss() }
             Action("Voir dans le Play Store") { onPlayStore(); onDismiss() }
