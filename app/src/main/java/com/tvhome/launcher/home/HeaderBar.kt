@@ -24,7 +24,10 @@ import androidx.compose.foundation.layout.padding
 import com.tvhome.launcher.network.NetState
 import com.tvhome.launcher.network.NetworkIndicator
 import com.tvhome.launcher.ui.theme.LocalHomeLayout
+import com.tvhome.launcher.ui.theme.AccentColor
+import com.tvhome.launcher.ui.theme.Background
 import com.tvhome.launcher.ui.theme.OnBackground
+import com.tvhome.launcher.ui.theme.SurfaceColor
 import com.tvhome.launcher.ui.theme.OnBackgroundMuted
 
 /** Heure + date à gauche, boutons Applications et Réglages à droite. */
@@ -85,6 +88,9 @@ private fun HeaderButton(icon: TvIcon, label: String, onClick: () -> Unit) {
 
 @Composable
 private fun PillColors() = ButtonDefaults.colors(
-    containerColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f),
+    // Couleurs du thème : surface au repos, accent au focus.
+    containerColor = SurfaceColor.copy(alpha = 0.82f),
     contentColor = OnBackground,
+    focusedContainerColor = AccentColor,
+    focusedContentColor = Background,
 )

@@ -207,6 +207,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             focusBorder = it[Keys.customFocus] ?: base.focusBorder,
             tileRadiusDp = it[Keys.customRadius] ?: base.tileRadiusDp,
             focusScale = it[Keys.customScale] ?: base.focusScale,
+            background = base.background,
+            surface = base.surface,
         )
     }
 

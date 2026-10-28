@@ -102,7 +102,22 @@ fun WallpaperLayer(config: WallpaperConfig, modifier: Modifier = Modifier, image
             Crossfade(targetState = pixabayImage, animationSpec = tween(800), label = "wallpaper") { url ->
                 AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             }
-            Spacer(Modifier.fillMaxSize().drawBehind { drawRect(scrimBrush(size.height)) })
+            // Photo claire (ciel, mer…) : voile léger partout et plus marqué en haut,
+            // pour que l'heure, la date et les boutons restent lisibles.
+            Spacer(
+                Modifier.fillMaxSize().drawWithCache {
+                    val top = Brush.verticalGradient(
+                        listOf(ScrimColor.copy(alpha = 0.7f), ScrimColor.copy(alpha = 0f)),
+                        endY = size.height * (300f / 720f),
+                    )
+                    val bottom = scrimBrush(size.height)
+                    onDrawBehind {
+                        drawRect(ScrimColor.copy(alpha = 0.15f))
+                        drawRect(top)
+                        drawRect(bottom)
+                    }
+                },
+            )
         }
     }
 }

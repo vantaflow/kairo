@@ -41,7 +41,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 **Personnalisation**
 - Fonds : images **Pixabay** par thème (nature, ville, mer, espace…), dégradés ou couleurs unies.
-- Thèmes prêts à l'emploi ou thème sur mesure : couleurs, contour et zoom au focus, arrondi des tuiles, taille des tuiles, titres de rangées.
+- **6 thèmes** (Google TV, Bleu nuit, Ambre, Émeraude, Violet, Minimal) qui changent les couleurs des écrans, de l’en-tête et du panneau, ou un thème sur mesure : accent, contour et zoom au focus, arrondi et taille des tuiles, titres de rangées.
 - Ordre et visibilité des recommandations **par appli et par rangée**.
 
 **Télécommande**
@@ -82,8 +82,9 @@ Kairo est écrit en Kotlin avec Jetpack Compose et chaque écran a été profil�
 
 ## Installation
 
-1. Téléchargez `kairo-x.y.z.apk` depuis la [dernière version](https://github.com/vantaflow/kairo/releases/latest).
-2. Installez-le (Downloader, clé USB ou `adb install kairo-x.y.z.apk`).
+1. Dans **Downloader** sur la box, tapez l'adresse **`vantaflow.github.io/kairo/apk`** : la dernière version se télécharge et s'installe.
+   Lien direct : <https://github.com/vantaflow/kairo/releases/latest/download/kairo.apk>
+2. Ou installez-le par clé USB ou `adb install kairo.apk`.
 3. Ouvrez Kairo puis **Réglages › Écran d'accueil par défaut**.
 
 Pour un réglage complet en une commande depuis un PC (autorisations, touches de la télécommande, écran de veille) :
