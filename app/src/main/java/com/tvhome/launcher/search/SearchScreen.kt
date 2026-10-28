@@ -1,5 +1,15 @@
 package com.tvhome.launcher.search
 
+import androidx.compose.foundation.border
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.tv.material3.MaterialTheme
 import android.app.Activity
 import android.content.Intent
 import android.speech.RecognizerIntent
@@ -63,6 +73,9 @@ fun SearchScreen(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val field = remember { FocusRequester() }
+    var fieldFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val accent = MaterialTheme.colorScheme.primary
     val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { query = it }
@@ -101,8 +114,19 @@ fun SearchScreen(
                     cursorBrush = SolidColor(Color.White),
                     modifier = Modifier
                         .focusRequester(field)
+                        .onFocusChanged { fieldFocused = it.isFocused }
+                        // Bas : vers les résultats (le champ ne garde pas la flèche pour lui).
+                        .onPreviewKeyEvent { e ->
+                            if (e.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                                if (e.type == KeyEventType.KeyDown) focusManager.moveFocus(FocusDirection.Down)
+                                true
+                            } else {
+                                false
+                            }
+                        }
                         .weight(1f)
-                        .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = if (fieldFocused) 0.14f else 0.08f), RoundedCornerShape(12.dp))
+                        .border(2.dp, if (fieldFocused) accent else Color.Transparent, RoundedCornerShape(12.dp))
                         .padding(14.dp),
                 )
                 Button(onClick = ::listen) {

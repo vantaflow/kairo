@@ -189,7 +189,8 @@ class HomeActivity : ComponentActivity() {
 
         // Sur l'accueil, Retour ne doit jamais fermer le launcher.
         BackHandler {
-            destination = Destination.Home
+            // Sur l'accueil, Retour remonte au premier favori (comme Google TV).
+            if (destination == Destination.Home) homeFocus.reset() else destination = Destination.Home
             settingsUnlocked = false
         }
         val profile by container.prefs.currentProfile.collectAsStateWithLifecycle(DefaultProfile)

@@ -1,5 +1,6 @@
 package com.tvhome.launcher.settings
 
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -190,6 +191,8 @@ fun SmallButton(text: String, onClick: () -> Unit, enabled: Boolean = true) {
     androidx.tv.material3.OutlinedButton(
         onClick = onClick,
         enabled = enabled,
+        // Désactivé : non sélectionnable (sinon le focus s'y pose sans que rien ne se voie).
+        modifier = Modifier.focusProperties { canFocus = enabled },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
     ) {
         Text(text, fontSize = 15.sp, maxLines = 1)
@@ -209,8 +212,12 @@ fun TvInput(
     secret: Boolean = false,
     placeholder: String = "",
     fontSize: androidx.compose.ui.unit.TextUnit = 18.sp,
+    keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+    /** Appelé quand la saisie est validée avec la touche « Valider » du clavier. */
+    onDone: () -> Unit = {},
 ) {
     var editing by remember { mutableStateOf(false) }
+    var fieldHadFocus by remember(editing) { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
     val box = remember { FocusRequester() }
     val field = remember { FocusRequester() }
@@ -221,37 +228,48 @@ fun TvInput(
         .border(2.dp, if (focused || editing) accent else Color.Transparent, shape)
         .padding(14.dp)
     val shown = if (secret) "•".repeat(value.length) else value
-    if (editing) {
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = true,
-            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-            textStyle = TextStyle(color = OnBackground, fontSize = fontSize),
-            cursorBrush = SolidColor(Color.White),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { editing = false }),
-            modifier = modifier
-                .focusRequester(field)
-                .onFocusChanged { if (!it.isFocused && editing) editing = false }
-                .then(frame),
-        )
-        LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
-    } else {
-        Box(
-            modifier
-                .focusRequester(box)
-                .onFocusChanged { focused = it.isFocused }
-                .onPreviewKeyEvent { e ->
-                    val code = e.key.nativeKeyCode
-                    val enter = code == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
-                        code == android.view.KeyEvent.KEYCODE_ENTER || code == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
-                    if (enter && e.type == KeyEventType.KeyUp) editing = true
-                    enter
-                }
-                .focusable()
-                .then(frame),
-        ) {
+    // La case reste en place pendant la saisie (le champ est à l'intérieur) : le focus passe
+    // de la case au champ sans jamais retomber sur l'accueil derrière le panneau.
+    Box(
+        modifier
+            .focusRequester(box)
+            .onFocusChanged { focused = it.hasFocus }
+            .onPreviewKeyEvent { e ->
+                if (editing) return@onPreviewKeyEvent false
+                val code = e.key.nativeKeyCode
+                val enter = code == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                    code == android.view.KeyEvent.KEYCODE_ENTER || code == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
+                if (enter && e.type == KeyEventType.KeyUp) editing = true
+                enter
+            }
+            .focusable()
+            .then(frame),
+    ) {
+        if (editing) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+                textStyle = TextStyle(color = OnBackground, fontSize = fontSize),
+                cursorBrush = SolidColor(Color.White),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    runCatching { box.requestFocus() }
+                    editing = false
+                    onDone()
+                }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(field)
+                    // Fin de saisie quand le champ perd le focus (pas au premier appel, avant qu'il l'ait).
+                    .onFocusChanged {
+                        if (it.isFocused) fieldHadFocus = true
+                        else if (fieldHadFocus && editing) editing = false
+                    },
+            )
+            LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
+        } else {
             Text(
                 shown.ifEmpty { placeholder },
                 color = if (shown.isEmpty()) OnBackgroundMuted else OnBackground,
@@ -260,7 +278,7 @@ fun TvInput(
             )
         }
     }
-    // Retour sur la case après la saisie, pour continuer à naviguer depuis le champ.
+    // Fin de saisie (Valider) : la case reprend le focus pour continuer à naviguer.
     var wasEditing by remember { mutableStateOf(false) }
     LaunchedEffect(editing) {
         if (wasEditing && !editing) runCatching { box.requestFocus() }

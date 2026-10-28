@@ -91,27 +91,36 @@ fun ProfileSettings() {
                 }
             }
         }
-        item { Text("Nouveau profil", color = OnBackgroundMuted, modifier = Modifier.padding(top = 12.dp)) }
+        item { SettingLabel("Nouveau profil") }
+        item { TvInput(name, { name = it }, Modifier.fillMaxWidth(), placeholder = "Nom du profil (OK pour saisir)") }
+        item { SwitchRow("Profil enfant", kids, { kids = it }, "Ne voit que ses favoris ; réglages protégés par le PIN.") }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Nom", color = OnBackground)
-                TvTextField(name, { name = it }, width = 240)
-                Text("Enfant", color = OnBackground)
-                Switch(checked = kids, onCheckedChange = { kids = it })
-            }
-        }
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(if (kids) "PIN obligatoire (4 à 6 chiffres)" else "PIN (facultatif)", color = OnBackground)
-                TvTextField(pin, { pin = it.filter(Char::isDigit).take(6) }, width = 140, secret = true)
-                // Un profil enfant exige un PIN d'au moins 4 chiffres.
-                Button(
-                    onClick = {
-                        scope.launch { c.prefs.addProfile(name, kids, pin.ifBlank { null }) }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TvInput(
+                    pin,
+                    { pin = it.filter(Char::isDigit).take(6) },
+                    Modifier.weight(1f),
+                    secret = true,
+                    placeholder = if (kids) "PIN, 4 à 6 chiffres" else "PIN (facultatif)",
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword,
+                )
+                // Un nom est requis ; un profil enfant exige un PIN d'au moins 4 chiffres.
+                SmallButton(
+                    "Créer",
+                    {
+                        // Valeurs lues avant de vider le formulaire (la coroutine s'exécute après).
+                        val newName = name.trim()
+                        val newKids = kids
+                        val newPin = pin.ifBlank { null }
+                        scope.launch { c.prefs.addProfile(newName, newKids, newPin) }
                         name = ""; pin = ""; kids = false
                     },
-                    enabled = !kids || pin.length >= 4,
-                ) { Text("Créer") }
+                    enabled = name.isNotBlank() && (!kids || pin.length >= 4),
+                )
             }
         }
         item {

@@ -91,6 +91,16 @@ fun SettingsScreen(
     var opened by rememberSaveable { mutableStateOf<Section?>(null) }
     var lastSection by rememberSaveable { mutableStateOf(Section.Favorites) }
     BackHandler { if (opened != null) opened = null else onClose() }
+    // Filet de sécurité : si l'élément qui avait le focus disparaît, le panneau le reprend
+    // au lieu de le laisser retomber sur l'accueil derrière.
+    val panelFocus = remember { FocusRequester() }
+    var panelHasFocus by remember { mutableStateOf(true) }
+    LaunchedEffect(panelHasFocus) {
+        if (panelHasFocus) return@LaunchedEffect
+        // Laisse d'abord le menu ou la section poser leur propre focus.
+        repeat(15) { withFrameNanos { } }
+        if (!panelHasFocus) runCatching { panelFocus.requestFocus() }
+    }
 
     Box(Modifier.fillMaxSize()) {
         // Voile progressif : l'accueil reste visible à gauche.
@@ -107,6 +117,8 @@ fun SettingsScreen(
                 .fillMaxHeight()
                 .background(SurfaceColor, RoundedCornerShape(24.dp))
                 // Le focus reste dans le panneau tant qu'il est ouvert.
+                .focusRequester(panelFocus)
+                .onFocusChanged { panelHasFocus = it.hasFocus }
                 .focusGroup()
                 .focusProperties { exit = { FocusRequester.Cancel } },
         ) {
