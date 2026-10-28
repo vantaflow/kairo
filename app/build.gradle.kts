@@ -18,8 +18,8 @@ android {
         applicationId = "com.tvhome.launcher"
         minSdk = 30
         targetSdk = 34
-        versionCode = 10202
-        versionName = "1.2.2"
+        versionCode = 10300
+        versionName = "1.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PIXABAY_API_KEY", "\"${secrets.getProperty("PIXABAY_API_KEY", "")}\"")
     }
