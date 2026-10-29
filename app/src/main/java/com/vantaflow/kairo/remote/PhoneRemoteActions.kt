@@ -50,6 +50,8 @@ enum class PhoneKey(val global: Int?, val media: Int?) {
     }
 }
 
+private const val PLAYER_PACKAGE = "com.vantaflow.kairo.player"
+
 /** Ce que la page du téléphone peut demander à la box. */
 class PhoneRemoteActions(private val context: Context) {
     private val container get() = (context.applicationContext as TvHomeApp).container
@@ -175,8 +177,20 @@ class PhoneRemoteActions(private val context: Context) {
             return HttpResponse.text(400, "Transfert interrompu")
         }
         resolver.update(uri, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)
+        // Vidéo ou musique : lecture directe dans Kairo Player s'il est installé.
+        val mime = java.net.URLConnection.guessContentTypeFromName(name).orEmpty()
+        if ((mime.startsWith("video/") || mime.startsWith("audio/")) && openInPlayer(uri, mime)) {
+            toast("$name : lecture dans Kairo Player")
+            return HttpResponse.json("{\"ok\":true,\"kind\":\"play\"}")
+        }
         toast("Fichier reçu : $name (Téléchargements › Kairo)")
         return HttpResponse.json("{\"ok\":true,\"kind\":\"file\"}")
+    }
+
+    private fun openInPlayer(uri: android.net.Uri, mime: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).setPackage(PLAYER_PACKAGE)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        return context.packageManager.resolveActivity(intent, 0) != null && context.startSafely(intent)
     }
 
     private fun copy(input: InputStream, out: OutputStream, length: Long): Long {

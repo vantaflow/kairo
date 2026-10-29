@@ -94,6 +94,22 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 <sub>Captures prises sur une Mecool KM7 Plus.</sub>
 
+## Nos applications, intégrées à Kairo
+
+Kairo met en avant et installe les autres applis Vantaflow, et les intègre partout :
+
+- **Rangée « Nos applications »** sur l'accueil (désactivable) : les applis pas encore installées ou qui ont une **mise à jour**, installées en un clic depuis GitHub (avec progression), puis la rangée disparaît.
+- **Accueil animé** : page facultative « Nos applications » au premier lancement.
+- **Réglages › Mise à jour** : version installée, version publiée, installation ou mise à jour.
+- **Recherche** : « Chercher dans Ultra TV » et « Chercher dans Kairo Player » en tête des suggestions.
+- **Accueil** : « À suivre » et rangées publiées par Ultra TV et Kairo Player (vidéos récentes, reprise de lecture).
+- **Kairo Remote** : une vidéo ou une musique envoyée du téléphone s'ouvre directement dans Kairo Player.
+
+| Application | Ce qu'elle fait |
+| --- | --- |
+| [Kairo Player](#kairo-player) | Vidéos, photos et musique de la box et des clés USB, reprise dans « À suivre ». |
+| [Ultra TV](https://github.com/vantaflow/ultra-tv) | Lecteur IPTV : Xtream Codes et M3U, guide TV, replay, pause du direct, profils. |
+
 ## Kairo Player
 
 L'appli compagnon pour lire **vos vidéos, photos et musiques** de la box et des **clés ou disques USB** (installation séparée : le launcher reste léger).

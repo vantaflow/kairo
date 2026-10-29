@@ -50,6 +50,8 @@ data class HomeLayout(
     val showRecentApps: Boolean = true,
     /** Rangées « Chaînes TV » et « Entrées » (seulement sur une box avec tuner ou HDMI). */
     val showLiveTv: Boolean = true,
+    /** Rangée « Nos applications » (nos applis pas encore installées). */
+    val showOurApps: Boolean = true,
     val clockSizeSp: Int = 72,
     val tileWidthDp: Int = 192,
     /** Transition du fond « héros » d'un contenu à l'autre : fade, zoom, slide ou none. */

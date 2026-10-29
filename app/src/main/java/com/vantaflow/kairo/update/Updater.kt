@@ -22,15 +22,29 @@ class Updater(private val context: Context) {
     }
 
     /** Télécharge l'APK puis lance l'installation (Android demande confirmation). */
-    fun install(release: Release, token: String): Boolean {
+    fun install(release: Release, token: String): Boolean = installAsset(release.apkAssetUrl, context.packageName, token)
+
+    /**
+     * Télécharge un APK publié sur GitHub ([assetUrl] : URL API de l'asset) et lance son
+     * installation pour [packageName]. [onProgress] reçoit les octets reçus.
+     */
+    fun installAsset(assetUrl: String, packageName: String, token: String = "", onProgress: (Long) -> Unit = {}): Boolean {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-            .apply { setAppPackageName(context.packageName) }
+            .apply { setAppPackageName(packageName) }
         val sessionId = installer.createSession(params)
         val ok = installer.openSession(sessionId).use { session ->
-            val written = request(release.apkAssetUrl, token, accept = "application/octet-stream") { input ->
-                session.openWrite("tvhome.apk", 0, -1).use { out ->
-                    input.copyTo(out)
+            val written = request(assetUrl, token, accept = "application/octet-stream") { input ->
+                session.openWrite("app.apk", 0, -1).use { out ->
+                    val buffer = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        out.write(buffer, 0, n)
+                        total += n
+                        onProgress(total)
+                    }
                     session.fsync(out)
                 }
                 true
@@ -51,6 +65,9 @@ class Updater(private val context: Context) {
      * GET authentifié. Les assets GitHub redirigent vers un stockage qui refuse l'en-tête
      * Authorization : la redirection est donc suivie à la main, sans jeton.
      */
+    /** Corps d'une requête GET (JSON de l'API GitHub). */
+    fun getText(url: String): String? = request(url, "", accept = "application/vnd.github+json") { it.bufferedReader().readText() }
+
     private fun <T> request(url: String, token: String, accept: String, read: (InputStream) -> T): T? = runCatching {
         var target = url
         var withAuth = true

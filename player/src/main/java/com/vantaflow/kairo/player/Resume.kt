@@ -39,6 +39,11 @@ class ResumeStore(context: Context) {
 
     fun clear(uri: Uri) = prefs.edit().remove(uri.toString()).apply()
 
+    fun prune(existing: Set<String>) {
+        val stale = prefs.all.keys.filterNot { it in existing }
+        if (stale.isNotEmpty()) prefs.edit().apply { stale.forEach(::remove) }.apply()
+    }
+
     /** Fichiers à reprendre, du plus récent au plus ancien. */
     fun inProgress(): List<Pair<Uri, Progress>> = prefs.all.mapNotNull { (k, _) ->
         get(Uri.parse(k))?.takeIf(::shouldResume)?.let { Uri.parse(k) to it }
@@ -76,6 +81,11 @@ class WatchNext(private val context: Context) {
             resolver.insert(TvContractCompat.WatchNextPrograms.CONTENT_URI, program.toContentValues())
                 ?.let { rows.edit().putLong(key, ContentUrisCompat.id(it)).apply() }
         }
+    }
+
+    /** Retire les lignes des fichiers qui n'existent plus (supprimés, clé débranchée longtemps). */
+    fun prune(existing: Set<String>) {
+        rows.all.keys.filterNot { it in existing }.forEach { remove(Uri.parse(it)) }
     }
 
     fun remove(uri: Uri) {

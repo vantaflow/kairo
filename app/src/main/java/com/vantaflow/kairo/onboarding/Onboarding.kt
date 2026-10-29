@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.onboarding
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -116,6 +117,7 @@ private sealed interface Page {
     data object Welcome : Page
     class Setup(val step: Step) : Page
     data object Theme : Page
+    data object OurApps : Page
     data object Done : Page
 }
 
@@ -176,7 +178,9 @@ fun Onboarding(onFinish: () -> Unit) {
                 run = { openSafely(context, Intent(Settings.ACTION_DREAM_SETTINGS)) },
             ),
         )
-        listOf(Page.Welcome) + steps.filterNot { it.isDone() }.map { Page.Setup(it) } + Page.Theme + Page.Done
+        val store = (context.applicationContext as TvHomeApp).container.ourApps
+        val ourApps = if (com.vantaflow.kairo.apps.OurApps.any { !store.isInstalled(it) }) listOf(Page.OurApps) else emptyList()
+        listOf(Page.Welcome) + steps.filterNot { it.isDone() }.map { Page.Setup(it) } + ourApps + Page.Theme + Page.Done
     }
     var index by rememberSaveable { mutableIntStateOf(0) }
     var forward by remember { mutableStateOf(true) }
@@ -220,6 +224,7 @@ fun Onboarding(onFinish: () -> Unit) {
                 Page.Welcome -> WelcomePage(onStart = { go(1) })
                 is Page.Setup -> SetupPage(page.step, refresh, onNext = { go(1) })
                 Page.Theme -> ThemePage(onNext = { go(1) })
+                Page.OurApps -> OurAppsPage(refresh, onNext = { go(1) })
                 Page.Done -> DonePage(onFinish)
             }
         }
@@ -415,6 +420,50 @@ private fun StepBadge(icon: TvIcon, done: Boolean, modifier: Modifier = Modifier
                 },
             )
         }
+    }
+}
+
+/** Nos autres applis, à installer en un clic (facultatif). */
+@Composable
+private fun OurAppsPage(refresh: Int, onNext: () -> Unit) {
+    val store = (LocalContext.current.applicationContext as TvHomeApp).container.ourApps
+    val states by store.states.collectAsStateWithLifecycle()
+    val focus = rememberInitialFocus(Unit)
+    Column(
+        Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text("FACULTATIF", fontSize = 13.sp, color = AccentColor, fontWeight = FontWeight.SemiBold, modifier = Modifier.reveal(0))
+        Text("Nos applications", fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(0))
+        Spacer(Modifier.height(8.dp))
+        Text("Installez-les en un clic : Android vous demandera de confirmer.", fontSize = 18.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(1))
+        Spacer(Modifier.height(36.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(32.dp), modifier = Modifier.reveal(2)) {
+            com.vantaflow.kairo.apps.OurApps.forEachIndexed { i, app ->
+                val installed = remember(refresh, states[app.id]) { store.isInstalled(app) }
+                Column(Modifier.width(340.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Surface(
+                        onClick = { if (!installed) store.install(app) },
+                        modifier = Modifier.size(340.dp, 191.dp).then(if (i == 0) Modifier.focusRequester(focus) else Modifier),
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(18.dp)),
+                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+                        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White))),
+                    ) {
+                        Image(painterResource(app.banner), contentDescription = app.name, modifier = Modifier.fillMaxSize())
+                    }
+                    Text(app.name, fontSize = 20.sp, color = OnBackground, fontWeight = FontWeight.SemiBold)
+                    Text(app.tagline, fontSize = 14.sp, color = OnBackgroundMuted)
+                    Text(
+                        if (installed) "✓ Installée" else com.vantaflow.kairo.home.installLabel(states[app.id]),
+                        fontSize = 15.sp,
+                        color = if (installed) Color(0xFF6DD58C) else AccentColor,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(36.dp))
+        Button(onClick = onNext, modifier = Modifier.reveal(3)) { Text("Continuer", fontSize = 17.sp) }
     }
 }
 

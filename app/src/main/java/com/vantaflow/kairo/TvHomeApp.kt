@@ -1,5 +1,6 @@
 package com.vantaflow.kairo
 
+import com.vantaflow.kairo.apps.OurAppsStore
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,8 @@ class AppContainer(val app: Application) {
     val clock = TrustedClock(SntpClient())
     val tileImages = TileImageCache<TileImage>()
     val http = UrlConnectionHttpGet
+    /** Nos applis (Kairo Player, Ultra TV) : installation et mises à jour depuis GitHub. */
+    val ourApps = OurAppsStore(app)
 
     private val weatherRepo = WeatherRepository(http)
     @Volatile private var placeCache: Pair<String, Place>? = null
@@ -87,6 +90,7 @@ class TvHomeApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.watchPhoneRemote()
+        container.ourApps.checkUpdates()
     }
 
     /** Box à 2 Go : Kairo en arrière-plan rend la mémoire des tuiles à l'appli lancée. */

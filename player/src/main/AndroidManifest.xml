@@ -31,6 +31,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Recherche lancée depuis Kairo (« Chercher dans Kairo Player »). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <!-- Lecture : depuis Kairo Player, « À suivre » ou toute appli qui ouvre une vidéo ou un son. -->
