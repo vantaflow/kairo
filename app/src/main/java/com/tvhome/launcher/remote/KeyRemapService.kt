@@ -7,6 +7,8 @@ import android.content.Intent
 import android.provider.Settings
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import android.os.Bundle
 import com.tvhome.launcher.TvHomeApp
 import com.tvhome.launcher.ui.startSafely
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +26,7 @@ class KeyRemapService : AccessibilityService() {
     private val consumed = mutableSetOf<Int>()
 
     override fun onServiceConnected() {
+        instance = this
         val container = (application as TvHomeApp).container
         scope.launch {
             combine(container.prefs.keyBindings, container.prefs.currentProfile, container.prefs.favorites) { b, profile, favs ->
@@ -51,12 +54,24 @@ class KeyRemapService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
     override fun onInterrupt() = Unit
 
+    /** Écrit [text] dans le champ de saisie actif de l'appli au premier plan ; false s'il n'y en a pas. */
+    fun typeText(text: String): Boolean {
+        val field = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { it.isEditable } ?: return false
+        val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+    }
+
     override fun onDestroy() {
+        if (instance === this) instance = null
         scope.cancel()
         super.onDestroy()
     }
 
     companion object {
+        /** Service actif (null s'il n'est pas activé dans Accessibilité) : sert à la télécommande sur téléphone. */
+        @Volatile var instance: KeyRemapService? = null
+            private set
+
         fun component(context: Context) = ComponentName(context, KeyRemapService::class.java)
 
         fun isEnabled(context: Context): Boolean {

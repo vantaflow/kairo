@@ -1,5 +1,7 @@
 package com.tvhome.launcher.search
 
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.border
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
@@ -70,8 +72,10 @@ fun SearchScreen(
     onProgramClick: (Program) -> Unit,
     onSearchIn: (SearchTarget) -> Unit,
     startWithVoice: Boolean = false,
+    /** Texte déjà saisi (tapé sur le téléphone). */
+    initialQuery: String = "",
 ) {
-    var query by rememberSaveable { mutableStateOf("") }
+    var query by rememberSaveable(initialQuery) { mutableStateOf(initialQuery) }
     val field = remember { FocusRequester() }
     var fieldFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -90,7 +94,18 @@ fun SearchScreen(
             )
         }
     }
-    LaunchedEffect(Unit) { if (startWithVoice) listen() else runCatching { field.requestFocus() } }
+    // Texte venu du téléphone : focus sur le premier résultat, sans ouvrir le clavier de la box.
+    val firstResult = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        when {
+            startWithVoice -> listen()
+            initialQuery.isNotBlank() -> repeat(10) {
+                withFrameNanos { }
+                if (runCatching { firstResult.requestFocus() }.isSuccess) return@LaunchedEffect
+            }.also { runCatching { field.requestFocus() } }
+            else -> runCatching { field.requestFocus() }
+        }
+    }
 
     val foundApps = searchApps(query, apps)
     val foundPrograms = searchPrograms(query, programs)
@@ -153,8 +168,11 @@ fun SearchScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Applications", fontSize = 20.sp, color = OnBackground)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-                        items(foundApps, key = { it.packageName }) { app ->
-                            AppTile(app = app, onClick = { onLaunchApp(app) }, onLongClick = {})
+                        itemsIndexed(foundApps, key = { _, app -> app.packageName }) { i, app ->
+                            AppTile(
+                                app = app, onClick = { onLaunchApp(app) }, onLongClick = {},
+                                modifier = if (i == 0) Modifier.focusRequester(firstResult) else Modifier,
+                            )
                         }
                     }
                 }
@@ -165,8 +183,11 @@ fun SearchScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Contenus", fontSize = 20.sp, color = OnBackground)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-                        items(foundPrograms, key = { "${it.packageName}:${it.id}" }) { p ->
-                            ProgramCard(p, appLabels[p.packageName], onClick = { onProgramClick(p) })
+                        itemsIndexed(foundPrograms, key = { _, p -> "${p.packageName}:${p.id}" }) { i, p ->
+                            ProgramCard(
+                                p, appLabels[p.packageName], onClick = { onProgramClick(p) },
+                                modifier = if (i == 0 && foundApps.isEmpty()) Modifier.focusRequester(firstResult) else Modifier,
+                            )
                         }
                     }
                 }

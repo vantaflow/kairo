@@ -79,7 +79,7 @@ class Updater(private val context: Context) {
     }.getOrNull()
 }
 
-/** Reçoit le résultat de l'installation ; affiche la confirmation d'Android si nécessaire. */
+/** Reçoit le résultat d'une installation (mise à jour ou APK envoyé du téléphone) ; affiche la confirmation d'Android si nécessaire. */
 class UpdateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
@@ -91,7 +91,7 @@ class UpdateReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> {
                 val reason = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "erreur inconnue"
-                Toast.makeText(context, "Mise à jour impossible : $reason", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Installation impossible : $reason", Toast.LENGTH_LONG).show()
             }
         }
     }

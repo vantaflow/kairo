@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Kairo Remote</title>
+<style>
+  :root {
+    --bg: #0d1020; --card: #171b30; --card2: #1f2440; --line: rgba(255,255,255,.08);
+    --text: #eef0f6; --muted: #9aa0b8; --accent: #8ab4f8; --accent2: #60cdff; --ok: #34a853; --warn: #ffb74d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { min-height: 100vh; padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px); overflow-x: hidden;
+    background: radial-gradient(600px 400px at 10% -10%, rgba(138,180,248,.25), transparent 70%),
+                radial-gradient(500px 400px at 110% 110%, rgba(124,77,255,.18), transparent 70%), var(--bg); background-attachment: fixed; }
+  header { display: flex; align-items: center; gap: 12px; padding: 18px 4px 10px; }
+  .logo { width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg, #10102c, #2548a8); display: grid; place-items: center; box-shadow: 0 6px 20px -6px rgba(96,205,255,.6); }
+  .logo svg { width: 24px; height: 24px; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+  header .sub { font-size: 13px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; margin-right: 6px; box-shadow: 0 0 0 0 rgba(52,168,83,.6); animation: pulse 2s infinite; }
+  .dot.off { background: #e57373; animation: none; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(52,168,83,0); } 100% { box-shadow: 0 0 0 0 rgba(52,168,83,0); } }
+  nav.tabs { display: flex; gap: 6px; background: var(--card); padding: 5px; border-radius: 14px; margin: 8px 0 18px; border: 1px solid var(--line); }
+  nav.tabs button { flex: 1; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; padding: 10px 4px; border-radius: 10px; transition: background .25s, color .25s; }
+  nav.tabs button.on { background: var(--card2); color: var(--text); box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+  .panel { display: none; animation: rise .35s cubic-bezier(.2,.8,.2,1); }
+  .panel.on { display: block; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .warn { background: rgba(255,183,77,.12); border: 1px solid rgba(255,183,77,.35); color: #ffd699; padding: 10px 14px; border-radius: 12px; font-size: 14px; margin-bottom: 16px; display: none; }
+  /* Pavé directionnel */
+  .pad { position: relative; width: min(78vw, 320px); aspect-ratio: 1; margin: 6px auto 22px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 35%, #262c4d, #161a2e 70%); border: 1px solid var(--line);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.05), 0 30px 60px -30px rgba(0,0,0,.8); touch-action: none; }
+  .pad button { position: absolute; border: 0; background: transparent; color: var(--text); display: grid; place-items: center; }
+  .pad .arrow { width: 34%; height: 34%; border-radius: 30%; transition: background .15s, transform .15s; }
+  .pad .arrow svg { width: 34px; height: 34px; opacity: .85; }
+  .pad .up { top: 2%; left: 33%; } .pad .down { bottom: 2%; left: 33%; } .pad .left { left: 2%; top: 33%; } .pad .right { right: 2%; top: 33%; }
+  .pad .arrow.hit { background: rgba(138,180,248,.18); transform: scale(.92); }
+  .pad .ok { left: 30%; top: 30%; width: 40%; height: 40%; border-radius: 50%; font-weight: 700; font-size: 19px; letter-spacing: 1px;
+    background: linear-gradient(145deg, var(--accent), #5b8def); color: #0b1020; box-shadow: 0 10px 30px -8px rgba(138,180,248,.7); transition: transform .12s; }
+  .pad .ok.hit { transform: scale(.9); }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+  .row.four { grid-template-columns: repeat(4, 1fr); }
+  .key { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 16px; padding: 14px 6px; font: inherit; font-size: 13px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; transition: transform .12s, background .2s; }
+  .key svg { width: 24px; height: 24px; }
+  .key.hit { transform: scale(.93); background: var(--card2); }
+  .ripple { position: fixed; pointer-events: none; width: 16px; height: 16px; border-radius: 50%; background: rgba(138,180,248,.45); transform: translate(-50%,-50%) scale(1); animation: rip .5s ease-out forwards; }
+  @keyframes rip { to { transform: translate(-50%,-50%) scale(7); opacity: 0; } }
+  /* Clavier */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 16px; margin: 0 0 4px; } .card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  textarea { width: 100%; min-height: 96px; resize: vertical; border-radius: 12px; border: 1px solid var(--line); background: #0f1328; color: var(--text); padding: 12px; font: inherit; }
+  textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .btn { border: 0; border-radius: 12px; padding: 13px 18px; font: inherit; font-weight: 650; background: linear-gradient(145deg, var(--accent), #5b8def); color: #0b1020; width: 100%; margin-top: 10px; transition: transform .12s, opacity .2s; }
+  .btn:active { transform: scale(.97); } .btn:disabled { opacity: .5; }
+  /* Applis */
+  input.search { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 12px 14px; font: inherit; margin-bottom: 14px; }
+  .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 12px; }
+  .app { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 16px; padding: 12px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; font: inherit; font-size: 12px;
+    opacity: 0; animation: rise .4s cubic-bezier(.2,.8,.2,1) forwards; transition: transform .12s; }
+  .app:active { transform: scale(.94); }
+  .app img { width: 48px; height: 48px; border-radius: 12px; }
+  .app span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  /* Envoi */
+  .drop { border: 2px dashed rgba(138,180,248,.4); border-radius: 18px; padding: 28px 16px; text-align: center; background: rgba(138,180,248,.05); transition: background .2s, border-color .2s; }
+  .drop.over { background: rgba(138,180,248,.14); border-color: var(--accent); }
+  .drop svg { width: 46px; height: 46px; color: var(--accent); }
+  .drop strong { display: block; margin: 8px 0 4px; font-size: 17px; }
+  .drop small { color: var(--muted); }
+  .uploads { margin-top: 14px; display: grid; gap: 10px; }
+  .up { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; animation: rise .3s ease; }
+  .up .name { font-size: 14px; display: flex; justify-content: space-between; gap: 10px; }
+  .up .name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { height: 6px; border-radius: 6px; background: #0f1328; margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .2s; }
+  .up.done .bar i { background: var(--ok); } .up.fail .bar i { background: #e57373; }
+  .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px); transform: translate(-50%, 30px); opacity: 0; background: #262c4d; color: var(--text);
+    padding: 12px 18px; border-radius: 14px; font-size: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.5); transition: all .3s cubic-bezier(.2,.8,.2,1); max-width: 90vw; text-align: center; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="3.2" height="16" rx="1.6" fill="#fff"/><path d="M7 12 L17 5.2" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><path d="M10.6 13.3 L18.5 16.4 L10.6 19.6 Z" fill="#60cdff" stroke="#60cdff" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+  <div><h1>Kairo Remote</h1><div class="sub"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div></div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="remote" class="on">Télécommande</button>
+  <button data-tab="keyboard">Clavier</button>
+  <button data-tab="apps">Applis</button>
+  <button data-tab="send">Envoyer</button>
+</nav>
+
+<section class="panel on" id="remote">
+  <div class="warn" id="navwarn">Pour les flèches, OK et Retour, activez « Kairo » dans Accessibilité sur la box (Réglages › Assistant de configuration).</div>
+  <div class="pad">
+    <button class="arrow up" data-key="up" aria-label="Haut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+    <button class="arrow left" data-key="left" aria-label="Gauche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="ok" data-key="ok">OK</button>
+    <button class="arrow right" data-key="right" aria-label="Droite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button class="arrow down" data-key="down" aria-label="Bas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+  </div>
+  <div class="row">
+    <button class="key" data-key="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Retour</button>
+    <button class="key" data-key="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 9.5V21h14V9.5"/></svg>Accueil</button>
+    <button class="key" data-key="playpause"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l8 7-8 7z"/><rect x="16" y="5" width="2.4" height="14" rx="1"/></svg>Lecture</button>
+  </div>
+  <div class="row four">
+    <button class="key" data-key="volumedown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 12h4"/></svg>Vol −</button>
+    <button class="key" data-key="mute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>Muet</button>
+    <button class="key" data-key="volumeup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 12h4M19 10v4"/></svg>Vol +</button>
+    <button class="key" data-key="next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5l8 7-8 7z"/><path d="M12 5l8 7-8 7z"/></svg>Suivant</button>
+  </div>
+</section>
+
+<section class="panel" id="keyboard">
+  <div class="card">
+    <h2>Écrire sur la télé</h2>
+    <p>Le texte va dans le champ de saisie ouvert sur la box. S'il n'y en a pas, il lance une recherche dans Kairo.</p>
+    <textarea id="text" placeholder="Votre texte, une recherche, une adresse…" enterkeyhint="send"></textarea>
+    <button class="btn" id="sendText">Envoyer à la télé</button>
+  </div>
+</section>
+
+<section class="panel" id="apps">
+  <input class="search" id="filter" type="search" placeholder="Rechercher une appli">
+  <div class="apps" id="appList"></div>
+</section>
+
+<section class="panel" id="send">
+  <label class="drop" id="drop">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+    <strong>Choisir des fichiers</strong>
+    <small>Un APK s'installe sur la box (confirmez sur la télé ; les APK en plusieurs morceaux, « split », ne sont pas pris en charge).<br>Les autres fichiers vont dans Téléchargements › Kairo.</small>
+    <input type="file" id="files" multiple hidden>
+  </label>
+  <div class="uploads" id="uploads"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const token = new URLSearchParams(location.search).get('t') || '';
+const api = (path) => path + (path.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(token);
+const $ = (s) => document.querySelector(s);
+let toastTimer;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2600); }
+function buzz() { if (navigator.vibrate) navigator.vibrate(12); }
+
+async function post(path, body) {
+  try {
+    const r = await fetch(api(path), { method: 'POST', body });
+    if (!r.ok) { toast(await r.text()); return null; }
+    return await r.json();
+  } catch (e) { setOnline(false); toast('Box injoignable : même réseau Wi-Fi ?'); return null; }
+}
+
+function setOnline(on, model) {
+  $('#dot').classList.toggle('off', !on);
+  $('#status').textContent = on ? ('Connecté' + (model ? ' · ' + model : '')) : 'Hors ligne';
+}
+
+async function state() {
+  try {
+    const r = await fetch(api('/api/state'));
+    if (!r.ok) { setOnline(false); toast(await r.text()); return; }
+    const s = await r.json();
+    setOnline(true, s.model);
+    $('#navwarn').style.display = s.navigation ? 'none' : 'block';
+  } catch (e) { setOnline(false); }
+}
+state(); setInterval(state, 15000);
+
+// Onglets
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === b.dataset.tab));
+  if (b.dataset.tab === 'apps') loadApps();
+}));
+
+// Touches : appui maintenu = répétition (flèches et volume)
+const repeatable = new Set(['up', 'down', 'left', 'right', 'volumeup', 'volumedown']);
+document.querySelectorAll('[data-key]').forEach(el => {
+  let timer, delay;
+  const fire = () => { post('/api/key', el.dataset.key); };
+  const start = (e) => {
+    e.preventDefault(); buzz(); el.classList.add('hit');
+    const p = e.touches ? e.touches[0] : e; const r = document.createElement('div'); r.className = 'ripple';
+    r.style.left = p.clientX + 'px'; r.style.top = p.clientY + 'px'; document.body.appendChild(r); setTimeout(() => r.remove(), 500);
+    fire();
+    if (repeatable.has(el.dataset.key)) delay = setTimeout(() => { timer = setInterval(fire, 140); }, 400);
+  };
+  const stop = () => { el.classList.remove('hit'); clearTimeout(delay); clearInterval(timer); };
+  el.addEventListener('touchstart', start, { passive: false });
+  el.addEventListener('mousedown', start);
+  ['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(n => el.addEventListener(n, stop));
+});
+
+// Glisser sur le pavé = flèches
+(() => {
+  const pad = $('.pad'); let x0, y0;
+  pad.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  pad.addEventListener('touchend', e => {
+    if (x0 == null) return; const t = e.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 40) return;
+    buzz(); post('/api/key', Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  });
+})();
+
+// Clavier
+async function sendText() {
+  const v = $('#text').value.trim(); if (!v) return;
+  const r = await post('/api/text', v);
+  if (r) { toast(r.where === 'field' ? 'Texte envoyé dans le champ de saisie' : 'Recherche lancée dans Kairo'); $('#text').value = ''; buzz(); }
+}
+$('#sendText').addEventListener('click', sendText);
+$('#text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } });
+
+// Applis
+let apps = null;
+async function loadApps() {
+  if (apps) return;
+  try { apps = await (await fetch(api('/api/apps'))).json(); renderApps(); } catch (e) { toast('Liste des applis indisponible'); }
+}
+function renderApps() {
+  const q = $('#filter').value.trim().toLowerCase(); const list = $('#appList'); list.innerHTML = '';
+  apps.filter(a => a.l.toLowerCase().includes(q)).forEach((a, i) => {
+    const b = document.createElement('button'); b.className = 'app'; b.style.animationDelay = Math.min(i * 25, 500) + 'ms';
+    const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = api('/api/icon?p=' + encodeURIComponent(a.p));
+    const s = document.createElement('span'); s.textContent = a.l;
+    b.append(img, s);
+    b.addEventListener('click', async () => { buzz(); if (await post('/api/launch', a.p)) toast(a.l + ' s’ouvre sur la télé'); });
+    list.appendChild(b);
+  });
+}
+$('#filter').addEventListener('input', () => apps && renderApps());
+
+// Envoi de fichiers et d'APK
+const drop = $('#drop');
+['dragover', 'dragenter'].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(n => drop.addEventListener(n, () => drop.classList.remove('over')));
+drop.addEventListener('drop', e => { e.preventDefault(); [...e.dataTransfer.files].forEach(upload); });
+$('#files').addEventListener('change', e => { [...e.target.files].forEach(upload); e.target.value = ''; });
+
+function size(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' Mo' : Math.max(1, Math.round(n / 1024)) + ' Ko'; }
+function upload(file) {
+  const row = document.createElement('div'); row.className = 'up';
+  row.innerHTML = '<div class="name"><b></b><span>0 %</span></div><div class="bar"><i></i></div>';
+  row.querySelector('b').textContent = file.name + ' · ' + size(file.size);
+  $('#uploads').prepend(row);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', api('/api/upload?name=' + encodeURIComponent(file.name)));
+  xhr.upload.onprogress = e => { if (e.lengthComputable) { const p = Math.round(e.loaded * 100 / e.total); row.querySelector('i').style.width = p + '%'; row.querySelector('span').textContent = p + ' %'; } };
+  xhr.onload = () => {
+    const ok = xhr.status === 200; row.classList.add(ok ? 'done' : 'fail'); row.querySelector('i').style.width = '100%';
+    let msg = xhr.responseText;
+    if (ok) { const r = JSON.parse(xhr.responseText); msg = r.kind === 'apk' ? 'Confirmez l’installation sur la télé' : 'Reçu dans Téléchargements › Kairo'; }
+    row.querySelector('span').textContent = ok ? '✓' : '✕'; toast(msg); buzz();
+  };
+  xhr.onerror = () => { row.classList.add('fail'); row.querySelector('span').textContent = '✕'; toast('Transfert interrompu'); };
+  xhr.send(file);
+}
+</script>
+</body>
+</html>

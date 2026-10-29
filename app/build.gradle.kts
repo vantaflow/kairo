@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.coroutines.android)
     // Installe les profils de démarrage de Compose (APK installé hors Play Store) : rendu bien plus fluide.
     implementation(libs.profileinstaller)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
