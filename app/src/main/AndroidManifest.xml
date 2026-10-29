@@ -70,6 +70,16 @@
 
         <receiver android:name=".update.UpdateReceiver" android:exported="false" />
 
+        <!-- Bloqueur de pubs : VPN local qui ne capte que le DNS. -->
+        <service
+            android:name=".adblock.AdBlockVpn"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
         <!-- Beaucoup de radios diffusent encore en http : d'où usesCleartextTraffic. -->
         <service
             android:name=".radio.RadioService"

@@ -112,7 +112,7 @@ fun DreamScreen(override: DreamConfig? = null) {
                 Text(listOfNotNull(date, weather).joinToString(" · "), fontSize = 26.sp, color = OnBackgroundMuted)
             }
         }
-        if (c.showQuote) DreamQuote(Modifier.align(Alignment.TopCenter).padding(top = 56.dp, start = 160.dp, end = 160.dp))
+        if (c.showQuote) DreamQuote(Modifier.align(Alignment.Center).padding(horizontal = 200.dp))
         // Au-dessus du voile de l'heure : la carte radio reste nette.
         DreamRadio(Modifier.align(Alignment.BottomEnd).padding(48.dp))
     }
@@ -215,7 +215,7 @@ private fun DreamRadio(modifier: Modifier) {
     }
 }
 
-/** Citation du jour, centrée en haut, sur un léger voile pour rester lisible sur une photo claire. */
+/** Citation du jour, au centre de l'écran, sur un léger voile pour rester lisible sur une photo claire. */
 @Composable
 private fun DreamQuote(modifier: Modifier) {
     val quote = remember { quoteOfDay(java.time.LocalDate.now()) }

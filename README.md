@@ -84,7 +84,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - **Favoris à déplacer directement sur l'accueil**, comme sur Google TV : appui long › Déplacer, puis ← →.
 - Toutes les applis, applis masquées, accès au Play Store.
 - Recherche dans les applis et les contenus, avec dictée vocale.
-- **Écran de veille paramétrable** (Réglages › Écran de veille) : photos du web par thème, **vos photos** (box et clés USB) ou **dégradés de couleurs animés** (6 palettes) ; durée, transition (fondu, fondu lent, zoom lent), heure et météo ; bouton **Aperçu**. **Citation du jour** en haut de l'écran (418 citations et proverbes, aucune répétition dans l'année). Si la radio joue, une carte radio s'affiche : ← → changent de radio, OK l'arrête, les autres touches réveillent la box.
+- **Écran de veille paramétrable** (Réglages › Écran de veille) : photos du web par thème, **vos photos** (box et clés USB) ou **dégradés de couleurs animés** (6 palettes) ; durée, transition (fondu, fondu lent, zoom lent), heure et météo ; bouton **Aperçu**. **Citation du jour** au centre de l'écran (418 citations et proverbes, aucune répétition dans l'année). Si la radio joue, une carte radio s'affiche : ← → changent de radio, OK l'arrête, les autres touches réveillent la box.
 
 | Toutes les applications | Recherche |
 | --- | --- |
@@ -104,6 +104,7 @@ Un bouton **Outils** dans l'en-tête (menu) et une rangée **Outils** sous « To
 - **Météo** : maintenant, courbe des températures sur 24 h, 7 jours avec écart min / max ; lever et coucher du soleil, UV, pluie, vent et rafales, pression, nuages (← → change de jour).
 - **Minuteur** : mise en veille de la box (et de la télé par HDMI-CEC) après 15 min à 2 h ; un bandeau prévient 1 min avant, une touche ajoute 15 min. Nécessite le service Kairo (Accessibilité).
 - **Nettoyeur** : mémoire et stockage (clés USB comprises), « Tout optimiser » ferme les applis en arrière-plan et vide le cache de Kairo, applis les plus lourdes.
+- **Bloqueur de pubs** (Réglages › Bloqueur de pubs) : pubs et pistage bloqués dans toutes les applis et tous les sites, par un filtre DNS (AdGuard DNS) via un VPN local qui ne capte que le DNS (aucun effet sur le débit). Filtre « contenus adultes » en plus, automatique sur le profil enfant ; compteur des pubs bloquées. Si la box a déjà un DNS privé anti-pub, Kairo le détecte et ne lance rien. Les pubs intégrées aux vidéos YouTube ne passent pas par un serveur à part : pour YouTube sans pub, utilisez SmartTube.
 - **Nettoyage automatique** (actif par défaut, Réglages › Mémoire) : une appli laissée en arrière-plan plus de 30 min (15 min à 2 h, ou jamais) est fermée ; sous 25 % de mémoire libre, les applis en arrière-plan sont fermées, sauf la dernière utilisée. L'appli à l'écran et celles qui jouent du son ne sont jamais touchées.
 
 | Menu Outils | Outils sur l'accueil |
@@ -115,6 +116,10 @@ Un bouton **Outils** dans l'en-tête (menu) et une rangée **Outils** sous « To
 | ![Petit lecteur radio](docs/assets/radio-mini.jpg) | ![Recherche](docs/assets/search.jpg) |
 | **Météo sur 7 jours** | **Nettoyeur** |
 | ![Météo](docs/assets/weather.jpg) | ![Nettoyeur](docs/assets/cleaner.jpg) |
+| **Bloqueur de pubs** | **Écran de veille : citation du jour** |
+| ![Bloqueur de pubs](docs/assets/adblock.jpg) | ![Citation du jour](docs/assets/dream-quote.jpg) |
+| **Écran de veille : radio en cours** | |
+| ![Radio sur l'écran de veille](docs/assets/dream-radio.jpg) | |
 
 ## Nos applications, intégrées à Kairo
 

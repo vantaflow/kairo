@@ -158,6 +158,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showOurApps = booleanPreferencesKey("show_our_apps")
         val showTools = booleanPreferencesKey("show_tools")
         val autoClean = booleanPreferencesKey("auto_clean")
+        val adBlockEnabled = booleanPreferencesKey("adblock_enabled")
+        val adBlockFilter = stringPreferencesKey("adblock_filter")
         val idleCloseMin = intPreferencesKey("idle_close_min")
         val radioFavorites = stringPreferencesKey("radio_favorites")
         val radioCountry = stringPreferencesKey("radio_country")
@@ -255,6 +257,18 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
 
     suspend fun setSetupShown() {
         store.edit { it[Keys.setupShown] = true }
+    }
+
+    /** Bloqueur de pubs (VPN DNS local) et filtre choisi. */
+    val adBlockEnabled: Flow<Boolean> = pref { it[Keys.adBlockEnabled] ?: false }
+    val adBlockFilter: Flow<String> = pref { it[Keys.adBlockFilter] ?: "Ads" }
+
+    suspend fun setAdBlockEnabled(on: Boolean) {
+        store.edit { it[Keys.adBlockEnabled] = on }
+    }
+
+    suspend fun setAdBlockFilter(id: String) {
+        store.edit { it[Keys.adBlockFilter] = id }
     }
 
     /** Nettoyage automatique de la mémoire (actif par défaut) et délai avant de fermer une appli inutilisée. */

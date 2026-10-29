@@ -67,6 +67,7 @@ enum class Section(val title: String, val group: Group, val icon: TvIcon, val de
     Reco("Recommandations", Group.App, TvIcon.Reco, "Rangées proposées par vos applis."),
     Clock("Heure", Group.App, TvIcon.Clock, "Format et synchronisation de l'heure."),
     Remote("Touches de la télécommande", Group.App, TvIcon.Remote, "YouTube, Netflix, Prime Video… : l'appli de votre choix."),
+    AdBlock("Bloqueur de pubs", Group.App, TvIcon.Shield, "Pubs et pistage bloqués dans toutes les applis."),
     Phone("Télécommande sur téléphone", Group.App, TvIcon.Phone, "Le téléphone devient télécommande, clavier et envoi de fichiers."),
     Profiles("Profils", Group.App, TvIcon.Profiles, "Un accueil par personne, profil enfant protégé."),
     Backup("Sauvegarde", Group.App, TvIcon.Backup, "Sauvegarder et restaurer vos réglages."),
@@ -271,6 +272,7 @@ private fun SectionContent(
                 Section.Theme -> ThemeSettings(vm)
                 Section.Layout -> LayoutSettings(vm)
                 Section.Weather -> WeatherSettings(vm)
+                Section.AdBlock -> com.vantaflow.kairo.adblock.AdBlockSettings()
                 Section.Dream -> DreamSettings()
                 Section.Reco -> RecoSettings(vm, installedApps)
                 Section.Clock -> ClockSettings(vm)
