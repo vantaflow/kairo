@@ -46,6 +46,8 @@ data class HomeLayout(
     val showDate: Boolean = true,
     val showFavoritesLabel: Boolean = true,
     val showRowTitles: Boolean = true,
+    /** Rangée « Récentes » : les dernières applis ouvertes depuis Kairo. */
+    val showRecentApps: Boolean = true,
     val clockSizeSp: Int = 72,
     val tileWidthDp: Int = 192,
     /** Transition du fond « héros » d'un contenu à l'autre : fade, zoom, slide ou none. */

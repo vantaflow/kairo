@@ -1,5 +1,7 @@
 package com.tvhome.launcher
 
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
@@ -205,7 +207,15 @@ class HomeActivity : ComponentActivity() {
                 val state by homeViewModel.state.collectAsStateWithLifecycle()
                 val apps by appsViewModel.apps.collectAsStateWithLifecycle()
                 val net by networkMonitor.state.collectAsStateWithLifecycle(networkMonitor.current())
+                val recent by container.prefs.recentApps.collectAsStateWithLifecycle(emptyList())
+                val showRecent = LocalHomeLayout.current.showRecentApps && !profile.kids
                 HomeScreen(
+                    // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
+                    recentApps = if (!showRecent) emptyList() else remember(recent, apps, state.favorites) {
+                        val favs = state.favorites.map { it.packageName }.toSet()
+                        val byPkg = apps.associateBy { it.packageName }
+                        recent.filterNot { it in favs }.mapNotNull { byPkg[it] }
+                    },
                     // Profil enfant : seulement ses favoris, pas de rangée « Toutes les applis ».
                     otherApps = if (profile.kids) emptyList() else remember(apps, state.favorites) {
                         val favs = state.favorites.map { it.packageName }.toSet()
@@ -301,5 +311,6 @@ class HomeActivity : ComponentActivity() {
     private fun launchApp(pkg: String) {
         val intent = container.appRepository.launchIntent(pkg) ?: return
         startSafely(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        lifecycleScope.launch { container.prefs.recordLaunch(pkg) }
     }
 }

@@ -89,6 +89,8 @@ fun HomeScreen(
     onOpenSearch: () -> Unit = {},
     /** Applis hors favoris, pour la rangée « Toutes les applis » (vide = rangée masquée). */
     otherApps: List<AppInfo> = emptyList(),
+    /** Dernières applis ouvertes, pour la rangée « Récentes » (vide = rangée masquée). */
+    recentApps: List<AppInfo> = emptyList(),
     /** Favori en cours de déplacement : ← → le déplacent, OK ou Retour terminent. */
     movingFavorite: String? = null,
     onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
@@ -228,29 +230,17 @@ fun HomeScreen(
                     }
                     }
                 }
+                if (recentApps.isNotEmpty()) {
+                    key("recent-apps") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            AppsRow("Récentes", recentApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        }
+                    }
+                }
                 if (otherApps.isNotEmpty()) {
                     key("all-apps") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                        Column(Modifier.alignRowOnFocus()) {
-                            if (layout.showRowTitles) {
-                                Text("Toutes les applis", fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
-                            }
-                            LazyRow(
-                                state = rememberRowState(),
-                                contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                            ) {
-                                items(otherApps, key = { "app-${it.packageName}" }) { app ->
-                                    AppTile(
-                                        app = app,
-                                        onClick = { onLaunch(app) },
-                                        onLongClick = { onFavoriteLongClick(app) },
-                                        width = layout.tileWidthDp.dp,
-                                        modifier = Modifier.onFocusChanged { if (it.isFocused) heroProgram.value = null },
-                                    )
-                                }
-                            }
-                        }
+                            AppsRow("Toutes les applis", otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                         }
                     }
                 }
@@ -315,6 +305,39 @@ private class SmoothRowSpec(
 ) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
         base.calculateScrollDistance(offset, size, containerSize)
+}
+
+/** Rangée d'applis avec son titre (masqué si l'utilisateur a coupé les titres de rangées). */
+@Composable
+private fun AppsRow(
+    title: String,
+    apps: List<AppInfo>,
+    onLaunch: (AppInfo) -> Unit,
+    onLongClick: (AppInfo) -> Unit,
+    modifier: Modifier = Modifier,
+    onFocused: () -> Unit,
+) {
+    val layout = LocalHomeLayout.current
+    Column(modifier) {
+        if (layout.showRowTitles) {
+            Text(title, fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
+        }
+        LazyRow(
+            state = rememberRowState(),
+            contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            items(apps, key = { "app-${it.packageName}" }) { app ->
+                AppTile(
+                    app = app,
+                    onClick = { onLaunch(app) },
+                    onLongClick = { onLongClick(app) },
+                    width = layout.tileWidthDp.dp,
+                    modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
+                )
+            }
+        }
+    }
 }
 
 /** Durée normale du défilement (ajustée par la vitesse des animations). */

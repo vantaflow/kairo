@@ -102,6 +102,7 @@ fun LayoutSettings(vm: SettingsViewModel) {
         item { Toggle("Afficher la date et la météo", layout.showDate) { vm.setHomeLayout(layout.copy(showDate = it)) } }
         item { Toggle("Afficher le titre « Favoris »", layout.showFavoritesLabel) { vm.setHomeLayout(layout.copy(showFavoritesLabel = it)) } }
         item { Toggle("Afficher les titres des rangées", layout.showRowTitles) { vm.setHomeLayout(layout.copy(showRowTitles = it)) } }
+        item { Toggle("Afficher les applis récentes", layout.showRecentApps) { vm.setHomeLayout(layout.copy(showRecentApps = it)) } }
         item {
             Choices("Taille de l'horloge", ClockSizes, layout.clockSizeSp) { vm.setHomeLayout(layout.copy(clockSizeSp = it)) }
         }

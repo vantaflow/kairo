@@ -33,6 +33,9 @@ private val SECRET_KEYS = setOf("github_token", "pixabay_key")
  * Favoris effectifs : ceux enregistrés encore installés, dans l'ordre enregistré.
  * Au premier lancement (rien d'enregistré), les premières applis installées.
  */
+/** Nombre d'applis gardées dans « Récentes ». */
+const val MAX_RECENT_APPS = 12
+
 fun resolveFavorites(saved: List<String>, installed: List<AppInfo>, initialized: Boolean): List<AppInfo> {
     if (!initialized) return installed.take(DEFAULT_FAVORITES_COUNT)
     val byPackage = installed.associateBy { it.packageName }
@@ -149,6 +152,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showDate = booleanPreferencesKey("show_date")
         val showFavoritesLabel = booleanPreferencesKey("show_favorites_label")
         val showRowTitles = booleanPreferencesKey("show_row_titles")
+        val showRecentApps = booleanPreferencesKey("show_recent_apps")
+        fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
         val clockSize = intPreferencesKey("clock_size")
         val tileWidth = intPreferencesKey("tile_width")
         val heroTransition = stringPreferencesKey("hero_transition")
@@ -177,6 +182,16 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val favorites: Flow<List<String>> = pref { decode(it[Keys.favorites(it.sfx)]) }
     val favoritesInitialized: Flow<Boolean> = pref { it[Keys.favoritesInitialized(it.sfx)] ?: false }
     val hidden: Flow<Set<String>> = pref { it[Keys.hidden(it.sfx)].orEmpty() }
+
+    /** Applis ouvertes depuis Kairo, la plus récente en tête (par profil). */
+    val recentApps: Flow<List<String>> = pref { decode(it[Keys.recentApps(it.sfx)]) }
+
+    suspend fun recordLaunch(pkg: String) {
+        store.edit {
+            val list = decode(it[Keys.recentApps(it.sfx)])
+            if (list.firstOrNull() != pkg) it[Keys.recentApps(it.sfx)] = encode((listOf(pkg) + (list - pkg)).take(MAX_RECENT_APPS))
+        }
+    }
     val wallpaper: Flow<WallpaperConfig> = pref(::readWallpaper)
     val use24h: Flow<Boolean> = pref { it[Keys.use24h] ?: true }
 
@@ -230,6 +245,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             showDate = it[Keys.showDate] ?: d.showDate,
             showFavoritesLabel = it[Keys.showFavoritesLabel] ?: d.showFavoritesLabel,
             showRowTitles = it[Keys.showRowTitles] ?: d.showRowTitles,
+            showRecentApps = it[Keys.showRecentApps] ?: d.showRecentApps,
             clockSizeSp = it[Keys.clockSize] ?: d.clockSizeSp,
             tileWidthDp = it[Keys.tileWidth] ?: d.tileWidthDp,
             heroTransition = it[Keys.heroTransition] ?: d.heroTransition,
@@ -243,6 +259,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             it[Keys.showDate] = layout.showDate
             it[Keys.showFavoritesLabel] = layout.showFavoritesLabel
             it[Keys.showRowTitles] = layout.showRowTitles
+            it[Keys.showRecentApps] = layout.showRecentApps
             it[Keys.clockSize] = layout.clockSizeSp
             it[Keys.tileWidth] = layout.tileWidthDp
             it[Keys.heroTransition] = layout.heroTransition
