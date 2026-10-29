@@ -47,7 +47,8 @@ enum class TvIcon(val path: String) {
     Radio("M3 9h18v11H3z M7 9l10-5 M15 14.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z M6 13h1 M6 16h1"),
     Timer("M20 13a8 8 0 1 1-16 0a8 8 0 1 1 16 0z M12 9v4l2 2 M10 2h4 M12 2v3"),
     Clean("M14 3l-4 9 M6 12h10l1 9H5z M9 16v3 M13 16v3"),
-    Tools("M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z");
+    Tools("M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"),
+    Shield("M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z M9 12l2 2 4-4");
 
     val vector: ImageVector by lazy {
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).addPath(

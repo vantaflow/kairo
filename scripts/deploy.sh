@@ -21,6 +21,13 @@ adb connect "$BOX:5555" >/dev/null
 timeout 30 adb -s "$BOX:5555" wait-for-device || { echo "Box $BOX injoignable (ADB réseau activé ? même réseau ?)" >&2; exit 1; }
 ADB=(adb -s "$BOX:5555")
 
+# Box en écran de veille : la réveiller d'abord, sinon l'installation (qui arrête l'écran de veille
+# de Kairo) la fait passer en veille.
+if "${ADB[@]}" shell dumpsys dreams | grep -q "mCurrentDream=DreamRecord"; then
+  "${ADB[@]}" shell input keyevent KEYCODE_WAKEUP
+  sleep 2
+fi
+
 echo "== Installation"
 "${ADB[@]}" install -r "$APK"
 # Compilation à l'avance : démarrage et défilement plus fluides.

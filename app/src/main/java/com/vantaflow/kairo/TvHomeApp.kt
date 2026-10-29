@@ -70,6 +70,28 @@ class AppContainer(val app: Application) {
         autoCleaner.start(scope)
     }
 
+    /** Bloqueur de pubs : filtre suivi à chaud (profil enfant = filtre famille). */
+    fun watchAdBlock() {
+        scope.launch {
+            kotlinx.coroutines.flow.combine(prefs.adBlockFilter, prefs.currentProfile) { f, p ->
+                if (p.kids) com.vantaflow.kairo.adblock.AdFilter.Family
+                else com.vantaflow.kairo.adblock.AdFilter.entries.firstOrNull { it.name == f } ?: com.vantaflow.kairo.adblock.AdFilter.Ads
+            }.collect { com.vantaflow.kairo.adblock.AdBlock.filter = it }
+        }
+    }
+
+    /** Relance le bloqueur s'il est activé (au démarrage de la box, à l'arrivée sur l'accueil). */
+    fun ensureAdBlock() {
+        scope.launch {
+            val strictDns = com.vantaflow.kairo.adblock.privateDnsHost(app) != null
+            when {
+                // DNS privé strict activé entre-temps : le VPN couperait internet, on l'arrête.
+                strictDns && com.vantaflow.kairo.adblock.AdBlock.running.value -> com.vantaflow.kairo.adblock.AdBlock.stop(app)
+                prefs.adBlockEnabled.first() && !com.vantaflow.kairo.adblock.AdBlock.running.value -> com.vantaflow.kairo.adblock.AdBlock.start(app)
+            }
+        }
+    }
+
     /** Minuteur de mise en veille : coupe la radio puis met la box en veille (service d'accessibilité). */
     val sleepTimer = com.vantaflow.kairo.tools.SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main), onSleep = {
         com.vantaflow.kairo.radio.Radio.stop(app)
@@ -117,6 +139,8 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         container = AppContainer(this)
         container.watchPhoneRemote()
         container.startAutoClean()
+        container.watchAdBlock()
+        container.ensureAdBlock()
         container.ourApps.checkUpdates()
     }
 

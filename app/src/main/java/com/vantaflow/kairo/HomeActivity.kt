@@ -243,6 +243,7 @@ class HomeActivity : ComponentActivity() {
         super.onStart()
         // Retour sur l'accueil : l'appli quittée est notée, puis nettoyage si besoin (sans bloquer l'affichage).
         container.autoCleaner.onForeground(packageName)
+        container.ensureAdBlock()
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             kotlinx.coroutines.delay(3_000)
             runCatching { container.autoCleaner.check() }
