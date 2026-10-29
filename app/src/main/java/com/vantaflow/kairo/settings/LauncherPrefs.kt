@@ -168,6 +168,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val dreamInterval = intPreferencesKey("dream_interval")
         val dreamTransition = stringPreferencesKey("dream_transition")
         val dreamClock = booleanPreferencesKey("dream_clock")
+        val dreamQuote = booleanPreferencesKey("dream_quote")
         val phoneRemoteEnabled = booleanPreferencesKey("phone_remote_enabled")
         val phoneRemoteToken = stringPreferencesKey("phone_remote_token")
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
@@ -233,6 +234,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             intervalSec = it[Keys.dreamInterval] ?: d.intervalSec,
             transition = it[Keys.dreamTransition] ?: d.transition,
             showClock = it[Keys.dreamClock] ?: d.showClock,
+            showQuote = it[Keys.dreamQuote] ?: d.showQuote,
         )
     }
 
@@ -244,6 +246,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             it[Keys.dreamInterval] = c.intervalSec
             it[Keys.dreamTransition] = c.transition
             it[Keys.dreamClock] = c.showClock
+            it[Keys.dreamQuote] = c.showQuote
         }
     }
 
