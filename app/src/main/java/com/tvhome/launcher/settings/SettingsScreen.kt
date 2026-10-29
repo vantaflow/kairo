@@ -89,6 +89,8 @@ fun SettingsScreen(
     onClose: () -> Unit = {},
     /** Section ouverte d'emblée (l'assistant au premier lancement). */
     initialSection: Section? = null,
+    /** Relance l'accueil animé du premier lancement. */
+    onReplayOnboarding: () -> Unit = {},
 ) {
     var opened by rememberSaveable { mutableStateOf(initialSection) }
     var lastSection by rememberSaveable { mutableStateOf(initialSection ?: Section.Favorites) }
@@ -166,7 +168,7 @@ fun SettingsScreen(
                         .onFocusChanged { contentHasFocus = it.hasFocus }
                         .focusGroup(),
                 ) {
-                    SectionContent(section, vm, installedApps, networkMonitor, networkState) { opened = null }
+                    SectionContent(section, vm, installedApps, networkMonitor, networkState, onReplayOnboarding) { opened = null }
                 }
             }
         }
@@ -249,6 +251,7 @@ private fun SectionContent(
     installedApps: List<AppInfo>,
     networkMonitor: NetworkMonitor,
     networkState: Flow<NetState>,
+    onReplayOnboarding: () -> Unit,
     /** Retour au menu des réglages. */
     onBack: () -> Unit,
 ) {
@@ -266,7 +269,7 @@ private fun SectionContent(
                 Section.Backup -> BackupSettings()
                 Section.Update -> UpdateSettings()
                 Section.Memory -> MemorySettings(installedApps)
-                Section.Setup -> SetupWizard(onDone = onBack)
+                Section.Setup -> SetupWizard(onDone = onBack, onReplay = onReplayOnboarding)
                 Section.Network -> NetworkSettings(networkMonitor, networkState)
                 Section.Android -> BoxSettings()
             }
