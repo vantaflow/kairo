@@ -79,4 +79,11 @@ class QuotesTest {
         org.junit.Assert.assertEquals(com.vantaflow.kairo.dream.quoteOfDay(d), com.vantaflow.kairo.dream.quoteOfDay(d))
         org.junit.Assert.assertNotEquals(com.vantaflow.kairo.dream.quoteOfDay(d), com.vantaflow.kairo.dream.quoteOfDay(d.plusDays(1)))
     }
+
+    @org.junit.Test
+    fun noRepeatWithinAYear() {
+        val start = java.time.LocalDate.of(2027, 1, 1)
+        val year = (0L until 365L).map { com.vantaflow.kairo.dream.quoteOfDay(start.plusDays(it)).text }
+        org.junit.Assert.assertEquals(365, year.toSet().size)
+    }
 }
