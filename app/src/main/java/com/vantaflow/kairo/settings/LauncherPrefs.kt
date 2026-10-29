@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.settings
 
+import com.vantaflow.kairo.dream.DreamConfig
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -156,6 +157,12 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showLiveTv = booleanPreferencesKey("show_live_tv")
         val showOurApps = booleanPreferencesKey("show_our_apps")
         val setupShown = booleanPreferencesKey("setup_shown")
+        val dreamMode = stringPreferencesKey("dream_mode")
+        val dreamQuery = stringPreferencesKey("dream_query")
+        val dreamPalette = stringPreferencesKey("dream_palette")
+        val dreamInterval = intPreferencesKey("dream_interval")
+        val dreamTransition = stringPreferencesKey("dream_transition")
+        val dreamClock = booleanPreferencesKey("dream_clock")
         val phoneRemoteEnabled = booleanPreferencesKey("phone_remote_enabled")
         val phoneRemoteToken = stringPreferencesKey("phone_remote_token")
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
@@ -209,6 +216,30 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val token = bytes.joinToString("") { "%02x".format(it) }
         store.edit { it[Keys.phoneRemoteToken] = token }
         return token
+    }
+
+    /** Réglages de l'écran de veille. */
+    val dreamConfig: Flow<DreamConfig> = pref {
+        val d = DreamConfig()
+        DreamConfig(
+            mode = it[Keys.dreamMode] ?: d.mode,
+            query = it[Keys.dreamQuery] ?: d.query,
+            palette = it[Keys.dreamPalette] ?: d.palette,
+            intervalSec = it[Keys.dreamInterval] ?: d.intervalSec,
+            transition = it[Keys.dreamTransition] ?: d.transition,
+            showClock = it[Keys.dreamClock] ?: d.showClock,
+        )
+    }
+
+    suspend fun setDreamConfig(c: DreamConfig) {
+        store.edit {
+            it[Keys.dreamMode] = c.mode
+            it[Keys.dreamQuery] = c.query
+            it[Keys.dreamPalette] = c.palette
+            it[Keys.dreamInterval] = c.intervalSec
+            it[Keys.dreamTransition] = c.transition
+            it[Keys.dreamClock] = c.showClock
+        }
     }
 
     /** Vrai une fois l'assistant de configuration proposé (il ne s'ouvre seul qu'une fois). */

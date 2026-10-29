@@ -42,7 +42,8 @@ enum class TvIcon(val path: String) {
     Mic("M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3"),
     Store("M5 8h14l-1 13H6z M9 8a3 3 0 0 1 6 0"),
     Check("M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0z M8 12.5l2.8 2.8L16 10"),
-    Phone("M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M10.5 18.5h3");
+    Phone("M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M10.5 18.5h3"),
+    Moon("M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z");
 
     val vector: ImageVector by lazy {
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).addPath(

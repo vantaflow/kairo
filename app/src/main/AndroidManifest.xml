@@ -19,6 +19,8 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <!-- Requise par Android pour lire le nom du Wi-Fi et la liste des réseaux. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Écran de veille « Mes photos » : photos de la box et des clés USB. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
         android:name=".TvHomeApp"
@@ -60,6 +62,11 @@
         </service>
 
         <receiver android:name=".update.UpdateReceiver" android:exported="false" />
+
+        <activity
+            android:name=".dream.DreamPreviewActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
 
         <service
             android:name=".remote.KeyRemapService"

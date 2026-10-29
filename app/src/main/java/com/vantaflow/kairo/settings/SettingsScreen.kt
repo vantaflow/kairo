@@ -62,6 +62,7 @@ enum class Section(val title: String, val group: Group, val icon: TvIcon, val de
     Wallpaper("Fond d'écran", Group.App, TvIcon.Wallpaper, "Images Pixabay, dégradés ou couleur unie."),
     Theme("Thème", Group.App, TvIcon.Theme, "Couleurs, arrondi et zoom des tuiles."),
     Layout("Affichage de l'accueil", Group.App, TvIcon.Layout, "Ce qui apparaît sur l'écran d'accueil."),
+    Dream("Écran de veille", Group.App, TvIcon.Moon, "Photos du web, vos photos ou dégradés animés."),
     Weather("Météo", Group.App, TvIcon.Weather, "Météo affichée sous l'heure."),
     Reco("Recommandations", Group.App, TvIcon.Reco, "Rangées proposées par vos applis."),
     Clock("Heure", Group.App, TvIcon.Clock, "Format et synchronisation de l'heure."),
@@ -270,6 +271,7 @@ private fun SectionContent(
                 Section.Theme -> ThemeSettings(vm)
                 Section.Layout -> LayoutSettings(vm)
                 Section.Weather -> WeatherSettings(vm)
+                Section.Dream -> DreamSettings()
                 Section.Reco -> RecoSettings(vm, installedApps)
                 Section.Clock -> ClockSettings(vm)
                 Section.Remote -> RemoteSettings(vm, installedApps)
