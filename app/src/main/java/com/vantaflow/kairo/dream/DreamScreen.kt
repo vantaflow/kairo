@@ -112,6 +112,7 @@ fun DreamScreen(override: DreamConfig? = null) {
                 Text(listOfNotNull(date, weather).joinToString(" · "), fontSize = 26.sp, color = OnBackgroundMuted)
             }
         }
+        if (c.showQuote) DreamQuote(Modifier.align(Alignment.TopCenter).padding(top = 56.dp, start = 160.dp, end = 160.dp))
         // Au-dessus du voile de l'heure : la carte radio reste nette.
         DreamRadio(Modifier.align(Alignment.BottomEnd).padding(48.dp))
     }
@@ -211,5 +212,24 @@ private fun DreamRadio(modifier: Modifier) {
             }
             Text("← → changer de radio · OK arrêter", fontSize = 15.sp, color = OnBackgroundMuted)
         }
+    }
+}
+
+/** Citation du jour, centrée en haut, sur un léger voile pour rester lisible sur une photo claire. */
+@Composable
+private fun DreamQuote(modifier: Modifier) {
+    val quote = remember { quoteOfDay(java.time.LocalDate.now()) }
+    Column(
+        modifier
+            .background(Color.Black.copy(alpha = 0.28f), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+            .padding(horizontal = 32.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "« ${quote.text} »",
+            fontSize = 26.sp, color = OnBackground, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 36.sp,
+        )
+        Text(quote.author, fontSize = 18.sp, color = OnBackgroundMuted, modifier = Modifier.padding(top = 8.dp))
     }
 }

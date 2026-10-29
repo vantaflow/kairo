@@ -160,6 +160,7 @@ fun DreamSettings() {
             }
         }
         item { SwitchRow("Afficher l'heure, la date et la météo", config.showClock, { save(config.copy(showClock = it)) }) }
+        item { SwitchRow("Citation du jour", config.showQuote, { save(config.copy(showQuote = it)) }, "Une phrase en haut de l'écran, différente chaque jour.") }
         item {
             Text(
                 "L'écran de veille démarre après l'inactivité réglée dans les paramètres Android (Écran de veille).",

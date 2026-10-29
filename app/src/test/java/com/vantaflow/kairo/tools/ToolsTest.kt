@@ -71,3 +71,12 @@ class ToolsTest {
         assertNull(timer.endsAt.value)
     }
 }
+
+class QuotesTest {
+    @org.junit.Test
+    fun sameQuoteAllDayAndChangesNextDay() {
+        val d = java.time.LocalDate.of(2026, 10, 29)
+        org.junit.Assert.assertEquals(com.vantaflow.kairo.dream.quoteOfDay(d), com.vantaflow.kairo.dream.quoteOfDay(d))
+        org.junit.Assert.assertNotEquals(com.vantaflow.kairo.dream.quoteOfDay(d), com.vantaflow.kairo.dream.quoteOfDay(d.plusDays(1)))
+    }
+}

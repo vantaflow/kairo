@@ -11,6 +11,8 @@ data class DreamConfig(
     /** fade, slow (fondu lent) ou kenburns (zoom lent). */
     val transition: String = "kenburns",
     val showClock: Boolean = true,
+    /** Citation du jour en haut de l'écran. */
+    val showQuote: Boolean = true,
 )
 
 /** Palette d'un dégradé animé : les couleurs se fondent lentement les unes dans les autres. */

@@ -13,8 +13,12 @@ class DreamPreviewActivity : ComponentActivity() {
         setContent { DesignScale { DreamScreen() } }
     }
 
+    /** Le relâchement de la touche OK qui a ouvert l'aperçu ne doit pas le refermer aussitôt. */
+    private var keyDownSeen = false
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_UP) finish()
+        if (event.action == KeyEvent.ACTION_DOWN) keyDownSeen = true
+        if (event.action == KeyEvent.ACTION_UP && keyDownSeen) finish()
         return true
     }
 }
