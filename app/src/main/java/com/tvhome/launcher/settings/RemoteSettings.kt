@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -91,15 +90,13 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                     "Vérifiez-les d'abord avec : adb shell settings get secure enabled_accessibility_services",
                 color = OnBackgroundMuted,
             )
-            SelectionContainer {
-                Text(
-                    "adb shell settings put secure enabled_accessibility_services " +
-                        "com.tvhome.launcher/.remote.KeyRemapService\n" +
-                        "adb shell settings put secure accessibility_enabled 1",
-                    fontFamily = FontFamily.Monospace,
-                    color = OnBackground,
-                )
-            }
+            Text(
+                "adb shell settings put secure enabled_accessibility_services " +
+                    "com.tvhome.launcher/.remote.KeyRemapService\n" +
+                    "adb shell settings put secure accessibility_enabled 1",
+                fontFamily = FontFamily.Monospace,
+                color = OnBackground,
+            )
         }
         if (learning) {
             val focus = remember { FocusRequester() }

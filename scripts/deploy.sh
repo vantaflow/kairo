@@ -37,13 +37,19 @@ fi
 "${ADB[@]}" shell pm grant $PKG android.permission.READ_TV_LISTINGS || true
 "${ADB[@]}" shell pm grant $PKG android.permission.ACCESS_FINE_LOCATION || true
 
-# Service de touches : ajouté aux services déjà actifs, sans les écraser.
+# Service de touches : ajouté aux services déjà actifs, sans les écraser. Toujours réécrit :
+# après une mise à jour, la box ne relance le service que si le réglage change.
 SERVICE="$PKG/.remote.KeyRemapService"
 CURRENT=$("${ADB[@]}" shell settings get secure enabled_accessibility_services | tr -d '\r')
-if [[ "$CURRENT" != *"$SERVICE"* ]]; then
-  if [[ -z "$CURRENT" || "$CURRENT" == "null" ]]; then NEW="$SERVICE"; else NEW="$CURRENT:$SERVICE"; fi
-  "${ADB[@]}" shell settings put secure enabled_accessibility_services "$NEW"
+OTHERS=$(echo "$CURRENT" | tr ':' '\n' | grep -v "^$PKG/" | grep -v '^null$' | paste -sd: -)
+if [[ -n "$OTHERS" ]]; then
+  "${ADB[@]}" shell settings put secure enabled_accessibility_services "$OTHERS"
+  NEW="$OTHERS:$SERVICE"
+else
+  "${ADB[@]}" shell settings delete secure enabled_accessibility_services >/dev/null
+  NEW="$SERVICE"
 fi
+"${ADB[@]}" shell settings put secure enabled_accessibility_services "$NEW"
 "${ADB[@]}" shell settings put secure accessibility_enabled 1
 
 # Installation des mises à jour depuis GitHub (Réglages › Mise à jour).

@@ -51,6 +51,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - **Touches YouTube / Netflix / Prime Video / Disney+ réassignables** vers n'importe quelle appli.
 
 **Réglages en panneau latéral**
+- **Assistant de configuration** au premier lancement : ce qui est prêt, ce qui s'active d'un clic (recommandations, mises à jour, touches, écran de veille, écran d'accueil) et, si la box refuse, la commande ADB exacte.
 - Panneau à droite par-dessus l'accueil : les changements se voient en direct.
 - Réseau (Wi-Fi / Ethernet), raccourci HDMI-CEC et accès direct aux paramètres Android de la box.
 - Profils (dont un **profil enfant** verrouillé par code), sauvegarde et restauration, nettoyage mémoire, mise à jour depuis GitHub.
