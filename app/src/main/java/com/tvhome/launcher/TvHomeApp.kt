@@ -1,5 +1,12 @@
 package com.tvhome.launcher
 
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CoroutineScope
+import com.tvhome.launcher.remote.PhoneRemoteServer
+import com.tvhome.launcher.remote.PhoneRemoteActions
 import android.app.Application
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
@@ -40,6 +47,26 @@ class AppContainer(val app: Application) {
         place?.let { weatherRepo.current(it, fahrenheit) }
     }
 
+    /** Télécommande sur téléphone : démarrée ou arrêtée selon le réglage. */
+    @Volatile private var phoneToken = ""
+    val phoneRemote = PhoneRemoteServer({ phoneToken }, PhoneRemoteActions(app)::route)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun watchPhoneRemote() {
+        scope.launch {
+            prefs.phoneRemoteEnabled.collectLatest { on ->
+                if (on) {
+                    phoneToken = prefs.phoneRemoteToken()
+                    phoneRemote.start()
+                    // Le jeton peut être renouvelé depuis les réglages.
+                    prefs.phoneRemoteTokenFlow.collect { phoneToken = it }
+                } else {
+                    phoneRemote.stop()
+                }
+            }
+        }
+    }
+
     private val rotationStore = RotationFileStore(File(app.filesDir, "pixabay_rotation.txt"))
     private val rotator = WallpaperRotator({ q -> PixabayClient(http) { pixabayKeyNow() }.search(q) }, rotationStore::store, rotationStore::load)
     @Volatile private var pixabayKeyCache: String = ""
@@ -59,6 +86,7 @@ class TvHomeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.watchPhoneRemote()
     }
 
     /** Box à 2 Go : Kairo en arrière-plan rend la mémoire des tuiles à l'appli lancée. */

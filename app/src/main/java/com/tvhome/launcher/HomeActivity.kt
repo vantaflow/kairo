@@ -107,6 +107,8 @@ class HomeActivity : ComponentActivity() {
     private var destination by mutableStateOf(Destination.Home)
     /** Accueil animé plein écran (premier lancement d'une box pas encore configurée). */
     private var onboarding by mutableStateOf(false)
+    /** Texte reçu du téléphone, pré-rempli dans la recherche. */
+    private var phoneQuery by mutableStateOf("")
     private var actionsFor by mutableStateOf<AppInfo?>(null)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
@@ -167,6 +169,9 @@ class HomeActivity : ComponentActivity() {
             return true
         }
         destination = Destination.entries.firstOrNull { it.name == target } ?: return false
+        // Texte tapé sur le téléphone : pré-rempli dans la recherche.
+        phoneQuery = intent.getStringExtra("tvhome.query").orEmpty()
+        searchWithVoice = false
         return true
     }
 
@@ -185,6 +190,7 @@ class HomeActivity : ComponentActivity() {
         val voice = keyCode == KeyEvent.KEYCODE_ASSIST || keyCode == KeyEvent.KEYCODE_VOICE_ASSIST
         if (keyCode == KeyEvent.KEYCODE_SEARCH || voice) {
             searchWithVoice = voice
+            phoneQuery = ""
             destination = Destination.Search
             return true
         }
@@ -254,7 +260,7 @@ class HomeActivity : ComponentActivity() {
                     netState = net,
                     appLabels = remember(apps) { apps.associate { it.packageName to it.label } },
                     onProgramClick = programClick,
-                    onOpenSearch = { searchWithVoice = false; destination = Destination.Search },
+                    onOpenSearch = { searchWithVoice = false; phoneQuery = ""; destination = Destination.Search },
                     // Profil enfant : pas de recommandations (elles ouvrent n'importe quelle appli).
                     // Chaînes TV : seulement si la box en a, que le réglage les montre et hors profil enfant.
                     state = when {
@@ -301,6 +307,7 @@ class HomeActivity : ComponentActivity() {
                     onProgramClick = programClick,
                     onSearchIn = { startSafely(it.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
                     startWithVoice = searchWithVoice,
+                    initialQuery = phoneQuery,
                 )
             }
         }

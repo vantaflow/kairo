@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.map
 private const val DEFAULT_FAVORITES_COUNT = 6
 
 /** Préférences sensibles, exclues des sauvegardes. */
-private val SECRET_KEYS = setOf("github_token", "pixabay_key")
+private val SECRET_KEYS = setOf("github_token", "pixabay_key", "phone_remote_token")
 
 /**
  * Favoris effectifs : ceux enregistrés encore installés, dans l'ordre enregistré.
@@ -155,6 +155,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showRecentApps = booleanPreferencesKey("show_recent_apps")
         val showLiveTv = booleanPreferencesKey("show_live_tv")
         val setupShown = booleanPreferencesKey("setup_shown")
+        val phoneRemoteEnabled = booleanPreferencesKey("phone_remote_enabled")
+        val phoneRemoteToken = stringPreferencesKey("phone_remote_token")
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
         val clockSize = intPreferencesKey("clock_size")
         val tileWidth = intPreferencesKey("tile_width")
@@ -184,6 +186,29 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val favorites: Flow<List<String>> = pref { decode(it[Keys.favorites(it.sfx)]) }
     val favoritesInitialized: Flow<Boolean> = pref { it[Keys.favoritesInitialized(it.sfx)] ?: false }
     val hidden: Flow<Set<String>> = pref { it[Keys.hidden(it.sfx)].orEmpty() }
+
+    /** Télécommande sur téléphone (serveur web du réseau local) : désactivée par défaut. */
+    val phoneRemoteEnabled: Flow<Boolean> = pref { it[Keys.phoneRemoteEnabled] ?: false }
+
+    suspend fun setPhoneRemoteEnabled(value: Boolean) {
+        store.edit { it[Keys.phoneRemoteEnabled] = value }
+    }
+
+    val phoneRemoteTokenFlow: Flow<String> = pref { it[Keys.phoneRemoteToken].orEmpty() }
+
+    /** Jeton du lien (QR code), créé au premier besoin. */
+    suspend fun phoneRemoteToken(): String {
+        data.first()[Keys.phoneRemoteToken]?.takeIf { it.isNotBlank() }?.let { return it }
+        return renewPhoneRemoteToken()
+    }
+
+    /** Nouveau jeton : les téléphones déjà connectés doivent rescanner le QR code. */
+    suspend fun renewPhoneRemoteToken(): String {
+        val bytes = ByteArray(12).also { java.security.SecureRandom().nextBytes(it) }
+        val token = bytes.joinToString("") { "%02x".format(it) }
+        store.edit { it[Keys.phoneRemoteToken] = token }
+        return token
+    }
 
     /** Vrai une fois l'assistant de configuration proposé (il ne s'ouvre seul qu'une fois). */
     val setupShown: Flow<Boolean> = pref { it[Keys.setupShown] ?: false }

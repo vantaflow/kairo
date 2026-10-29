@@ -65,6 +65,7 @@ enum class Section(val title: String, val group: Group, val icon: TvIcon, val de
     Reco("Recommandations", Group.App, TvIcon.Reco, "Rangées proposées par vos applis."),
     Clock("Heure", Group.App, TvIcon.Clock, "Format et synchronisation de l'heure."),
     Remote("Touches de la télécommande", Group.App, TvIcon.Remote, "YouTube, Netflix, Prime Video… : l'appli de votre choix."),
+    Phone("Télécommande sur téléphone", Group.App, TvIcon.Phone, "Le téléphone devient télécommande, clavier et envoi de fichiers."),
     Profiles("Profils", Group.App, TvIcon.Profiles, "Un accueil par personne, profil enfant protégé."),
     Backup("Sauvegarde", Group.App, TvIcon.Backup, "Sauvegarder et restaurer vos réglages."),
     Update("Mise à jour", Group.App, TvIcon.Update, "Installer la dernière version de Kairo."),
@@ -265,6 +266,7 @@ private fun SectionContent(
                 Section.Reco -> RecoSettings(vm, installedApps)
                 Section.Clock -> ClockSettings(vm)
                 Section.Remote -> RemoteSettings(vm, installedApps)
+                Section.Phone -> PhoneRemoteSettings()
                 Section.Profiles -> ProfileSettings()
                 Section.Backup -> BackupSettings()
                 Section.Update -> UpdateSettings()

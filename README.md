@@ -49,6 +49,14 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 **Télécommande**
 - Navigation complète au D-pad, appui long ou touche Menu pour les actions d'une appli.
 - **Touches YouTube / Netflix / Prime Video / Disney+ réassignables** vers n'importe quelle appli.
+- **Kairo Remote : le téléphone devient télécommande**, sans rien installer : scannez le QR code affiché par la box (Réglages › Télécommande sur téléphone) et la page s'ouvre dans le navigateur, iPhone ou Android.
+  - Flèches, OK, Retour, Accueil, lecture, volume (appui maintenu = répétition, glisser sur le pavé).
+  - **Clavier** : le texte va dans le champ ouvert sur la box, sinon il lance une recherche dans Kairo.
+  - **Applis** : la liste avec icônes, un appui pour ouvrir.
+  - **Envoi de fichiers et d'APK** : un APK s'installe (confirmation sur la télé), les autres fichiers vont dans Téléchargements › Kairo.
+  - Réseau local seulement, lien protégé par un jeton (renouvelable), désactivé par défaut.
+
+![Kairo Remote : QR code sur la box](docs/assets/phone-remote.jpg)
 
 **Accueil animé au premier lancement**
 - Plein écran, fond vivant et pages qui glissent : bienvenue, puis **uniquement les étapes qui manquent** sur la box (recommandations, écran d'accueil, touches, mises à jour, écran de veille).
