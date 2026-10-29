@@ -72,6 +72,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.darkColorScheme
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -113,7 +115,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         contentResolver.registerContentObserver(MediaStore.AUTHORITY_URI, true, observer)
-        setContent { App() }
+        // Thème sombre : boutons et focus bien visibles sur le fond de Kairo Player.
+        setContent { MaterialTheme(colorScheme = darkColorScheme(primary = Accent)) { App() } }
     }
 
     override fun onResume() {

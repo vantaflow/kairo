@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BOX="${1:?Usage : scripts/deploy.sh <IP_BOX> [--no-build]}"
-PKG=com.tvhome.launcher
+PKG=com.vantaflow.kairo
 # Version release : optimisée (R8), bien plus fluide que la debug sur la box.
 APK=build-remote/app-release.apk
 

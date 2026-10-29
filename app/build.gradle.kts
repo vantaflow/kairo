@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-    namespace = "com.tvhome.launcher"
+    namespace = "com.vantaflow.kairo"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.tvhome.launcher"
+        applicationId = "com.vantaflow.kairo"
         minSdk = 30
         targetSdk = 34
         versionCode = 10801
