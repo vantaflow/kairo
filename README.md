@@ -84,7 +84,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - **Favoris à déplacer directement sur l'accueil**, comme sur Google TV : appui long › Déplacer, puis ← →.
 - Toutes les applis, applis masquées, accès au Play Store.
 - Recherche dans les applis et les contenus, avec dictée vocale.
-- **Écran de veille paramétrable** (Réglages › Écran de veille) : photos du web par thème, **vos photos** (box et clés USB) ou **dégradés de couleurs animés** (6 palettes) ; durée, transition (fondu, fondu lent, zoom lent), heure et météo ; bouton **Aperçu**. **Citation du jour** au centre de l'écran (418 citations et proverbes, aucune répétition dans l'année). Si la radio joue, une carte radio s'affiche : ← → changent de radio, OK l'arrête, les autres touches réveillent la box.
+- **Écran de veille paramétrable** (Réglages › Écran de veille) : photos du web par thème, **vos photos** (box et clés USB) ou **dégradés de couleurs animés** (6 palettes) ; durée, transition (fondu, fondu lent, zoom lent), heure et météo ; bouton **Aperçu**. **Citation du jour** sous l'heure (418 citations et proverbes, aucune répétition dans l'année). Si la radio joue, une carte radio s'affiche : ← → changent de radio, OK l'arrête, les autres touches réveillent la box.
 
 | Toutes les applications | Recherche |
 | --- | --- |

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,15 +105,18 @@ fun DreamScreen(override: DreamConfig? = null) {
             "gradient" -> AnimatedGradient(paletteById(c.palette), c.intervalSec)
             else -> Slideshow(c)
         }
-        if (c.showClock) {
-            // Voile en bas : l'heure reste lisible sur une photo claire.
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
+        if (c.showClock || c.showQuote) {
+            // Voile en bas : l'heure et la citation restent lisibles sur une photo claire.
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
             Column(Modifier.align(Alignment.BottomStart).padding(64.dp)) {
-                Text(time, fontSize = 96.sp, fontWeight = FontWeight.Light, color = OnBackground)
-                Text(listOfNotNull(date, weather).joinToString(" · "), fontSize = 26.sp, color = OnBackgroundMuted)
+                if (c.showClock) {
+                    Text(time, fontSize = 96.sp, fontWeight = FontWeight.Light, color = OnBackground)
+                    Text(listOfNotNull(date, weather).joinToString(" · "), fontSize = 26.sp, color = OnBackgroundMuted)
+                }
+                // Citation du jour sous l'heure ; largeur limitée pour laisser la place à la carte radio.
+                if (c.showQuote) DreamQuote(Modifier.padding(top = if (c.showClock) 20.dp else 0.dp).widthIn(max = 760.dp))
             }
         }
-        if (c.showQuote) DreamQuote(Modifier.align(Alignment.Center).padding(horizontal = 200.dp))
         // Au-dessus du voile de l'heure : la carte radio reste nette.
         DreamRadio(Modifier.align(Alignment.BottomEnd).padding(48.dp))
     }
@@ -215,21 +219,15 @@ private fun DreamRadio(modifier: Modifier) {
     }
 }
 
-/** Citation du jour, au centre de l'écran, sur un léger voile pour rester lisible sur une photo claire. */
+/** Citation du jour, sous l'heure, alignée à gauche. */
 @Composable
 private fun DreamQuote(modifier: Modifier) {
     val quote = remember { quoteOfDay(java.time.LocalDate.now()) }
-    Column(
-        modifier
-            .background(Color.Black.copy(alpha = 0.28f), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
-            .padding(horizontal = 32.dp, vertical = 18.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Column(modifier) {
         Text(
             "« ${quote.text} »",
-            fontSize = 26.sp, color = OnBackground, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 36.sp,
+            fontSize = 22.sp, color = OnBackground, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, lineHeight = 30.sp,
         )
-        Text(quote.author, fontSize = 18.sp, color = OnBackgroundMuted, modifier = Modifier.padding(top = 8.dp))
+        Text("— ${quote.author}", fontSize = 17.sp, color = OnBackgroundMuted, modifier = Modifier.padding(top = 6.dp))
     }
 }
