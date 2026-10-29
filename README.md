@@ -111,6 +111,8 @@ Un bouton **Outils** dans l'en-tête (menu) et une rangée **Outils** sous « To
 | ![Menu Outils](docs/assets/tools-menu.jpg) | ![Outils](docs/assets/tools-home.jpg) |
 | **Radio** | **Lecteur radio** |
 | ![Radio](docs/assets/radio.jpg) | ![Lecteur radio](docs/assets/radio-player.jpg) |
+| **Petit lecteur radio (bulle ♪ de l'accueil)** | **Recherche** |
+| ![Petit lecteur radio](docs/assets/radio-mini.jpg) | ![Recherche](docs/assets/search.jpg) |
 | **Météo sur 7 jours** | **Nettoyeur** |
 | ![Météo](docs/assets/weather.jpg) | ![Nettoyeur](docs/assets/cleaner.jpg) |
 
