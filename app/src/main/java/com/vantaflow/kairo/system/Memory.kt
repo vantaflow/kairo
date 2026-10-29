@@ -27,6 +27,11 @@ class MemoryCleaner(private val context: Context) {
         return MemoryState(info.availMem, info.totalMem)
     }
 
+    /** Ferme une appli en arrière-plan (sans effet sur celle à l'écran). */
+    fun close(pkg: String) {
+        runCatching { am.killBackgroundProcesses(pkg) }
+    }
+
     fun clean(installed: List<String>): Int {
         // On garde le clavier actif, sinon la saisie disparaît.
         val ime = Settings.Secure.getString(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)

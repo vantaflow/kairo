@@ -58,6 +58,18 @@ class AppContainer(val app: Application) {
             ?: (if (city.isBlank()) weatherRepo.locateByIp() else weatherRepo.geocode(city))
                 ?.also { placeCache = city to it }
 
+    /** Nettoyage automatique : applis inutilisées et mémoire basse. */
+    val autoCleaner = com.vantaflow.kairo.system.AutoCleaner(
+        app,
+        enabled = { prefs.autoClean.first() },
+        idleMinutes = { prefs.idleCloseMin.first() },
+        installed = { appRepository.installedApps().map { it.packageName } },
+    )
+
+    fun startAutoClean() {
+        autoCleaner.start(scope)
+    }
+
     /** Minuteur de mise en veille : coupe la radio puis met la box en veille (service d'accessibilité). */
     val sleepTimer = com.vantaflow.kairo.tools.SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main), onSleep = {
         com.vantaflow.kairo.radio.Radio.stop(app)
@@ -97,19 +109,33 @@ class AppContainer(val app: Application) {
     }
 }
 
-class TvHomeApp : Application() {
+class TvHomeApp : Application(), coil.ImageLoaderFactory {
     lateinit var container: AppContainer
 
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
         container.watchPhoneRemote()
+        container.startAutoClean()
         container.ourApps.checkUpdates()
     }
 
-    /** Box à 2 Go : Kairo en arrière-plan rend la mémoire des tuiles à l'appli lancée. */
+    /** Cache d'images plafonné : par défaut Coil prendrait 25 % du tas (64 Mo sur cette box). */
+    override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
+        .memoryCache { coil.memory.MemoryCache.Builder(this).maxSizeBytes(IMAGE_CACHE_BYTES).build() }
+        .allowRgb565(true)
+        .build()
+
+    /** Box à 2 Go : Kairo en arrière-plan rend la mémoire des tuiles et des images à l'appli lancée. */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_BACKGROUND) container.tileImages.clear()
+        if (level >= TRIM_MEMORY_BACKGROUND) {
+            container.tileImages.clear()
+            coil.Coil.imageLoader(this).memoryCache?.clear()
+        }
+    }
+
+    private companion object {
+        const val IMAGE_CACHE_BYTES = 24 * 1024 * 1024
     }
 }

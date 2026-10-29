@@ -117,7 +117,18 @@ class KeyRemapService : AccessibilityService() {
         return true
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    /** Appli passée à l'écran : sert au nettoyage automatique (applis inutilisées). */
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val pkg = event.packageName?.toString() ?: return
+        // Seulement les applis (pas le clavier, les menus système ou les bulles).
+        val app = launchable.getOrPut(pkg) {
+            pkg == packageName || (application as TvHomeApp).container.appRepository.launchIntent(pkg) != null
+        }
+        if (app) (application as TvHomeApp).container.autoCleaner.onForeground(pkg)
+    }
+
+    private val launchable = HashMap<String, Boolean>()
     override fun onInterrupt() = Unit
 
     private fun kairoInFront(): Boolean = rootInActiveWindow.let { it == null || it.packageName == packageName }
