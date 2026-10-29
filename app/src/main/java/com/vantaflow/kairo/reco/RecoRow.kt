@@ -14,6 +14,7 @@ import android.view.KeyEvent as NativeKeyEvent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import com.vantaflow.kairo.home.FOCUS_ZOOM_MS
@@ -76,7 +77,8 @@ import com.vantaflow.kairo.ui.theme.LocalLauncherTheme
 import com.vantaflow.kairo.ui.theme.OnBackground
 
 private val Scrim = Color(0xFF101216)
-private const val HERO_DEBOUNCE_MS = 300L
+// Plus long que le défilement d'une rangée (350 ms) : le fond ne change qu'une fois la rangée posée.
+private const val HERO_DEBOUNCE_MS = 450L
 private const val HERO_LOAD_WAIT_MS = 600L
 private const val POSTER_W = 640
 private const val POSTER_H = 360
@@ -271,9 +273,27 @@ fun HeroBackground(
         previous = null
     }
     val slidePx = with(LocalDensity.current) { 80.dp.toPx() }
+    // Part du fond d'écran encore visible (1 = pas de héros) : caché sous un héros, il n'est plus
+    // dessiné du tout. Une seule couche plein écran par image au lieu de deux : la box tient 60 i/s.
+    fun wallpaperAlpha(): Float {
+        val t = progress.value
+        return when {
+            current == null && previous == null -> 1f
+            current == null -> t
+            previous == null -> 1f - t
+            else -> 0f
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         // Fond d'écran figé dans une texture : rien n'est redessiné pendant la navigation.
-        Box(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) { fallback() }
+        Box(
+            Modifier.fillMaxSize().graphicsLayer {
+                alpha = wallpaperAlpha()
+                compositingStrategy = CompositingStrategy.Offscreen
+            },
+        ) { fallback() }
+        // Fond uni sous le héros (simple remplissage, pas de texture).
+        Box(Modifier.fillMaxSize().drawBehind { drawRect(Scrim, alpha = 1f - wallpaperAlpha()) })
         previous?.let { p ->
             key(p.posterUri) {
                 HeroLayer(p) {
@@ -302,15 +322,8 @@ fun HeroBackground(
 @Composable
 private fun HeroLayer(program: Program, onLoaded: () -> Unit = {}, animate: GraphicsLayerScope.() -> Unit) {
     val context = LocalContext.current
-    Box(
-        Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                animate()
-                compositingStrategy = CompositingStrategy.Offscreen
-            }
-            .background(Scrim),
-    ) {
+    // Calque limité à l'image (haut à droite) : le fond uni est dessiné une fois, en dessous.
+    Box(Modifier.fillMaxSize()) {
         AsyncImage(
             model = remember(program.posterUri) { blurredRequest(context, program.posterUri) },
             contentDescription = null,
@@ -321,6 +334,10 @@ private fun HeroLayer(program: Program, onLoaded: () -> Unit = {}, animate: Grap
                 .align(Alignment.TopEnd)
                 .fillMaxWidth(HERO_WIDTH)
                 .fillMaxHeight(HERO_HEIGHT)
+                .graphicsLayer {
+                    animate()
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
                 .drawWithCache {
                     val left = Brush.horizontalGradient(0f to Scrim, 0.5f to Scrim.copy(alpha = 0.35f), 0.8f to Color.Transparent)
                     val bottom = Brush.verticalGradient(0.45f to Color.Transparent, 1f to Scrim)
