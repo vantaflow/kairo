@@ -71,4 +71,34 @@ class EpgSourceTest {
         assertEquals("com.youtube", channels.first().programs.single().packageName)
         assertTrue(source.hasAccess())
     }
+
+    @Test
+    fun liveChannelsKeepTunerChannelsOnlySortedByNumber() {
+        val source = TvProviderEpgSource(EpgQuery { uri, _ ->
+            if (uri != TvContractCompat.Channels.CONTENT_URI) null
+            else MatrixCursor(arrayOf("_id", "package_name", "display_name", "display_number", "type", "input_id", "browsable")).apply {
+                addRow(arrayOf<Any?>(1L, "com.youtube", "Tendances", null, TvContractCompat.Channels.TYPE_PREVIEW, null, 1))
+                addRow(arrayOf<Any?>(2L, "com.tuner", "France 5", "10", "TYPE_DVB_T", "com.tuner/.Input", 1))
+                addRow(arrayOf<Any?>(3L, "com.tuner", "TF1", "1", "TYPE_DVB_T", "com.tuner/.Input", 1))
+                addRow(arrayOf<Any?>(4L, "com.tuner", "Masquée", "2", "TYPE_DVB_T", "com.tuner/.Input", 0))
+                addRow(arrayOf<Any?>(5L, "com.tuner", "", "3", "TYPE_DVB_T", "com.tuner/.Input", 1))
+            }
+        })
+        val live = source.liveChannels()
+        assertEquals(listOf("TF1", "Chaîne 3", "France 5"), live.map { it.name })
+        assertEquals(TvContractCompat.buildChannelUri(3L).toString(), live.first().uri)
+    }
+
+    @Test
+    fun noTunerMeansNoLiveChannels() {
+        val source = TvProviderEpgSource(EpgQuery { _, _ -> throw SecurityException("no EPG access") })
+        assertEquals(emptyList<LiveChannel>(), source.liveChannels())
+    }
+
+    @Test
+    fun liveChannelSortHandlesSubNumbersAndMissingNumbers() {
+        fun ch(n: String?, name: String) = LiveChannel(name, "p", n, name, "u")
+        val sorted = sortLiveChannels(listOf(ch(null, "Z"), ch("5.2", "B"), ch("5.1", "A"), ch("12", "C")))
+        assertEquals(listOf("A", "B", "C", "Z"), sorted.map { it.name })
+    }
 }

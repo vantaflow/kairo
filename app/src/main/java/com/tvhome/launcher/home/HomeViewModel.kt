@@ -1,5 +1,6 @@
 package com.tvhome.launcher.home
 
+import com.tvhome.launcher.reco.LiveChannel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tvhome.launcher.apps.AppInfo
@@ -44,10 +45,20 @@ data class HomeUiState(
     val recoRows: List<Channel> = emptyList(),
     val wallpaperImageUrl: String? = null,
     val weatherText: String? = null,
+    /** Chaînes des tuners et entrées HDMI : rangées affichées seulement si la box en a. */
+    val liveChannels: List<LiveChannel> = emptyList(),
+    val tvInputs: List<LiveChannel> = emptyList(),
 )
 
 /** Données brutes lues dans le TvProvider. */
-private class EpgSnapshot(val channels: List<Channel>, val watchNext: List<Program>)
+private class EpgSnapshot(
+    val channels: List<Channel>,
+    val watchNext: List<Program>,
+    val live: List<LiveChannel> = emptyList(),
+    val inputs: List<LiveChannel> = emptyList(),
+)
+
+private class RecoState(val watchNext: List<Program>, val rows: List<Channel>, val live: List<LiveChannel>, val inputs: List<LiveChannel>)
 
 private const val WEATHER_REFRESH_MS = 30 * 60 * 1000L
 private const val WEATHER_RETRY_MS = 2 * 60 * 1000L
@@ -92,6 +103,8 @@ class HomeViewModel(
     private val nextWallpaper: (suspend (String) -> String?)? = null,
     /** Météo pour une ville (vide = position automatique) ; null si indisponible. */
     private val weather: (suspend (String, Boolean) -> Weather?)? = null,
+    /** Entrées HDMI de la box (vide si elle n'en a pas). */
+    private val tvInputs: (() -> List<LiveChannel>)? = null,
 ) : ViewModel() {
 
 
@@ -104,11 +117,11 @@ class HomeViewModel(
 
     private val epgSnapshot = MutableStateFlow(EpgSnapshot(emptyList(), emptyList()))
 
-    private val reco: Flow<Pair<List<Program>, List<Channel>>> = combine(
+    private val reco: Flow<RecoState> = combine(
         epgSnapshot, prefs.showWatchNext, prefs.recoAppOrder, prefs.hiddenChannels, prefs.hiddenRecoApps,
     ) { snap, showWatchNext, order, hiddenChannels, hiddenApps ->
         val watchNext = if (showWatchNext) snap.watchNext.filter { it.packageName !in hiddenApps } else emptyList()
-        watchNext to orderRows(snap.channels, order, hiddenChannels, hiddenApps)
+        RecoState(watchNext, orderRows(snap.channels, order, hiddenChannels, hiddenApps), snap.live, snap.inputs)
     }
 
     private val installed: Flow<List<AppInfo>> =
@@ -131,8 +144,8 @@ class HomeViewModel(
         }
 
     val state: StateFlow<HomeUiState> =
-        combine(clockText, favorites, prefs.wallpaper, reco, prefs.pixabayCurrent) { (time, date), favs, wallpaper, (watchNext, rows), image ->
-            HomeUiState(time, date, favs, wallpaper, watchNext, rows, image, weatherText.value)
+        combine(clockText, favorites, prefs.wallpaper, reco, prefs.pixabayCurrent) { (time, date), favs, wallpaper, r, image ->
+            HomeUiState(time, date, favs, wallpaper, r.watchNext, r.rows, image, weatherText.value, r.live, r.inputs)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
     init {
@@ -205,10 +218,12 @@ class HomeViewModel(
     /** Relit les recommandations (au démarrage et à chaque retour sur l'accueil). */
     fun refreshReco() {
         viewModelScope.launch {
-            epg?.let { source ->
-                epgSnapshot.value = withContext(ioDispatcher) {
-                    runCatching { EpgSnapshot(source.channels(), source.watchNext()) }.getOrElse { EpgSnapshot(emptyList(), emptyList()) }
-                }
+            if (epg == null && tvInputs == null) return@launch
+            epgSnapshot.value = withContext(ioDispatcher) {
+                val inputs = runCatching { tvInputs?.invoke() }.getOrNull().orEmpty()
+                epg?.let { source ->
+                    runCatching { EpgSnapshot(source.channels(), source.watchNext(), source.liveChannels(), inputs) }.getOrNull()
+                } ?: EpgSnapshot(emptyList(), emptyList(), inputs = inputs)
             }
         }
     }

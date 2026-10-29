@@ -48,6 +48,8 @@ data class HomeLayout(
     val showRowTitles: Boolean = true,
     /** Rangée « Récentes » : les dernières applis ouvertes depuis Kairo. */
     val showRecentApps: Boolean = true,
+    /** Rangées « Chaînes TV » et « Entrées » (seulement sur une box avec tuner ou HDMI). */
+    val showLiveTv: Boolean = true,
     val clockSizeSp: Int = 72,
     val tileWidthDp: Int = 192,
     /** Transition du fond « héros » d'un contenu à l'autre : fade, zoom, slide ou none. */

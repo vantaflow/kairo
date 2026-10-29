@@ -16,6 +16,9 @@ interface EpgSource {
     fun channels(): List<Channel>
     fun watchNext(): List<Program>
     fun hasAccess(): Boolean
+
+    /** Chaînes des tuners de la box (vide sans tuner). */
+    fun liveChannels(): List<LiveChannel> = emptyList()
 }
 
 /** Requête sur le TvProvider : (uri, colonnes) → curseur. */
@@ -60,6 +63,25 @@ class TvProviderEpgSource(
             if (c.int("browsable") == 0) null else c.long("last_engagement_time_utc_millis") to readProgram(c, c.string("package_name").orEmpty())
         }.orEmpty().sortedByDescending { it.first }.map { it.second }
 
+    override fun liveChannels(): List<LiveChannel> =
+        safeRead(TvContractCompat.Channels.CONTENT_URI, LIVE_COLUMNS) { c ->
+            val id = c.long("_id")
+            val pkg = c.string("package_name").orEmpty()
+            // Une vraie chaîne a une entrée TV ; les rangées de recommandations (type « preview ») non.
+            val live = c.string("type") != TvContractCompat.Channels.TYPE_PREVIEW &&
+                !c.string("input_id").isNullOrBlank() && c.int("browsable") != 0 && pkg != OWN_PACKAGE_NAME
+            if (!live) return@safeRead null
+            val number = c.string("display_number")?.takeIf { it.isNotBlank() }
+            LiveChannel(
+                key = "channel-$id",
+                packageName = pkg,
+                number = number,
+                name = c.string("display_name")?.takeIf { it.isNotBlank() } ?: "Chaîne ${number.orEmpty()}".trim(),
+                uri = TvContractCompat.buildChannelUri(id).toString(),
+                logoUri = TvContractCompat.buildChannelLogoUri(id).toString(),
+            )
+        }.orEmpty().let(::sortLiveChannels)
+
     private fun readProgram(c: Cursor, packageName: String) = Program(
         id = c.long("_id"),
         packageName = packageName,
@@ -91,6 +113,8 @@ class TvProviderEpgSource(
 
     private companion object {
         val CHANNEL_COLUMNS = arrayOf("_id", "package_name", "display_name")
+        val LIVE_COLUMNS = arrayOf("_id", "package_name", "display_name", "display_number", "type", "input_id", "browsable")
+        const val OWN_PACKAGE_NAME = "com.tvhome.launcher"
         val PROGRAM_COLUMNS = arrayOf(
             "_id", "title", "episode_title", "poster_art_uri", "thumbnail_uri", "intent_uri",
             "last_playback_position_millis", "duration_millis", "short_description", "browsable",

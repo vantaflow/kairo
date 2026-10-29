@@ -1,5 +1,6 @@
 package com.tvhome.launcher.home
 
+import androidx.compose.foundation.layout.BoxScope
 import com.tvhome.launcher.ui.theme.LocalHomeLayout
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.compose.animation.core.animateFloatAsState
@@ -45,8 +46,7 @@ import com.tvhome.launcher.ui.theme.LocalLauncherTheme
 const val FOCUS_ZOOM_MS = 200
 
 /**
- * Tuile d'appli 16:9 au style Google TV : zoom et contour au focus.
- * Volontairement légère (un seul zoom animé, pas d'ombre) : la box n'a qu'une petite carte graphique.
+ * Tuile d'appli 16:9 au style Google TV (voir [TileFrame]).
  */
 @Composable
 fun AppTile(
@@ -57,6 +57,29 @@ fun AppTile(
     width: Dp = 192.dp,
     /** Appli masquée : image estompée (le contour de focus, lui, reste bien visible). */
     dimmed: Boolean = false,
+) {
+    TileFrame(onClick, onLongClick, modifier, width) {
+        // Un seul nœud d'accessibilité par tuile (voir ProgramCard).
+        AppTileImage(
+            app,
+            Modifier
+                .clearAndSetSemantics { contentDescription = app.label }
+                .then(if (dimmed) Modifier.alpha(0.45f) else Modifier),
+        )
+    }
+}
+
+/**
+ * Cadre d'une tuile 16:9 : zoom et contour au focus, OK (appui long = actions) et touche Menu.
+ * Volontairement léger (un seul zoom animé, pas d'ombre) : la box n'a qu'une petite carte graphique.
+ */
+@Composable
+fun TileFrame(
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    width: Dp = 192.dp,
+    content: @Composable BoxScope.() -> Unit,
 ) {
     val theme = LocalLauncherTheme.current
     val shape = RoundedCornerShape(theme.tileRadiusDp.dp)
@@ -109,13 +132,7 @@ fun AppTile(
             .clip(shape)
             .background(Color(0xFF202329)),
     ) {
-        // Un seul nœud d'accessibilité par tuile (voir ProgramCard).
-        AppTileImage(
-            app,
-            Modifier
-                .clearAndSetSemantics { contentDescription = app.label }
-                .then(if (dimmed) Modifier.alpha(0.45f) else Modifier),
-        )
+        content()
     }
 }
 
