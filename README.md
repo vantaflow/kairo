@@ -94,6 +94,22 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 <sub>Captures prises sur une Mecool KM7 Plus.</sub>
 
+## Kairo Player
+
+L'appli compagnon pour lire **vos vidéos, photos et musiques** de la box et des **clés ou disques USB** (installation séparée : le launcher reste léger).
+
+- Accueil par rangées : **Reprendre**, **Dossiers** (avec le nom de la clé USB), vidéos et photos récentes, musique.
+- Lecteur Media3 (ExoPlayer) : MKV, MP4, sous-titres et pistes audio intégrés, ← → pour reculer / avancer de 10 s, OK pour pause, **épisode suivant du dossier** à la fin.
+- **Reprise là où vous vous êtes arrêté**, et la vidéo apparaît dans **« À suivre » de Kairo** (et de Google TV) avec sa vignette.
+- Photos plein écran, **diaporama** d'un appui sur OK. Mise à jour automatique quand une clé est branchée.
+- Ouvre aussi les vidéos envoyées depuis le téléphone avec Kairo Remote (Téléchargements › Kairo).
+
+Installation : <https://github.com/vantaflow/kairo/releases/latest/download/kairo-player.apk>
+
+| Kairo Player | Reprise dans « À suivre » de Kairo |
+| --- | --- |
+| ![Kairo Player](docs/assets/player-home.jpg) | ![À suivre](docs/assets/player-watchnext.jpg) |
+
 ## Comment rester fluide sur une petite box
 
 Kairo est écrit en Kotlin avec Jetpack Compose et chaque écran a été profilé sur la box (traces système `atrace`) :
@@ -109,6 +125,8 @@ Kairo est écrit en Kotlin avec Jetpack Compose et chaque écran a été profil�
 1. Dans **Downloader** sur la box, tapez le code **`5568887`** (ou l'adresse `vantaflow.github.io/kairo/apk`) : la dernière version se télécharge et s'installe.
    Lien direct : <https://github.com/vantaflow/kairo/releases/latest/download/kairo.apk>
 2. Ou installez-le par clé USB ou `adb install kairo.apk`.
+
+> **Depuis la version 1.9.0, l'identifiant de Kairo est `com.vantaflow.kairo`** (avant : `com.tvhome.launcher`). Une box qui avait une version antérieure installe la nouvelle à côté : sauvegardez vos réglages (Réglages › Sauvegarde), installez la 1.9.0, restaurez, puis désinstallez l'ancien Kairo.
 3. Ouvrez Kairo puis **Réglages › Écran d'accueil par défaut**.
 
 Pour un réglage complet en une commande depuis un PC (autorisations, touches de la télécommande, écran de veille) :
@@ -121,9 +139,9 @@ scripts/deploy.sh <IP_DE_LA_BOX> --no-build   # avec l'APK placé dans build-rem
 <summary>Autorisations accordées par ADB (facultatif)</summary>
 
 ```bash
-adb shell pm grant com.tvhome.launcher com.android.providers.tv.permission.READ_EPG_DATA
-adb shell pm grant com.tvhome.launcher android.permission.READ_TV_LISTINGS
-adb shell cmd role add-role-holder android.app.role.HOME com.tvhome.launcher
+adb shell pm grant com.vantaflow.kairo com.android.providers.tv.permission.READ_EPG_DATA
+adb shell pm grant com.vantaflow.kairo android.permission.READ_TV_LISTINGS
+adb shell cmd role add-role-holder android.app.role.HOME com.vantaflow.kairo
 ```
 
 `READ_TV_LISTINGS` est indispensable pour lire « À suivre » et les recommandations des autres applis.
@@ -135,7 +153,7 @@ Prérequis : JDK 17, Gradle 8.7, SDK Android 34.
 
 ```bash
 echo "PIXABAY_API_KEY=votre_clé" > secrets.properties   # facultatif : clé Pixabay intégrée
-gradle :app:assembleRelease
+gradle :app:assembleRelease :player:assembleRelease
 ```
 
 Sans clé, les fonds Pixabay restent disponibles en saisissant sa propre clé dans **Réglages › Fond d'écran**.
