@@ -157,6 +157,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showLiveTv = booleanPreferencesKey("show_live_tv")
         val showOurApps = booleanPreferencesKey("show_our_apps")
         val showTools = booleanPreferencesKey("show_tools")
+        val autoClean = booleanPreferencesKey("auto_clean")
+        val idleCloseMin = intPreferencesKey("idle_close_min")
         val radioFavorites = stringPreferencesKey("radio_favorites")
         val radioCountry = stringPreferencesKey("radio_country")
         val setupShown = booleanPreferencesKey("setup_shown")
@@ -250,6 +252,18 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
 
     suspend fun setSetupShown() {
         store.edit { it[Keys.setupShown] = true }
+    }
+
+    /** Nettoyage automatique de la mémoire (actif par défaut) et délai avant de fermer une appli inutilisée. */
+    val autoClean: Flow<Boolean> = pref { it[Keys.autoClean] ?: true }
+    val idleCloseMin: Flow<Int> = pref { it[Keys.idleCloseMin] ?: 30 }
+
+    suspend fun setAutoClean(on: Boolean) {
+        store.edit { it[Keys.autoClean] = on }
+    }
+
+    suspend fun setIdleCloseMin(min: Int) {
+        store.edit { it[Keys.idleCloseMin] = min }
     }
 
     /** Radios favorites (dans l'ordre d'ajout) et pays choisi dans l'écran Radio (null = jamais choisi). */

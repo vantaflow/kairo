@@ -163,6 +163,7 @@ fun CleanerScreen(installedApps: List<AppInfo>) {
             Text("Ferme les applis en arrière-plan et vide le cache de Kairo (${formatMb(kairoCache)}).", color = OnBackgroundMuted, fontSize = 18.sp)
         }
         message?.let { Text("✓ $it", color = AccentColor, fontSize = 18.sp) }
+        Box(Modifier.width(900.dp)) { com.vantaflow.kairo.settings.AutoCleanSettings() }
         Text("Applis les plus lourdes", fontSize = 22.sp, color = OnBackground)
         val list = heavy
         if (list == null) {

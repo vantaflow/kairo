@@ -285,5 +285,30 @@ fun MemorySettings(installedApps: List<AppInfo>) {
         }) { Text("Libérer la mémoire") }
         message?.let { Text(it, color = OnBackgroundMuted) }
         Text("Ferme les applis en arrière-plan ; elles redémarrent normalement à la prochaine ouverture.", color = OnBackgroundMuted)
+        AutoCleanSettings()
+    }
+}
+
+/** Nettoyage automatique : interrupteur et délai avant de fermer une appli inutilisée. */
+@Composable
+fun AutoCleanSettings() {
+    val context = LocalContext.current
+    val prefs = (context.applicationContext as com.vantaflow.kairo.TvHomeApp).container.prefs
+    val scope = rememberCoroutineScope()
+    val on by prefs.autoClean.collectAsStateWithLifecycle(true)
+    val idle by prefs.idleCloseMin.collectAsStateWithLifecycle(30)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SwitchRow(
+            "Nettoyage automatique", on, { v -> scope.launch { prefs.setAutoClean(v) } },
+            "Mémoire basse (moins de 25 % libre) : les applis en arrière-plan sont fermées, sauf la dernière utilisée.",
+        )
+        if (on) {
+            SettingLabel("Fermer une appli inutilisée depuis")
+            ChoiceRow {
+                com.vantaflow.kairo.system.IdleCloseChoices.forEach { (min, label) ->
+                    ChoiceChip(idle == min, { scope.launch { prefs.setIdleCloseMin(min) } }) { Text(label) }
+                }
+            }
+        }
     }
 }

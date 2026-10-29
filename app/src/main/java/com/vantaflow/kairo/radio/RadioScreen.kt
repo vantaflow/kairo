@@ -277,7 +277,7 @@ private fun RadioPlayer(
 }
 
 @Composable
-private fun PlayerButton(text: String, modifier: Modifier = Modifier, big: Boolean = false, onClick: () -> Unit) {
+internal fun PlayerButton(text: String, modifier: Modifier = Modifier, big: Boolean = false, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = modifier,
@@ -296,7 +296,7 @@ private fun PlayerButton(text: String, modifier: Modifier = Modifier, big: Boole
 
 /** Égaliseur animé : cinq barres qui dansent tant que la radio joue (dessin seul, aucune recomposition). */
 @Composable
-private fun Equalizer() {
+internal fun Equalizer() {
     val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "égaliseur")
     val bars = listOf(520, 380, 610, 450, 330).map { ms ->
         t.animateFloat(
@@ -378,7 +378,7 @@ private fun StationTile(s: Station, playing: Boolean, favorite: Boolean, onClick
 
 /** Logo de la radio, sinon ses initiales sur un fond de couleur stable. */
 @Composable
-private fun StationLogo(s: Station?, size: Dp) {
+internal fun StationLogo(s: Station?, size: Dp) {
     val fallback = @Composable {
         val hue = ((s?.name?.hashCode() ?: 0) and 0xFFFFFF) % 360
         Box(Modifier.fillMaxSize().background(Color.hsv(hue.toFloat(), 0.45f, 0.55f)), contentAlignment = Alignment.Center) {

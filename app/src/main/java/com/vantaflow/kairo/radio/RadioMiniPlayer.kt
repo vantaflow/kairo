@@ -1,0 +1,84 @@
+package com.vantaflow.kairo.radio
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.Text
+import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+
+/**
+ * Petit lecteur ouvert par la pastille « ♪ » de l'accueil : précédente, arrêt, suivante et accès
+ * au grand lecteur. Il se ferme tout seul quand la radio s'arrête (la pastille disparaît aussi).
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun RadioMiniPlayer(onOpenPlayer: () -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val now by Radio.state.collectAsStateWithLifecycle()
+    val station = now.station
+    val stop = remember { FocusRequester() }
+    LaunchedEffect(now.active) { if (!now.active) onDismiss() }
+    if (station == null || !now.active) return
+
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f))) {
+        Column(
+            Modifier.align(Alignment.TopEnd).padding(top = 110.dp, end = 72.dp).width(560.dp)
+                .background(Color(0xFF202329), RoundedCornerShape(22.dp)).padding(20.dp)
+                .focusGroup().focusProperties { exit = { FocusRequester.Cancel } }
+                .onPreviewKeyEvent { e ->
+                    if (e.key.nativeKeyCode != android.view.KeyEvent.KEYCODE_BACK) return@onPreviewKeyEvent false
+                    if (e.type == KeyEventType.KeyUp) onDismiss()
+                    true
+                },
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                StationLogo(station, 72.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(station.name, fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Box(Modifier.height(30.dp), contentAlignment = Alignment.CenterStart) {
+                        if (now.status == RadioStatus.Playing) Equalizer()
+                        else Text("Connexion…", fontSize = 16.sp, color = OnBackgroundMuted)
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                PlayerButton("⏮") { Radio.skip(context, -1) }
+                PlayerButton("■  Arrêter", Modifier.focusRequester(stop), big = true) { Radio.stop(context) }
+                PlayerButton("⏭") { Radio.skip(context, +1) }
+                PlayerButton("Lecteur", onClick = onOpenPlayer)
+            }
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { stop.requestFocus() } }
+}

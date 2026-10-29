@@ -132,6 +132,8 @@ class HomeActivity : ComponentActivity() {
     private var toolsMenu by mutableStateOf(false)
     /** L'écran Radio s'ouvre sur le lecteur (pastille « ♪ » de l'en-tête). */
     private var radioPlayer by mutableStateOf(false)
+    /** Petit lecteur radio ouvert par la pastille « ♪ ». */
+    private var miniPlayer by mutableStateOf(false)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
     private var searchWithVoice by mutableStateOf(false)
@@ -212,6 +214,8 @@ class HomeActivity : ComponentActivity() {
         // Touche Home : retour à l'accueil, menu fermé, focus sur la 1re tuile.
         destination = Destination.Home
         actionsFor = null
+        toolsMenu = false
+        miniPlayer = false
         settingsUnlocked = false
         homeFocus.reset()
     }
@@ -237,6 +241,12 @@ class HomeActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Retour sur l'accueil : l'appli quittée est notée, puis nettoyage si besoin (sans bloquer l'affichage).
+        container.autoCleaner.onForeground(packageName)
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.delay(3_000)
+            runCatching { container.autoCleaner.check() }
+        }
         homeViewModel.setForeground(true)
     }
 
@@ -318,7 +328,7 @@ class HomeActivity : ComponentActivity() {
                     onOpenTools = { toolsMenu = true },
                     nowPlaying = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
                         .let { r -> r.station?.name?.takeIf { r.active } },
-                    onOpenNowPlaying = { radioPlayer = true; destination = Destination.Radio },
+                    onOpenNowPlaying = { miniPlayer = true },
                     tools = tools,
                     toolSubtitles = if (tools.isEmpty()) emptyMap() else rememberToolSubtitles(),
                     onOpenTool = ::openTool,
@@ -371,6 +381,13 @@ class HomeActivity : ComponentActivity() {
                 val apps by appsViewModel.apps.collectAsStateWithLifecycle()
                 CleanerScreen(apps)
             }
+        }
+
+        if (miniPlayer) {
+            com.vantaflow.kairo.radio.RadioMiniPlayer(
+                onOpenPlayer = { miniPlayer = false; radioPlayer = true; destination = Destination.Radio },
+                onDismiss = { miniPlayer = false; homeFocus.refocus() },
+            )
         }
 
         if (toolsMenu) {
