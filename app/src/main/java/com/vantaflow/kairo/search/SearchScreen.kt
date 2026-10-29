@@ -167,7 +167,7 @@ fun SearchScreen(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Applications", fontSize = 20.sp, color = OnBackground)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
                         itemsIndexed(foundApps, key = { _, app -> app.packageName }) { i, app ->
                             AppTile(
                                 app = app, onClick = { onLaunchApp(app) }, onLongClick = {},
@@ -182,7 +182,7 @@ fun SearchScreen(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Contenus", fontSize = 20.sp, color = OnBackground)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
                         itemsIndexed(foundPrograms, key = { _, p -> "${p.packageName}:${p.id}" }) { i, p ->
                             ProgramCard(
                                 p, appLabels[p.packageName], onClick = { onProgramClick(p) },

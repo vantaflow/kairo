@@ -37,13 +37,17 @@ private fun searchIn(label: String, pkg: String, query: String) =
  * puis la recherche globale de la TV en repli.
  */
 fun searchTargets(query: String, installed: Set<String>, canResolve: (Intent) -> Boolean): List<SearchTarget> {
-    val direct = appSearchIntents(query).filter { it.packageName in installed && canResolve(it.intent) }
+    val direct = appSearchIntents(query).filter { it.packageName in installed && canResolve(it.intent) }.distinctBy { it.label }
     val global = SearchTarget("Recherche Google TV", "", Intent("android.search.action.GLOBAL_SEARCH").putExtra(SearchManager.QUERY, query))
     return direct + listOfNotNull(global.takeIf { canResolve(it.intent) })
 }
 
 /** Recherche dans les principales applis vidéo et le Play Store (celles absentes sont ignorées à l'affichage). */
 fun appSearchIntents(query: String): List<SearchTarget> = listOf(
+    // Nos applis d'abord (Ultra TV : version publiée ou de développement).
+    searchIn("Ultra TV", "com.ultratv.tv.nativeapp", query),
+    searchIn("Ultra TV", "com.ultratv.tv.nativeapp.debug", query),
+    searchIn("Kairo Player", "com.vantaflow.kairo.player", query),
     searchIn("YouTube", "com.google.android.youtube.tv", query),
     searchIn("Netflix", "com.netflix.ninja", query),
     searchIn("Prime Video", "com.amazon.amazonvideo.livingroom", query),

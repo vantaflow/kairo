@@ -261,7 +261,7 @@ function upload(file) {
   xhr.onload = () => {
     const ok = xhr.status === 200; row.classList.add(ok ? 'done' : 'fail'); row.querySelector('i').style.width = '100%';
     let msg = xhr.responseText;
-    if (ok) { const r = JSON.parse(xhr.responseText); msg = r.kind === 'apk' ? 'Confirmez l’installation sur la télé' : 'Reçu dans Téléchargements › Kairo'; }
+    if (ok) { const r = JSON.parse(xhr.responseText); msg = r.kind === 'apk' ? 'Confirmez l’installation sur la télé' : r.kind === 'play' ? 'Lecture sur la télé (Kairo Player)' : 'Reçu dans Téléchargements › Kairo'; }
     row.querySelector('span').textContent = ok ? '✓' : '✕'; toast(msg); buzz();
   };
   xhr.onerror = () => { row.classList.add('fail'); row.querySelector('span').textContent = '✕'; toast('Transfert interrompu'); };

@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.home
 
+import com.vantaflow.kairo.apps.InstallState
+import com.vantaflow.kairo.apps.OurApp
 import com.vantaflow.kairo.reco.LiveChannel
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.animation.core.animate
@@ -93,6 +95,12 @@ fun HomeScreen(
     /** Dernières applis ouvertes, pour la rangée « Récentes » (vide = rangée masquée). */
     recentApps: List<AppInfo> = emptyList(),
     onOpenTv: (LiveChannel) -> Unit = {},
+    /** Nos applis pas encore installées (vide = rangée masquée) et leur état d'installation. */
+    ourApps: List<OurApp> = emptyList(),
+    ourAppStates: Map<String, InstallState> = emptyMap(),
+    onInstallOurApp: (OurApp) -> Unit = {},
+    /** Parmi [ourApps], celles déjà installées qui ont une mise à jour. */
+    ourAppUpdates: Set<String> = emptySet(),
     /** Favori en cours de déplacement : ← → le déplacent, OK ou Retour terminent. */
     movingFavorite: String? = null,
     onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
@@ -257,6 +265,13 @@ fun HomeScreen(
                     key("all-apps") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                             AppsRow("Toutes les applis", otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        }
+                    }
+                }
+                if (ourApps.isNotEmpty()) {
+                    key("our-apps") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            OurAppsRow(ourApps, ourAppStates, ourAppUpdates, onInstallOurApp, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                         }
                     }
                 }

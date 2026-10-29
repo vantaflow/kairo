@@ -9,7 +9,9 @@ data class Release(val tag: String, val notes: String, val apkAssetUrl: String)
 fun parseLatestRelease(json: String): Release? = try {
     val o = JSONObject(json)
     val assets = o.optJSONArray("assets")
-    val apk = assets?.let { a -> (0 until a.length()).map(a::getJSONObject).firstOrNull { it.optString("name").endsWith(".apk") } }
+    // L'APK de Kairo (nom fixe « kairo.apk », sinon le premier APK qui n'est pas Kairo Player).
+    val apks = assets?.let { a -> (0 until a.length()).map(a::getJSONObject).filter { it.optString("name").endsWith(".apk") } }.orEmpty()
+    val apk = apks.firstOrNull { it.optString("name") == "kairo.apk" } ?: apks.firstOrNull { "player" !in it.optString("name") }
     apk?.let { Release(o.getString("tag_name"), o.optString("body"), it.getString("url")) }
 } catch (_: JSONException) {
     null

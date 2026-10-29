@@ -106,6 +106,15 @@ class ExtrasTest {
     }
 
     @Test
+    fun kairoApkIsNeverThePlayer() {
+        val json = """{"tag_name":"v1.9.0","assets":[
+            {"name":"kairo-player.apk","url":"https://api/player"},
+            {"name":"kairo-1.9.0.apk","url":"https://api/versioned"},
+            {"name":"kairo.apk","url":"https://api/fixed"}]}"""
+        assertEquals("https://api/fixed", parseLatestRelease(json)!!.apkAssetUrl)
+    }
+
+    @Test
     fun kidsBindingsLimitedToFavorites() {
         val bindings = mapOf(1 to "netflix", 2 to "store")
         assertEquals(bindings, com.vantaflow.kairo.remote.effectiveBindings(bindings, kids = false, favorites = emptySet()))

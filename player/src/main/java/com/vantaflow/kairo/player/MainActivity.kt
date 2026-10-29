@@ -92,6 +92,7 @@ private sealed interface Screen {
     data object Home : Screen
     data class InFolder(val folder: Folder) : Screen
     data class Photos(val photos: List<Media>, val start: Int) : Screen
+    data class Results(val query: String) : Screen
 }
 
 /** Kairo Player : vidéos, photos et musique de la box et des clés USB. */
@@ -112,8 +113,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Recherche reçue de Kairo (ACTION_SEARCH). */
+    private var searchQuery by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        searchQuery = intent.takeIf { it.action == Intent.ACTION_SEARCH }?.getStringExtra(android.app.SearchManager.QUERY)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        searchQuery = intent.takeIf { it.action == Intent.ACTION_SEARCH }?.getStringExtra(android.app.SearchManager.QUERY)
         contentResolver.registerContentObserver(MediaStore.AUTHORITY_URI, true, observer)
         // Thème sombre : boutons et focus bien visibles sur le fond de Kairo Player.
         setContent { MaterialTheme(colorScheme = darkColorScheme(primary = Accent)) { App() } }
@@ -134,6 +144,11 @@ class MainActivity : ComponentActivity() {
         if (!granted) return
         Thread {
             val all = library.all()
+            // Fichiers supprimés : plus de reprise ni de ligne dans « À suivre ».
+            val existing = all.map { it.uri.toString() }.toSet()
+            resume.prune(existing)
+            WatchNext(this).prune(existing)
+            RecentChannel(this).publish(all.filter { it.kind == Kind.Video })
             val p = resume.inProgress().toMap()
             runOnUiThread {
                 media = all
@@ -149,7 +164,8 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun App() {
-        var screen by remember { mutableStateOf<Screen>(Screen.Home) }
+        var screen by remember { mutableStateOf<Screen>(searchQuery?.let { Screen.Results(it) } ?: Screen.Home) }
+        LaunchedEffect(searchQuery) { searchQuery?.let { screen = Screen.Results(it) } }
         val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
         BackHandler(enabled = screen != Screen.Home) {
             screen = when (val s = screen) {
@@ -168,6 +184,11 @@ class MainActivity : ComponentActivity() {
                         Screen.Home -> HomeScreen(all, onFolder = { screen = Screen.InFolder(it) }, onOpen = { item, list -> open(item, list) { screen = it } })
                         is Screen.InFolder -> FolderScreen(s.folder, onOpen = { item, list -> open(item, list) { screen = it } })
                         is Screen.Photos -> PhotoViewer(s.photos, s.start)
+                        is Screen.Results -> {
+                            val q = plainText(s.query)
+                            val found = all.filter { plainText(it.name).contains(q) || plainText(it.folder).contains(q) }
+                            FolderScreen(Folder("", "Recherche « ${s.query} »", found), onOpen = { item, list -> open(item, list) { screen = it } }, search = true)
+                        }
                     }
                 }
             }
@@ -276,12 +297,12 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun FolderScreen(folder: Folder, onOpen: (Media, List<Media>) -> Unit) {
+    private fun FolderScreen(folder: Folder, onOpen: (Media, List<Media>) -> Unit, search: Boolean = false) {
         val first = remember { FocusRequester() }
         LaunchedEffect(folder.key) { repeat(15) { withFrameNanos { }; runCatching { first.requestFocus() } } }
         Column(Modifier.fillMaxSize().padding(top = 36.dp)) {
-            Text(folder.name, fontSize = 32.sp, fontWeight = FontWeight.SemiBold, color = TextMain, modifier = Modifier.padding(start = 56.dp))
-            Text("${library.volumeLabel(folder.volume)} › ${folder.path.trimEnd('/')} · ${folder.items.size} fichiers", color = TextMuted, modifier = Modifier.padding(start = 56.dp, top = 4.dp, bottom = 16.dp))
+            Text(if (search) folder.path else folder.name, fontSize = 32.sp, fontWeight = FontWeight.SemiBold, color = TextMain, modifier = Modifier.padding(start = 56.dp))
+            Text(if (search) "${folder.items.size} résultats" else "${library.volumeLabel(folder.volume)} › ${folder.path.trimEnd('/')} · ${folder.items.size} fichiers", color = TextMuted, modifier = Modifier.padding(start = 56.dp, top = 4.dp, bottom = 16.dp))
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 8.dp, bottom = 48.dp),
@@ -412,3 +433,6 @@ class MainActivity : ComponentActivity() {
         private val thumbCache = LruCache<String, ImageBitmap>(40)
     }
 }
+
+/** Sans accents ni majuscules, pour la recherche. */
+private fun plainText(s: String) = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "").lowercase()

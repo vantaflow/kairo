@@ -1,5 +1,9 @@
 package com.vantaflow.kairo.settings
 
+import com.vantaflow.kairo.home.installLabel
+import com.vantaflow.kairo.apps.InstallState
+import com.vantaflow.kairo.apps.RemoteApk
+import com.vantaflow.kairo.apps.OurApps
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -216,6 +220,40 @@ fun UpdateSettings() {
             "Les versions sont publiées sur github.com/vantaflow/kairo. Sur une autre box, installez Kairo avec le code Downloader 5568887.",
             color = OnBackgroundMuted,
         )
+        OurAppsSection()
+    }
+}
+
+/** Nos applis : version installée, version publiée, installation ou mise à jour en un clic. */
+@Composable
+private fun OurAppsSection() {
+    val store = container().ourApps
+    val states by store.states.collectAsStateWithLifecycle()
+    var remote by remember { mutableStateOf<Map<String, RemoteApk?>>(emptyMap()) }
+    LaunchedEffect(Unit) { remote = OurApps.associate { it.id to store.latest(it) } }
+    Text("Nos applications", color = OnBackground, fontSize = 20.sp, modifier = Modifier.padding(top = 8.dp))
+    OurApps.forEach { app ->
+        val installed = store.installedVersion(app)
+        val r = remote[app.id]
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(app.name, color = OnBackground)
+                Text(
+                    when {
+                        installed == null -> "Non installée" + (r?.let { " · ${it.version} disponible" } ?: "")
+                        store.hasUpdate(app, r) -> "Version $installed · ${r!!.version} disponible"
+                        else -> "Version $installed · à jour"
+                    },
+                    color = OnBackgroundMuted,
+                    fontSize = 14.sp,
+                )
+                states[app.id]?.takeIf { it != InstallState.Idle }?.let { Text(installLabel(it), color = OnBackgroundMuted, fontSize = 14.sp) }
+            }
+            when {
+                installed == null -> SmallButton("Installer", { store.install(app) })
+                store.hasUpdate(app, r) -> SmallButton("Mettre à jour", { store.install(app) })
+            }
+        }
     }
 }
 

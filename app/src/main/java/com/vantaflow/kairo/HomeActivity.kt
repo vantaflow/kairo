@@ -1,5 +1,6 @@
 package com.vantaflow.kairo
 
+import com.vantaflow.kairo.apps.OurApps
 import com.vantaflow.kairo.remote.KairoCommands
 import com.vantaflow.kairo.settings.Section
 import com.vantaflow.kairo.onboarding.Onboarding
@@ -231,6 +232,7 @@ class HomeActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        container.ourApps.refresh()
         // Après l'attachement de la vue Compose (elle relit alors les services d'accessibilité).
         window.decorView.post { disableComposeAccessibilityTracking(window.decorView) }
         homeViewModel.refreshReco()
@@ -264,6 +266,7 @@ class HomeActivity : ComponentActivity() {
                 val apps by appsViewModel.apps.collectAsStateWithLifecycle()
                 val net by networkMonitor.state.collectAsStateWithLifecycle(networkMonitor.current())
                 val recent by container.prefs.recentApps.collectAsStateWithLifecycle(emptyList())
+                val ourUpdates by container.ourApps.updates.collectAsStateWithLifecycle()
                 val showRecent = LocalHomeLayout.current.showRecentApps && !profile.kids
                 HomeScreen(
                     // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
@@ -289,6 +292,13 @@ class HomeActivity : ComponentActivity() {
                         else -> state
                     },
                     onOpenTv = ::openTv,
+                    // Nos applis à proposer : recalculées quand la liste des applis change (installation).
+                    ourApps = if (profile.kids || !LocalHomeLayout.current.showOurApps) emptyList() else remember(apps, ourUpdates) {
+                        OurApps.filter { !container.ourApps.isInstalled(it) || it.id in ourUpdates }
+                    },
+                    ourAppUpdates = ourUpdates,
+                    ourAppStates = container.ourApps.states.collectAsStateWithLifecycle().value,
+                    onInstallOurApp = container.ourApps::install,
                     focus = homeFocus,
                     onLaunch = launch,
                     onFavoriteLongClick = { if (!profile.kids) actionsFor = it },
