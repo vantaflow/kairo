@@ -37,6 +37,7 @@ OUTPUTS = [
     "app/build/outputs/apk/debug/app-debug.apk",
     "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
     "app/build/outputs/apk/release/app-release.apk",
+    "player/build/outputs/apk/release/player-release.apk",
 ]
 REPORTS = "app/build/test-results"
 
