@@ -33,6 +33,73 @@ fun weatherLabel(code: Int): String = when (code) {
     else -> ""
 }
 
+/** Symbole d'un code météo WMO (emoji, lisible de loin) ; [night] : lune au lieu du soleil. */
+fun weatherEmoji(code: Int, night: Boolean = false): String = when (code) {
+    0 -> if (night) "🌙" else "☀️"
+    1 -> if (night) "🌙" else "🌤️"
+    2 -> "⛅"
+    3 -> "☁️"
+    45, 48 -> "🌫️"
+    in 51..57, in 61..67, in 80..82 -> "🌧️"
+    in 71..77, 85, 86 -> "❄️"
+    in 95..99 -> "⛈️"
+    else -> "🌡️"
+}
+
+data class HourForecast(val time: java.time.LocalDateTime, val temperature: Double, val code: Int, val rainChance: Int)
+data class DayForecast(val date: java.time.LocalDate, val code: Int, val max: Double, val min: Double, val rainChance: Int)
+
+/** Prévisions : maintenant, heure par heure et sur 7 jours. */
+data class Forecast(
+    val place: String,
+    /** Heure locale du lieu au moment de la mesure. */
+    val now: java.time.LocalDateTime,
+    val temperature: Double,
+    val feelsLike: Double,
+    val code: Int,
+    val humidity: Int,
+    val windKmh: Double,
+    val isDay: Boolean,
+    val hours: List<HourForecast>,
+    val days: List<DayForecast>,
+)
+
+/** Lit la réponse Open-Meteo (current + hourly + daily) ; null si elle est incomplète. */
+fun parseForecast(o: JSONObject, place: String): Forecast? = try {
+    val c = o.getJSONObject("current")
+    val h = o.getJSONObject("hourly")
+    val d = o.getJSONObject("daily")
+    val hTime = h.getJSONArray("time")
+    val hTemp = h.getJSONArray("temperature_2m")
+    val hCode = h.getJSONArray("weather_code")
+    val hRain = h.optJSONArray("precipitation_probability")
+    val dTime = d.getJSONArray("time")
+    val dCode = d.getJSONArray("weather_code")
+    val dMax = d.getJSONArray("temperature_2m_max")
+    val dMin = d.getJSONArray("temperature_2m_min")
+    val dRain = d.optJSONArray("precipitation_probability_max")
+    Forecast(
+        place = place,
+        now = java.time.LocalDateTime.parse(c.getString("time")),
+        temperature = c.getDouble("temperature_2m"),
+        feelsLike = c.optDouble("apparent_temperature", c.getDouble("temperature_2m")),
+        code = c.optInt("weather_code", -1),
+        humidity = c.optInt("relative_humidity_2m", -1),
+        windKmh = c.optDouble("wind_speed_10m", 0.0),
+        isDay = c.optInt("is_day", 1) == 1,
+        hours = (0 until hTime.length()).map { i ->
+            HourForecast(java.time.LocalDateTime.parse(hTime.getString(i)), hTemp.getDouble(i), hCode.optInt(i, -1), hRain?.optInt(i, 0) ?: 0)
+        },
+        days = (0 until dTime.length()).map { i ->
+            DayForecast(java.time.LocalDate.parse(dTime.getString(i)), dCode.optInt(i, -1), dMax.getDouble(i), dMin.getDouble(i), dRain?.optInt(i, 0) ?: 0)
+        },
+    )
+} catch (_: JSONException) {
+    null
+} catch (_: java.time.format.DateTimeParseException) {
+    null
+}
+
 /** Météo Open-Meteo (sans clé) ; position par IP (ipapi.co) ou par nom de ville. */
 class WeatherRepository(private val http: HttpGet) {
     /** Position approximative par l'adresse IP : geojs.io, sinon ipwho.is (sans clé, en HTTPS). */
@@ -62,6 +129,16 @@ class WeatherRepository(private val http: HttpGet) {
             if (!c.has("temperature_2m")) return@json null
             Weather(c.getDouble("temperature_2m"), c.optInt("weather_code", -1), place.name)
         }
+    }
+
+    fun forecast(place: Place, fahrenheit: Boolean): Forecast? {
+        val unit = if (fahrenheit) "&temperature_unit=fahrenheit" else ""
+        val url = "https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}" +
+            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day" +
+            "&hourly=temperature_2m,weather_code,precipitation_probability" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+            "&forecast_days=7&timezone=auto$unit"
+        return json(url) { parseForecast(it, place.name) }
     }
 
     private fun <T> json(url: String, parse: (JSONObject) -> T?): T? {

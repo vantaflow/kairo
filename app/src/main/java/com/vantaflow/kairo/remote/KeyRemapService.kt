@@ -34,12 +34,59 @@ class KeyRemapService : AccessibilityService() {
                 effectiveBindings(b, profile.kids, favs.toSet())
             }.collect { bindings = it }
         }
+        // Minuteur de mise en veille : bandeau d'avertissement la dernière minute.
+        scope.launch { container.sleepTimer.warning.collect(::showSleepWarning) }
     }
+
+    private var warningView: android.widget.TextView? = null
+
+    private fun showSleepWarning(seconds: Int?) {
+        val wm = getSystemService(android.view.WindowManager::class.java)
+        if (seconds == null) {
+            warningView?.let { runCatching { wm.removeView(it) } }
+            warningView = null
+            return
+        }
+        val text = "Mise en veille dans $seconds s · appuyez sur une touche pour continuer"
+        warningView?.let { it.text = text; return }
+        val density = resources.displayMetrics.density
+        val view = android.widget.TextView(this).apply {
+            this.text = text
+            textSize = 20f
+            setTextColor(android.graphics.Color.WHITE)
+            val pad = (20 * density).toInt()
+            setPadding(pad, pad / 2, pad, pad / 2)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(0xE6202329.toInt())
+                cornerRadius = 18 * density
+            }
+        }
+        val params = android.view.WindowManager.LayoutParams(
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+            android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            android.graphics.PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
+            y = (40 * density).toInt()
+        }
+        if (runCatching { wm.addView(view, params) }.isSuccess) warningView = view
+    }
+
+    /** Met la box en veille (la télé suit par HDMI-CEC si elle le gère). */
+    fun sleep(): Boolean = performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val code = event.keyCode
         if (event.action == KeyEvent.ACTION_UP) return consumed.remove(code)
         if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount > 0) return code in consumed
+        // Avertissement du minuteur affiché : n'importe quelle touche prolonge.
+        if (warningView != null) {
+            (application as TvHomeApp).container.sleepTimer.extend()
+            consumed += code
+            return true
+        }
         if (KeyLearner.shared.offer(code)) {
             consumed += code
             return true

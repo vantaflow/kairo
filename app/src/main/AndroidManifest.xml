@@ -21,6 +21,12 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Écran de veille « Mes photos » : photos de la box et des clés USB. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Radio : lecture en arrière-plan. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Nettoyeur : place prise par chaque appli (accès accordé par l'utilisateur). -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".TvHomeApp"
@@ -29,6 +35,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="Kairo"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
         <activity
@@ -62,6 +69,12 @@
         </service>
 
         <receiver android:name=".update.UpdateReceiver" android:exported="false" />
+
+        <!-- Beaucoup de radios diffusent encore en http : d'où usesCleartextTraffic. -->
+        <service
+            android:name=".radio.RadioService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <activity
             android:name=".dream.DreamPreviewActivity"
