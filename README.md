@@ -48,6 +48,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 **Télécommande**
 - Navigation complète au D-pad, appui long ou touche Menu pour les actions d'une appli.
+- Touches **Réglages** (roue dentée) et **Entrées** de la télécommande Google TV reprises par Kairo : réglages de Kairo, et écran « Entrées et HDMI » (entrées de la box, résolution, son, HDMI-CEC).
 - **Touches YouTube / Netflix / Prime Video / Disney+ réassignables** vers n'importe quelle appli.
 - **Kairo Remote : le téléphone devient télécommande**, sans rien installer : scannez le QR code affiché par la box (Réglages › Télécommande sur téléphone) et la page s'ouvre dans le navigateur, iPhone ou Android.
   - Flèches, OK, Retour, Accueil, lecture, volume (appui maintenu = répétition, glisser sur le pavé).
