@@ -156,6 +156,9 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showRecentApps = booleanPreferencesKey("show_recent_apps")
         val showLiveTv = booleanPreferencesKey("show_live_tv")
         val showOurApps = booleanPreferencesKey("show_our_apps")
+        val showTools = booleanPreferencesKey("show_tools")
+        val radioFavorites = stringPreferencesKey("radio_favorites")
+        val radioCountry = stringPreferencesKey("radio_country")
         val setupShown = booleanPreferencesKey("setup_shown")
         val dreamMode = stringPreferencesKey("dream_mode")
         val dreamQuery = stringPreferencesKey("dream_query")
@@ -249,6 +252,22 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         store.edit { it[Keys.setupShown] = true }
     }
 
+    /** Radios favorites (dans l'ordre d'ajout) et pays choisi dans l'écran Radio (null = jamais choisi). */
+    val radioFavorites: Flow<List<com.vantaflow.kairo.radio.Station>> = pref { com.vantaflow.kairo.radio.decodeStations(it[Keys.radioFavorites]) }
+    val radioCountry: Flow<String?> = pref { it[Keys.radioCountry] }
+
+    suspend fun toggleRadioFavorite(station: com.vantaflow.kairo.radio.Station) {
+        store.edit {
+            val list = com.vantaflow.kairo.radio.decodeStations(it[Keys.radioFavorites])
+            val next = if (list.any { s -> s.url == station.url }) list.filterNot { s -> s.url == station.url } else list + station
+            it[Keys.radioFavorites] = com.vantaflow.kairo.radio.encodeStations(next)
+        }
+    }
+
+    suspend fun setRadioCountry(code: String) {
+        store.edit { it[Keys.radioCountry] = code }
+    }
+
     /** Applis ouvertes depuis Kairo, la plus récente en tête (par profil). */
     val recentApps: Flow<List<String>> = pref { decode(it[Keys.recentApps(it.sfx)]) }
 
@@ -314,6 +333,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             showRecentApps = it[Keys.showRecentApps] ?: d.showRecentApps,
             showLiveTv = it[Keys.showLiveTv] ?: d.showLiveTv,
             showOurApps = it[Keys.showOurApps] ?: d.showOurApps,
+            showTools = it[Keys.showTools] ?: d.showTools,
             clockSizeSp = it[Keys.clockSize] ?: d.clockSizeSp,
             tileWidthDp = it[Keys.tileWidth] ?: d.tileWidthDp,
             heroTransition = it[Keys.heroTransition] ?: d.heroTransition,
@@ -330,6 +350,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             it[Keys.showRecentApps] = layout.showRecentApps
             it[Keys.showLiveTv] = layout.showLiveTv
             it[Keys.showOurApps] = layout.showOurApps
+            it[Keys.showTools] = layout.showTools
             it[Keys.clockSize] = layout.clockSizeSp
             it[Keys.tileWidth] = layout.tileWidthDp
             it[Keys.heroTransition] = layout.heroTransition

@@ -43,7 +43,10 @@ enum class TvIcon(val path: String) {
     Store("M5 8h14l-1 13H6z M9 8a3 3 0 0 1 6 0"),
     Check("M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0z M8 12.5l2.8 2.8L16 10"),
     Phone("M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M10.5 18.5h3"),
-    Moon("M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z");
+    Moon("M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"),
+    Radio("M3 9h18v11H3z M7 9l10-5 M15 14.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z M6 13h1 M6 16h1"),
+    Timer("M20 13a8 8 0 1 1-16 0a8 8 0 1 1 16 0z M12 9v4l2 2 M10 2h4 M12 2v3"),
+    Clean("M14 3l-4 9 M6 12h10l1 9H5z M9 16v3 M13 16v3");
 
     val vector: ImageVector by lazy {
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).addPath(

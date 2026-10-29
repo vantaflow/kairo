@@ -101,6 +101,10 @@ fun HomeScreen(
     onInstallOurApp: (OurApp) -> Unit = {},
     /** Parmi [ourApps], celles déjà installées qui ont une mise à jour. */
     ourAppUpdates: Set<String> = emptySet(),
+    /** Outils (radio, météo…) et leur état ; vide = rangée masquée. */
+    tools: List<com.vantaflow.kairo.tools.Tool> = emptyList(),
+    toolSubtitles: Map<com.vantaflow.kairo.tools.Tool, String> = emptyMap(),
+    onOpenTool: (com.vantaflow.kairo.tools.Tool) -> Unit = {},
     /** Favori en cours de déplacement : ← → le déplacent, OK ou Retour terminent. */
     movingFavorite: String? = null,
     onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
@@ -265,6 +269,13 @@ fun HomeScreen(
                     key("all-apps") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                             AppsRow("Toutes les applis", otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        }
+                    }
+                }
+                if (tools.isNotEmpty()) {
+                    key("tools") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            com.vantaflow.kairo.tools.ToolsRow(tools, toolSubtitles, onOpenTool, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                         }
                     }
                 }

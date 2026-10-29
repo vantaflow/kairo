@@ -1,6 +1,15 @@
 package com.vantaflow.kairo
 
 import com.vantaflow.kairo.apps.OurApps
+import com.vantaflow.kairo.radio.RadioScreen
+import com.vantaflow.kairo.remote.KeyRemapService
+import com.vantaflow.kairo.system.MemoryCleaner
+import com.vantaflow.kairo.system.formatMb
+import com.vantaflow.kairo.tools.CleanerScreen
+import com.vantaflow.kairo.tools.SleepTimerDialog
+import com.vantaflow.kairo.tools.Tool
+import com.vantaflow.kairo.tools.WeatherScreen
+import com.vantaflow.kairo.tools.formatMinutes
 import com.vantaflow.kairo.remote.KairoCommands
 import com.vantaflow.kairo.settings.Section
 import com.vantaflow.kairo.onboarding.Onboarding
@@ -62,7 +71,7 @@ import kotlinx.coroutines.flow.combine
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.themeFor
 
-enum class Destination { Home, Apps, Settings, Search }
+enum class Destination { Home, Apps, Settings, Search, Radio, Weather, Cleaner }
 
 class HomeActivity : ComponentActivity() {
     private val container by lazy { (application as TvHomeApp).container }
@@ -115,6 +124,8 @@ class HomeActivity : ComponentActivity() {
     /** Section des réglages ouverte d'emblée (touche Entrées de la télécommande). */
     private var settingsSection by mutableStateOf<Section?>(null)
     private var actionsFor by mutableStateOf<AppInfo?>(null)
+    /** Choix du minuteur de mise en veille ouvert. */
+    private var sleepDialog by mutableStateOf(false)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
     private var searchWithVoice by mutableStateOf(false)
@@ -268,6 +279,13 @@ class HomeActivity : ComponentActivity() {
                 val recent by container.prefs.recentApps.collectAsStateWithLifecycle(emptyList())
                 val ourUpdates by container.ourApps.updates.collectAsStateWithLifecycle()
                 val showRecent = LocalHomeLayout.current.showRecentApps && !profile.kids
+                val radio by com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle()
+                val sleepEnd by container.sleepTimer.endsAt.collectAsStateWithLifecycle()
+                val tools = when {
+                    !LocalHomeLayout.current.showTools -> emptyList()
+                    profile.kids -> Tool.entries - Tool.Cleaner
+                    else -> Tool.entries
+                }
                 HomeScreen(
                     // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
                     recentApps = if (!showRecent) emptyList() else remember(recent, apps, state.favorites) {
@@ -297,6 +315,24 @@ class HomeActivity : ComponentActivity() {
                         OurApps.filter { !container.ourApps.isInstalled(it) || it.id in ourUpdates }
                     },
                     ourAppUpdates = ourUpdates,
+                    tools = tools,
+                    // Recalculé à chaque minute (l'heure de l'accueil change) : temps restant, mémoire libre.
+                    toolSubtitles = remember(state.timeText, state.weatherText, radio, sleepEnd) {
+                        mapOf(
+                            Tool.Radio to (radio.station?.takeIf { radio.active }?.let { "♪ ${it.name}" } ?: "Radios en direct"),
+                            Tool.Weather to (state.weatherText ?: "Prévisions sur 7 jours"),
+                            Tool.Sleep to (container.sleepTimer.remainingMinutes()?.let { "Veille dans ${formatMinutes(it)}" } ?: "Éteindre plus tard"),
+                            Tool.Cleaner to "${formatMb(MemoryCleaner(this@HomeActivity).state().availableBytes)} de mémoire libre",
+                        )
+                    },
+                    onOpenTool = { tool ->
+                        when (tool) {
+                            Tool.Radio -> destination = Destination.Radio
+                            Tool.Weather -> destination = Destination.Weather
+                            Tool.Cleaner -> destination = Destination.Cleaner
+                            Tool.Sleep -> sleepDialog = true
+                        }
+                    },
                     ourAppStates = container.ourApps.states.collectAsStateWithLifecycle().value,
                     onInstallOurApp = container.ourApps::install,
                     focus = homeFocus,
@@ -340,6 +376,25 @@ class HomeActivity : ComponentActivity() {
                     initialQuery = phoneQuery,
                 )
             }
+            Destination.Radio -> RadioScreen()
+            Destination.Weather -> WeatherScreen()
+            Destination.Cleaner -> {
+                val apps by appsViewModel.apps.collectAsStateWithLifecycle()
+                CleanerScreen(apps)
+            }
+        }
+
+        if (sleepDialog) {
+            val remaining = remember(container.sleepTimer.endsAt.collectAsStateWithLifecycle().value) { container.sleepTimer.remainingMinutes() }
+            SleepTimerDialog(
+                remaining = remaining,
+                serviceOn = KeyRemapService.instance != null,
+                onPick = { min ->
+                    if (min == null) container.sleepTimer.cancel() else container.sleepTimer.start(min)
+                    sleepDialog = false
+                },
+                onDismiss = { sleepDialog = false },
+            )
         }
 
         // Réglages : panneau latéral par-dessus l'accueil (les changements s'y voient en direct).

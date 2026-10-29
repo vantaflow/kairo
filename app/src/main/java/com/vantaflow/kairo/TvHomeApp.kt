@@ -19,6 +19,7 @@ import com.vantaflow.kairo.clock.TrustedClock
 import com.vantaflow.kairo.net.UrlConnectionHttpGet
 import com.vantaflow.kairo.settings.LauncherPrefs
 import com.vantaflow.kairo.weather.Place
+import com.vantaflow.kairo.weather.Forecast
 import com.vantaflow.kairo.weather.Weather
 import com.vantaflow.kairo.weather.WeatherRepository
 import com.vantaflow.kairo.wallpaper.PixabayClient
@@ -44,11 +45,24 @@ class AppContainer(val app: Application) {
 
     /** Météo pour une ville (vide = position par IP) ; la position est gardée en mémoire. */
     val weather: suspend (String, Boolean) -> Weather? = { city, fahrenheit ->
-        val place = placeCache?.takeIf { it.first == city }?.second
+        placeFor(city)?.let { weatherRepo.current(it, fahrenheit) }
+    }
+
+    /** Prévisions sur 7 jours (écran Météo). */
+    val forecast: suspend (String, Boolean) -> Forecast? = { city, fahrenheit ->
+        placeFor(city)?.let { weatherRepo.forecast(it, fahrenheit) }
+    }
+
+    private fun placeFor(city: String): Place? =
+        placeCache?.takeIf { it.first == city }?.second
             ?: (if (city.isBlank()) weatherRepo.locateByIp() else weatherRepo.geocode(city))
                 ?.also { placeCache = city to it }
-        place?.let { weatherRepo.current(it, fahrenheit) }
-    }
+
+    /** Minuteur de mise en veille : coupe la radio puis met la box en veille (service d'accessibilité). */
+    val sleepTimer = com.vantaflow.kairo.tools.SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main), onSleep = {
+        com.vantaflow.kairo.radio.Radio.stop(app)
+        com.vantaflow.kairo.remote.KeyRemapService.instance?.sleep()
+    })
 
     /** Télécommande sur téléphone : démarrée ou arrêtée selon le réglage. */
     @Volatile private var phoneToken = ""
