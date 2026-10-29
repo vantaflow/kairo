@@ -48,16 +48,19 @@ class KeyRemapService : AccessibilityService() {
         // système passe au launcher Google (désactivé) : elle ne servait donc plus.
         // Dans Kairo : panneau des réglages de Kairo ; dans une autre appli : paramètres Android.
         if (code == KeyEvent.KEYCODE_SETTINGS || code == KeyEvent.KEYCODE_NOTIFICATION) {
-            val intent = if (rootInActiveWindow?.packageName == packageName || rootInActiveWindow == null) {
-                Intent(this, HomeActivity::class.java).putExtra("tvhome.open", "Settings")
+            val opened = if (kairoInFront()) {
+                openInKairo(null)
             } else {
-                Intent(Settings.ACTION_SETTINGS)
+                startSafely(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
-            if (startSafely(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))) {
-                consumed += code
-                return true
-            }
-            return false
+            if (opened) consumed += code
+            return opened
+        }
+        // Touche Entrées : panneau « Entrées et HDMI » de Kairo (le launcher Google l'affichait).
+        if (code == KeyEvent.KEYCODE_TV_INPUT) {
+            val opened = openInKairo("Inputs")
+            if (opened) consumed += code
+            return opened
         }
         val pkg = bindingFor(code, bindings) ?: return false
         val container = (application as TvHomeApp).container
@@ -69,6 +72,21 @@ class KeyRemapService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
     override fun onInterrupt() = Unit
+
+    private fun kairoInFront(): Boolean = rootInActiveWindow.let { it == null || it.packageName == packageName }
+
+    /**
+     * Réglages de Kairo (section [section] ou menu). Kairo déjà à l'écran : le panneau s'ouvre
+     * directement, sans relancer l'activité (pas de transition de fenêtre).
+     */
+    private fun openInKairo(section: String?): Boolean {
+        if (kairoInFront() && KairoCommands.openSettings.tryEmit(section.orEmpty())) return true
+        val intent = Intent(this, HomeActivity::class.java)
+            .putExtra("tvhome.open", "Settings")
+            .putExtra("tvhome.section", section)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        return startSafely(intent)
+    }
 
     /** Écrit [text] dans le champ de saisie actif de l'appli au premier plan ; false s'il n'y en a pas. */
     fun typeText(text: String): Boolean {
@@ -100,4 +118,10 @@ class KeyRemapService : AccessibilityService() {
             }
         }
     }
+}
+
+/** Ordres du service (même processus) vers l'accueil déjà à l'écran. */
+object KairoCommands {
+    /** Ouvre les réglages ; valeur = nom de la section, vide pour le menu. */
+    val openSettings = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
 }

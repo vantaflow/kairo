@@ -1,5 +1,6 @@
 package com.tvhome.launcher.settings
 
+import com.tvhome.launcher.system.InputsSettings
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.background
@@ -69,6 +70,7 @@ enum class Section(val title: String, val group: Group, val icon: TvIcon, val de
     Profiles("Profils", Group.App, TvIcon.Profiles, "Un accueil par personne, profil enfant protégé."),
     Backup("Sauvegarde", Group.App, TvIcon.Backup, "Sauvegarder et restaurer vos réglages."),
     Update("Mise à jour", Group.App, TvIcon.Update, "Installer la dernière version de Kairo."),
+    Inputs("Entrées et HDMI", Group.Box, TvIcon.Android, "Entrées de la box et réglages de la sortie HDMI."),
     Network("Réseau (Wi-Fi, Ethernet)", Group.Box, TvIcon.Network, "Connexion actuelle et réseaux Wi-Fi."),
     Memory("Mémoire", Group.Box, TvIcon.Memory, "Mémoire libre et fermeture des applis en arrière-plan."),
     Android("Paramètres Android", Group.Box, TvIcon.Android, "Raccourcis vers les paramètres de la box."),
@@ -93,8 +95,9 @@ fun SettingsScreen(
     /** Relance l'accueil animé du premier lancement. */
     onReplayOnboarding: () -> Unit = {},
 ) {
-    var opened by rememberSaveable { mutableStateOf(initialSection) }
-    var lastSection by rememberSaveable { mutableStateOf(initialSection ?: Section.Favorites) }
+    // Clé = section demandée : la touche Entrées, panneau déjà ouvert, va bien à sa section.
+    var opened by rememberSaveable(initialSection) { mutableStateOf(initialSection) }
+    var lastSection by rememberSaveable(initialSection) { mutableStateOf(initialSection ?: Section.Favorites) }
     BackHandler { if (opened != null) opened = null else onClose() }
     // Filet de sécurité : si l'élément qui avait le focus disparaît, le panneau le reprend
     // au lieu de le laisser retomber sur l'accueil derrière.
@@ -198,7 +201,11 @@ private fun SettingsMenu(selected: Section, onOpen: (Section) -> Unit) {
     // Au retour d'une section, sa ligne peut être hors écran (donc pas encore composée) :
     // on fait défiler jusqu'à elle, puis on redemande le focus jusqu'à ce qu'il soit posé.
     LaunchedEffect(Unit) {
-        listState.scrollToItem(menuIndexOf(selected))
+        // Défilement seulement si la ligne n'est pas déjà à l'écran : sinon la liste sautait
+        // (titre masqué puis réaffiché) à chaque ouverture du panneau.
+        withFrameNanos { }
+        val index = menuIndexOf(selected)
+        if (listState.layoutInfo.visibleItemsInfo.none { it.index == index && it.offset >= 0 }) listState.scrollToItem(index)
         repeat(30) {
             if (menuHasFocus) return@LaunchedEffect
             withFrameNanos { }
@@ -274,6 +281,7 @@ private fun SectionContent(
                 Section.Setup -> SetupWizard(onDone = onBack, onReplay = onReplayOnboarding)
                 Section.Network -> NetworkSettings(networkMonitor, networkState)
                 Section.Android -> BoxSettings()
+                Section.Inputs -> InputsSettings()
             }
     }
 }

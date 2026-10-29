@@ -1,5 +1,7 @@
 package com.tvhome.launcher
 
+import com.tvhome.launcher.remote.KairoCommands
+import com.tvhome.launcher.settings.Section
 import com.tvhome.launcher.onboarding.Onboarding
 import kotlinx.coroutines.flow.first
 import com.tvhome.launcher.settings.setupNeeded
@@ -109,6 +111,8 @@ class HomeActivity : ComponentActivity() {
     private var onboarding by mutableStateOf(false)
     /** Texte reçu du téléphone, pré-rempli dans la recherche. */
     private var phoneQuery by mutableStateOf("")
+    /** Section des réglages ouverte d'emblée (touche Entrées de la télécommande). */
+    private var settingsSection by mutableStateOf<Section?>(null)
     private var actionsFor by mutableStateOf<AppInfo?>(null)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
@@ -126,6 +130,14 @@ class HomeActivity : ComponentActivity() {
             if (!opened && !container.prefs.setupShown.first()) {
                 container.prefs.setSetupShown()
                 if (setupNeeded(this@HomeActivity)) onboarding = true
+            }
+        }
+        // Touches Réglages / Entrées vues par le service pendant que Kairo est à l'écran.
+        lifecycleScope.launch {
+            KairoCommands.openSettings.collect { section ->
+                onboarding = false
+                settingsSection = Section.entries.firstOrNull { it.name == section }
+                destination = Destination.Settings
             }
         }
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback, Handler(mainLooper))
@@ -171,6 +183,7 @@ class HomeActivity : ComponentActivity() {
         destination = Destination.entries.firstOrNull { it.name == target } ?: return false
         // Texte tapé sur le téléphone : pré-rempli dans la recherche.
         phoneQuery = intent.getStringExtra("tvhome.query").orEmpty()
+        settingsSection = Section.entries.firstOrNull { it.name == intent.getStringExtra("tvhome.section") }
         searchWithVoice = false
         return true
     }
@@ -191,6 +204,7 @@ class HomeActivity : ComponentActivity() {
         // Touche Réglages (roue dentée) : sur Google TV, c'est le launcher Google qui la gérait.
         if (keyCode == KeyEvent.KEYCODE_SETTINGS || keyCode == KeyEvent.KEYCODE_NOTIFICATION) {
             onboarding = false
+            settingsSection = null
             destination = Destination.Settings
             return true
         }
@@ -331,8 +345,9 @@ class HomeActivity : ComponentActivity() {
             } else {
                 SettingsScreen(
                     settingsViewModel, apps, networkMonitor, networkMonitor.state,
-                    onClose = close,
+                    onClose = { settingsSection = null; close() },
                     onReplayOnboarding = { onboarding = true },
+                    initialSection = settingsSection,
                 )
             }
         }
