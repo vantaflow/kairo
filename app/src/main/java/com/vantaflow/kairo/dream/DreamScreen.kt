@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -111,6 +112,8 @@ fun DreamScreen(override: DreamConfig? = null) {
                 Text(listOfNotNull(date, weather).joinToString(" · "), fontSize = 26.sp, color = OnBackgroundMuted)
             }
         }
+        // Au-dessus du voile de l'heure : la carte radio reste nette.
+        DreamRadio(Modifier.align(Alignment.BottomEnd).padding(48.dp))
     }
 }
 
@@ -184,4 +187,29 @@ private fun AnimatedGradient(palette: Palette, intervalSec: Int) {
             drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), center = center + dir * 0.4f, radius = r))
         },
     )
+}
+
+/** Radio en cours pendant l'écran de veille : logo, nom, égaliseur et touches utiles. */
+@Composable
+private fun DreamRadio(modifier: Modifier) {
+    val now by com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle()
+    val station = now.station
+    if (!now.active || station == null) return
+    androidx.compose.foundation.layout.Row(
+        modifier
+            .background(Color.Black.copy(alpha = 0.55f), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+            .padding(horizontal = 22.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(18.dp),
+    ) {
+        com.vantaflow.kairo.radio.StationLogo(station, 72.dp)
+        Column {
+            Text(station.name, fontSize = 24.sp, color = OnBackground, maxLines = 1)
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(vertical = 4.dp)) {
+                if (now.status == com.vantaflow.kairo.radio.RadioStatus.Playing) com.vantaflow.kairo.radio.Equalizer()
+                else Text("Connexion…", fontSize = 16.sp, color = OnBackgroundMuted)
+            }
+            Text("← → changer de radio · OK arrêter", fontSize = 15.sp, color = OnBackgroundMuted)
+        }
+    }
 }
