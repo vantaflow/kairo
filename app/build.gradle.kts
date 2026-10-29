@@ -18,8 +18,8 @@ android {
         applicationId = "com.vantaflow.kairo"
         minSdk = 30
         targetSdk = 34
-        versionCode = 11500
-        versionName = "1.15.0"
+        versionCode = 11600
+        versionName = "1.16.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PIXABAY_API_KEY", "\"${secrets.getProperty("PIXABAY_API_KEY", "")}\"")
     }
