@@ -91,6 +91,8 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 | ![Toutes les applications](docs/assets/apps.jpg) | ![Recherche](docs/assets/search.jpg) |
 | **Rangées de recommandations** | **Déplacer un favori** |
 | ![Rangées de recommandations](docs/assets/reco-rows.jpg) | ![Déplacer un favori](docs/assets/move.jpg) |
+| **Écran de veille : dégradé animé** | **Réglages de l'écran de veille** |
+| ![Écran de veille](docs/assets/dream-gradient.jpg) | ![Réglages de l'écran de veille](docs/assets/dream-settings.jpg) |
 
 <sub>Captures prises sur une Mecool KM7 Plus.</sub>
 
@@ -109,6 +111,8 @@ Kairo met en avant et installe les autres applis Vantaflow, et les intègre part
 | --- | --- |
 | [Kairo Player](#kairo-player) | Vidéos, photos et musique de la box et des clés USB, reprise dans « À suivre ». |
 | [Ultra TV](https://github.com/vantaflow/ultra-tv) | Lecteur IPTV : Xtream Codes et M3U, guide TV, replay, pause du direct, profils. |
+
+![Nos applications au premier lancement](docs/assets/our-apps.jpg)
 
 ## Kairo Player
 
@@ -143,7 +147,7 @@ Kairo est écrit en Kotlin avec Jetpack Compose et chaque écran a été profil�
 2. Ou installez-le par clé USB ou `adb install kairo.apk`.
 
 > **Depuis la version 1.9.0, l'identifiant de Kairo est `com.vantaflow.kairo`** (avant : `com.tvhome.launcher`). Une box qui avait une version antérieure installe la nouvelle à côté : sauvegardez vos réglages (Réglages › Sauvegarde), installez la 1.9.0, restaurez, puis désinstallez l'ancien Kairo.
-3. Ouvrez Kairo puis **Réglages › Écran d'accueil par défaut**.
+3. Ouvrez Kairo : l'**accueil animé** vous guide (écran d'accueil par défaut, recommandations, nos applications). Tout reste dans **Réglages › Assistant de configuration**.
 
 Pour un réglage complet en une commande depuis un PC (autorisations, touches de la télécommande, écran de veille) :
 
