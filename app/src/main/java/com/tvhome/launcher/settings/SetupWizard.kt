@@ -62,7 +62,7 @@ fun setupNeeded(context: Context): Boolean = !recoAccessGranted(context) || !isD
  * paramètres Android).
  */
 @Composable
-fun SetupWizard(onDone: () -> Unit) {
+fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
     val context = LocalContext.current
     var refresh by remember { mutableIntStateOf(0) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -95,7 +95,7 @@ fun SetupWizard(onDone: () -> Unit) {
                 context.packageManager.canRequestPackageInstalls(),
                 "Autoriser",
                 {
-                    open(context, Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$PKG")))
+                    openSafely(context, Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$PKG")))
                 },
                 adb = "adb shell appops set $PKG REQUEST_INSTALL_PACKAGES allow",
                 optional = true,
@@ -105,15 +105,15 @@ fun SetupWizard(onDone: () -> Unit) {
                 "Réassigner les touches YouTube, Netflix, Prime Video… : activez « Kairo » dans Accessibilité.",
                 keyServiceRunning(context),
                 "Accessibilité",
-                { open(context, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+                { openSafely(context, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
                 optional = true,
             ),
             SetupStep(
                 "Écran de veille Kairo",
                 "Images, heure et météo quand la box est inactive.",
-                secureSetting(context, "screensaver_components")?.contains(DREAM),
+                dreamEnabled(context),
                 "Écran de veille",
-                { open(context, Intent(Settings.ACTION_DREAM_SETTINGS)) },
+                { openSafely(context, Intent(Settings.ACTION_DREAM_SETTINGS)) },
                 adb = "adb shell settings put secure screensaver_components $DREAM",
                 optional = true,
             ),
@@ -131,7 +131,12 @@ fun SetupWizard(onDone: () -> Unit) {
         }
         steps.forEach { step -> item(key = step.title) { StepRow(step) } }
         // Toujours un élément focalisable, même quand tout est prêt (sinon le focus quitte le panneau).
-        item { SmallButton("Terminé", onDone) }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SmallButton("Terminé", onDone)
+                SmallButton("Revoir l'accueil animé", onReplay)
+            }
+        }
         item {
             SettingHint("Les commandes ADB se tapent depuis un PC sur le même réseau, après « adb connect <adresse de la box> ».")
         }
@@ -163,10 +168,13 @@ private fun StepRow(step: SetupStep) {
 }
 
 /** Service de touches réellement actif (le réglage seul peut le citer sans qu'il tourne). */
-private fun keyServiceRunning(context: Context): Boolean =
+fun keyServiceRunning(context: Context): Boolean =
     context.getSystemService(AccessibilityManager::class.java)
         ?.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
         ?.any { it.resolveInfo?.serviceInfo?.packageName == PKG } == true
+
+/** Écran de veille Kairo choisi ; null si la box interdit de le lire. */
+fun dreamEnabled(context: Context): Boolean? = secureSetting(context, "screensaver_components")?.contains(DREAM)
 
 /** Réglage système lu sans planter : certaines box en interdisent la lecture (null). */
 private fun secureSetting(context: Context, key: String): String? =
@@ -176,7 +184,7 @@ private fun secureSetting(context: Context, key: String): String? =
         null
     }
 
-private fun open(context: Context, intent: Intent) {
+fun openSafely(context: Context, intent: Intent) {
     try {
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (_: ActivityNotFoundException) {

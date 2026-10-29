@@ -1,8 +1,8 @@
 package com.tvhome.launcher
 
+import com.tvhome.launcher.onboarding.Onboarding
 import kotlinx.coroutines.flow.first
 import com.tvhome.launcher.settings.setupNeeded
-import com.tvhome.launcher.settings.Section
 import com.tvhome.launcher.reco.passthroughInputs
 import com.tvhome.launcher.reco.LiveChannel
 import kotlinx.coroutines.launch
@@ -105,8 +105,8 @@ class HomeActivity : ComponentActivity() {
 
     /** Écran demandé par un appui sur Home : on revient toujours à l'accueil. */
     private var destination by mutableStateOf(Destination.Home)
-    /** Réglages ouverts sur l'assistant (premier lancement d'une box pas encore configurée). */
-    private var openSetup by mutableStateOf(false)
+    /** Accueil animé plein écran (premier lancement d'une box pas encore configurée). */
+    private var onboarding by mutableStateOf(false)
     private var actionsFor by mutableStateOf<AppInfo?>(null)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
@@ -123,10 +123,7 @@ class HomeActivity : ComponentActivity() {
         lifecycleScope.launch {
             if (!opened && !container.prefs.setupShown.first()) {
                 container.prefs.setSetupShown()
-                if (setupNeeded(this@HomeActivity)) {
-                    openSetup = true
-                    destination = Destination.Settings
-                }
+                if (setupNeeded(this@HomeActivity)) onboarding = true
             }
         }
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback, Handler(mainLooper))
@@ -143,7 +140,18 @@ class HomeActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().background(Background))
             } else {
                 TvHomeTheme(current.first) {
-                    CompositionLocalProvider(LocalHomeLayout provides current.second) { Root() }
+                    CompositionLocalProvider(LocalHomeLayout provides current.second) {
+                        Box(Modifier.fillMaxSize()) {
+                            Root()
+                            if (onboarding) {
+                                Onboarding(onFinish = {
+                                    onboarding = false
+                                    destination = Destination.Home
+                                    homeFocus.reset()
+                                })
+                            }
+                        }
+                    }
                 }
             }
             }
@@ -153,6 +161,11 @@ class HomeActivity : ComponentActivity() {
     /** `adb shell am start -n com.tvhome.launcher/.HomeActivity --es tvhome.open Apps` ouvre un écran donné. */
     private fun openFromIntent(intent: Intent?): Boolean {
         val target = intent?.getStringExtra("tvhome.open") ?: return false
+        // « Onboarding » : relance l'accueil animé (tests, captures).
+        if (target == "Onboarding") {
+            onboarding = true
+            return true
+        }
         destination = Destination.entries.firstOrNull { it.name == target } ?: return false
         return true
     }
@@ -305,8 +318,8 @@ class HomeActivity : ComponentActivity() {
             } else {
                 SettingsScreen(
                     settingsViewModel, apps, networkMonitor, networkMonitor.state,
-                    onClose = { openSetup = false; close() },
-                    initialSection = if (openSetup) Section.Setup else null,
+                    onClose = close,
+                    onReplayOnboarding = { onboarding = true },
                 )
             }
         }
