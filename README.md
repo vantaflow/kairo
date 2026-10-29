@@ -98,16 +98,18 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 ## Outils
 
-Une rangée **Outils** sur l'accueil (masquable dans Réglages › Affichage de l'accueil) :
+Un bouton **Outils** dans l'en-tête (menu) et une rangée **Outils** sous « Toutes les applis » (masquable dans Réglages › Affichage de l'accueil) :
 
-- **Radio** : les radios en direct du monde entier (annuaire libre radio-browser.info), le pays de l'utilisateur en premier, favoris (appui long), recherche. La radio continue sur l'accueil ; une autre appli qui joue du son l'arrête.
-- **Météo** : maintenant, heure par heure et sur 7 jours (← → change de jour).
+- **Radio** : les radios en direct du monde entier (annuaire libre radio-browser.info), le pays de l'utilisateur en premier, favoris (appui long), recherche. Lecteur plein écran (précédente, lecture / arrêt, suivante, favori) ; la radio continue sur l'accueil avec une pastille « ♪ » dans l'en-tête pour revenir au lecteur ; touches ⏮ ⏯ ⏭ de la télécommande ; une autre appli qui joue du son l'arrête.
+- **Météo** : maintenant, courbe des températures sur 24 h, 7 jours avec écart min / max ; lever et coucher du soleil, UV, pluie, vent et rafales, pression, nuages (← → change de jour).
 - **Minuteur** : mise en veille de la box (et de la télé par HDMI-CEC) après 15 min à 2 h ; un bandeau prévient 1 min avant, une touche ajoute 15 min. Nécessite le service Kairo (Accessibilité).
 - **Nettoyeur** : mémoire et stockage (clés USB comprises), « Tout optimiser » ferme les applis en arrière-plan et vide le cache de Kairo, applis les plus lourdes.
 
-| Outils sur l'accueil | Radio |
+| Menu Outils | Outils sur l'accueil |
 | --- | --- |
-| ![Outils](docs/assets/tools-home.jpg) | ![Radio](docs/assets/radio.jpg) |
+| ![Menu Outils](docs/assets/tools-menu.jpg) | ![Outils](docs/assets/tools-home.jpg) |
+| **Radio** | **Lecteur radio** |
+| ![Radio](docs/assets/radio.jpg) | ![Lecteur radio](docs/assets/radio-player.jpg) |
 | **Météo sur 7 jours** | **Nettoyeur** |
 | ![Météo](docs/assets/weather.jpg) | ![Nettoyeur](docs/assets/cleaner.jpg) |
 

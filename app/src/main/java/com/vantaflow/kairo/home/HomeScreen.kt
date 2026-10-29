@@ -101,7 +101,11 @@ fun HomeScreen(
     onInstallOurApp: (OurApp) -> Unit = {},
     /** Parmi [ourApps], celles déjà installées qui ont une mise à jour. */
     ourAppUpdates: Set<String> = emptySet(),
-    /** Outils (radio, météo…) et leur état ; vide = rangée masquée. */
+    /** Bouton « Outils » de l'en-tête (null = masqué). */
+    onOpenTools: (() -> Unit)? = null,
+    nowPlaying: String? = null,
+    onOpenNowPlaying: () -> Unit = {},
+    /** Rangée « Outils » sous « Toutes les applis » et l'état de chaque outil ; vide = masquée. */
     tools: List<com.vantaflow.kairo.tools.Tool> = emptyList(),
     toolSubtitles: Map<com.vantaflow.kairo.tools.Tool, String> = emptyMap(),
     onOpenTool: (com.vantaflow.kairo.tools.Tool) -> Unit = {},
@@ -129,6 +133,9 @@ fun HomeScreen(
                 onOpenApps = onOpenApps,
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
+                onOpenTools = onOpenTools,
+                nowPlaying = nowPlaying,
+                onOpenNowPlaying = onOpenNowPlaying,
                 // Sur l'en-tête (Applications, Réglages), le fond reprend le fond d'écran.
                 modifier = Modifier
                     .padding(horizontal = 72.dp)
