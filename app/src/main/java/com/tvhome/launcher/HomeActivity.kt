@@ -188,6 +188,12 @@ class HomeActivity : ComponentActivity() {
     /** Touche Recherche (ou Assistant si la box la transmet) : écran de recherche. */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         val voice = keyCode == KeyEvent.KEYCODE_ASSIST || keyCode == KeyEvent.KEYCODE_VOICE_ASSIST
+        // Touche Réglages (roue dentée) : sur Google TV, c'est le launcher Google qui la gérait.
+        if (keyCode == KeyEvent.KEYCODE_SETTINGS || keyCode == KeyEvent.KEYCODE_NOTIFICATION) {
+            onboarding = false
+            destination = Destination.Settings
+            return true
+        }
         if (keyCode == KeyEvent.KEYCODE_SEARCH || voice) {
             searchWithVoice = voice
             phoneQuery = ""
