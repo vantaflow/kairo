@@ -153,6 +153,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showFavoritesLabel = booleanPreferencesKey("show_favorites_label")
         val showRowTitles = booleanPreferencesKey("show_row_titles")
         val showRecentApps = booleanPreferencesKey("show_recent_apps")
+        val showLiveTv = booleanPreferencesKey("show_live_tv")
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
         val clockSize = intPreferencesKey("clock_size")
         val tileWidth = intPreferencesKey("tile_width")
@@ -246,6 +247,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             showFavoritesLabel = it[Keys.showFavoritesLabel] ?: d.showFavoritesLabel,
             showRowTitles = it[Keys.showRowTitles] ?: d.showRowTitles,
             showRecentApps = it[Keys.showRecentApps] ?: d.showRecentApps,
+            showLiveTv = it[Keys.showLiveTv] ?: d.showLiveTv,
             clockSizeSp = it[Keys.clockSize] ?: d.clockSizeSp,
             tileWidthDp = it[Keys.tileWidth] ?: d.tileWidthDp,
             heroTransition = it[Keys.heroTransition] ?: d.heroTransition,
@@ -260,6 +262,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             it[Keys.showFavoritesLabel] = layout.showFavoritesLabel
             it[Keys.showRowTitles] = layout.showRowTitles
             it[Keys.showRecentApps] = layout.showRecentApps
+            it[Keys.showLiveTv] = layout.showLiveTv
             it[Keys.clockSize] = layout.clockSizeSp
             it[Keys.tileWidth] = layout.tileWidthDp
             it[Keys.heroTransition] = layout.heroTransition

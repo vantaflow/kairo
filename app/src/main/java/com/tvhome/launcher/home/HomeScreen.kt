@@ -1,5 +1,6 @@
 package com.tvhome.launcher.home
 
+import com.tvhome.launcher.reco.LiveChannel
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.MutatePriority
@@ -91,6 +92,7 @@ fun HomeScreen(
     otherApps: List<AppInfo> = emptyList(),
     /** Dernières applis ouvertes, pour la rangée « Récentes » (vide = rangée masquée). */
     recentApps: List<AppInfo> = emptyList(),
+    onOpenTv: (LiveChannel) -> Unit = {},
     /** Favori en cours de déplacement : ← → le déplacent, OK ou Retour terminent. */
     movingFavorite: String? = null,
     onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
@@ -228,6 +230,20 @@ fun HomeScreen(
                             }
                         }
                     }
+                    }
+                }
+                if (state.liveChannels.isNotEmpty()) {
+                    key("live-tv") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            LiveTvRow("Chaînes TV", state.liveChannels, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        }
+                    }
+                }
+                if (state.tvInputs.isNotEmpty()) {
+                    key("tv-inputs") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            LiveTvRow("Entrées", state.tvInputs, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        }
                     }
                 }
                 if (recentApps.isNotEmpty()) {

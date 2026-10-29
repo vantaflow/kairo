@@ -1,5 +1,7 @@
 package com.tvhome.launcher
 
+import com.tvhome.launcher.reco.passthroughInputs
+import com.tvhome.launcher.reco.LiveChannel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 import android.content.Intent
@@ -71,6 +73,7 @@ class HomeActivity : ComponentActivity() {
                     epg = TvProviderEpgSource(applicationContext),
                     nextWallpaper = container.nextWallpaper,
                     weather = container.weather,
+                    tvInputs = { passthroughInputs(applicationContext) },
                 )
             }
         }
@@ -226,7 +229,13 @@ class HomeActivity : ComponentActivity() {
                     onProgramClick = programClick,
                     onOpenSearch = { searchWithVoice = false; destination = Destination.Search },
                     // Profil enfant : pas de recommandations (elles ouvrent n'importe quelle appli).
-                    state = if (profile.kids) state.copy(watchNext = emptyList(), recoRows = emptyList()) else state,
+                    // Chaînes TV : seulement si la box en a, que le réglage les montre et hors profil enfant.
+                    state = when {
+                        profile.kids -> state.copy(watchNext = emptyList(), recoRows = emptyList(), liveChannels = emptyList(), tvInputs = emptyList())
+                        !LocalHomeLayout.current.showLiveTv -> state.copy(liveChannels = emptyList(), tvInputs = emptyList())
+                        else -> state
+                    },
+                    onOpenTv = ::openTv,
                     focus = homeFocus,
                     onLaunch = launch,
                     onFavoriteLongClick = { if (!profile.kids) actionsFor = it },
@@ -305,6 +314,13 @@ class HomeActivity : ComponentActivity() {
                 onPlayStore = { openPlayStore(app.packageName) },
                 onMove = if (destination == Destination.Home) ({ movingFavorite = app.packageName }) else null,
             )
+        }
+    }
+
+    /** Ouvre une chaîne ou une entrée dans l'appli TV du système ; à défaut, l'appli du tuner. */
+    private fun openTv(channel: LiveChannel) {
+        if (!startSafely(Intent(Intent.ACTION_VIEW, Uri.parse(channel.uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
+            launchApp(channel.packageName)
         }
     }
 
