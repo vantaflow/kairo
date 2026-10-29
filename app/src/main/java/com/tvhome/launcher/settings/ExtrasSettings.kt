@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -167,13 +166,11 @@ fun BackupSettings() {
         }
         message?.let { Text(it, color = OnBackgroundMuted) }
         Text("Fichier sur la box :", color = OnBackgroundMuted)
-        SelectionContainer {
-            Text(
-                "${file.absolutePath}\nadb pull ${file.absolutePath}\nadb push tvhome-backup.json ${file.absolutePath}",
-                fontFamily = FontFamily.Monospace,
-                color = OnBackground,
-            )
-        }
+        Text(
+            "${file.absolutePath}\nadb pull ${file.absolutePath}\nadb push tvhome-backup.json ${file.absolutePath}",
+            fontFamily = FontFamily.Monospace,
+            color = OnBackground,
+        )
     }
 }
 

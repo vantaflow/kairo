@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,14 +57,12 @@ fun RecoSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                     Text("Le launcher n'a pas encore accès aux recommandations des applis.", color = OnBackground)
                     Button(onClick = { permission.launch(EPG_PERMISSIONS) }) { Text("Autoriser l'accès") }
                     Text("Si la box refuse, accordez-le une fois depuis un PC :", color = OnBackgroundMuted)
-                    SelectionContainer {
-                        Text(
-                            "adb shell pm grant com.tvhome.launcher com.android.providers.tv.permission.READ_EPG_DATA\n" +
-                                "adb shell pm grant com.tvhome.launcher android.permission.READ_TV_LISTINGS",
-                            fontFamily = FontFamily.Monospace,
-                            color = OnBackground,
-                        )
-                    }
+                    Text(
+                        "adb shell pm grant com.tvhome.launcher com.android.providers.tv.permission.READ_EPG_DATA\n" +
+                            "adb shell pm grant com.tvhome.launcher android.permission.READ_TV_LISTINGS",
+                        fontFamily = FontFamily.Monospace,
+                        color = OnBackground,
+                    )
                 }
             }
         } else if (apps.isEmpty()) {

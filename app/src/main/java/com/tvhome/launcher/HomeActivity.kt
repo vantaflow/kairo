@@ -1,5 +1,8 @@
 package com.tvhome.launcher
 
+import kotlinx.coroutines.flow.first
+import com.tvhome.launcher.settings.setupNeeded
+import com.tvhome.launcher.settings.Section
 import com.tvhome.launcher.reco.passthroughInputs
 import com.tvhome.launcher.reco.LiveChannel
 import kotlinx.coroutines.launch
@@ -102,6 +105,8 @@ class HomeActivity : ComponentActivity() {
 
     /** Écran demandé par un appui sur Home : on revient toujours à l'accueil. */
     private var destination by mutableStateOf(Destination.Home)
+    /** Réglages ouverts sur l'assistant (premier lancement d'une box pas encore configurée). */
+    private var openSetup by mutableStateOf(false)
     private var actionsFor by mutableStateOf<AppInfo?>(null)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
@@ -114,7 +119,16 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        openFromIntent(intent)
+        val opened = openFromIntent(intent)
+        lifecycleScope.launch {
+            if (!opened && !container.prefs.setupShown.first()) {
+                container.prefs.setSetupShown()
+                if (setupNeeded(this@HomeActivity)) {
+                    openSetup = true
+                    destination = Destination.Settings
+                }
+            }
+        }
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback, Handler(mainLooper))
         setContent {
             DesignScale {
@@ -289,7 +303,11 @@ class HomeActivity : ComponentActivity() {
             if (profile.kids && !settingsUnlocked) {
                 PinPrompt(profile, pinGuard, onUnlocked = { settingsUnlocked = true }, onCancel = close)
             } else {
-                SettingsScreen(settingsViewModel, apps, networkMonitor, networkMonitor.state, onClose = close)
+                SettingsScreen(
+                    settingsViewModel, apps, networkMonitor, networkMonitor.state,
+                    onClose = { openSetup = false; close() },
+                    initialSection = if (openSetup) Section.Setup else null,
+                )
             }
         }
 

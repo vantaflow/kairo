@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.Flow
 enum class Group(val title: String) { App("Kairo"), Box("Paramètres de la box") }
 
 enum class Section(val title: String, val group: Group, val icon: TvIcon, val description: String) {
+    Setup("Assistant de configuration", Group.App, TvIcon.Check, "Ce qui est prêt et ce qu'il reste à activer."),
     Favorites("Favoris", Group.App, TvIcon.Favorites, "L'ordre et le contenu de la rangée Favoris."),
     Wallpaper("Fond d'écran", Group.App, TvIcon.Wallpaper, "Images Pixabay, dégradés ou couleur unie."),
     Theme("Thème", Group.App, TvIcon.Theme, "Couleurs, arrondi et zoom des tuiles."),
@@ -67,7 +68,6 @@ enum class Section(val title: String, val group: Group, val icon: TvIcon, val de
     Profiles("Profils", Group.App, TvIcon.Profiles, "Un accueil par personne, profil enfant protégé."),
     Backup("Sauvegarde", Group.App, TvIcon.Backup, "Sauvegarder et restaurer vos réglages."),
     Update("Mise à jour", Group.App, TvIcon.Update, "Installer la dernière version de Kairo."),
-    DefaultLauncher("Écran d'accueil par défaut", Group.App, TvIcon.Home, "Faire de Kairo l'écran d'accueil."),
     Network("Réseau (Wi-Fi, Ethernet)", Group.Box, TvIcon.Network, "Connexion actuelle et réseaux Wi-Fi."),
     Memory("Mémoire", Group.Box, TvIcon.Memory, "Mémoire libre et fermeture des applis en arrière-plan."),
     Android("Paramètres Android", Group.Box, TvIcon.Android, "Raccourcis vers les paramètres de la box."),
@@ -87,9 +87,11 @@ fun SettingsScreen(
     networkMonitor: NetworkMonitor,
     networkState: Flow<NetState>,
     onClose: () -> Unit = {},
+    /** Section ouverte d'emblée (l'assistant au premier lancement). */
+    initialSection: Section? = null,
 ) {
-    var opened by rememberSaveable { mutableStateOf<Section?>(null) }
-    var lastSection by rememberSaveable { mutableStateOf(Section.Favorites) }
+    var opened by rememberSaveable { mutableStateOf(initialSection) }
+    var lastSection by rememberSaveable { mutableStateOf(initialSection ?: Section.Favorites) }
     BackHandler { if (opened != null) opened = null else onClose() }
     // Filet de sécurité : si l'élément qui avait le focus disparaît, le panneau le reprend
     // au lieu de le laisser retomber sur l'accueil derrière.
@@ -164,7 +166,7 @@ fun SettingsScreen(
                         .onFocusChanged { contentHasFocus = it.hasFocus }
                         .focusGroup(),
                 ) {
-                    SectionContent(section, vm, installedApps, networkMonitor, networkState)
+                    SectionContent(section, vm, installedApps, networkMonitor, networkState) { opened = null }
                 }
             }
         }
@@ -247,6 +249,8 @@ private fun SectionContent(
     installedApps: List<AppInfo>,
     networkMonitor: NetworkMonitor,
     networkState: Flow<NetState>,
+    /** Retour au menu des réglages. */
+    onBack: () -> Unit,
 ) {
     run {
             when (section) {
@@ -262,7 +266,7 @@ private fun SectionContent(
                 Section.Backup -> BackupSettings()
                 Section.Update -> UpdateSettings()
                 Section.Memory -> MemorySettings(installedApps)
-                Section.DefaultLauncher -> DefaultLauncherWizard()
+                Section.Setup -> SetupWizard(onDone = onBack)
                 Section.Network -> NetworkSettings(networkMonitor, networkState)
                 Section.Android -> BoxSettings()
             }

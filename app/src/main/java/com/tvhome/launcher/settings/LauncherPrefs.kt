@@ -154,6 +154,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showRowTitles = booleanPreferencesKey("show_row_titles")
         val showRecentApps = booleanPreferencesKey("show_recent_apps")
         val showLiveTv = booleanPreferencesKey("show_live_tv")
+        val setupShown = booleanPreferencesKey("setup_shown")
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
         val clockSize = intPreferencesKey("clock_size")
         val tileWidth = intPreferencesKey("tile_width")
@@ -183,6 +184,13 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val favorites: Flow<List<String>> = pref { decode(it[Keys.favorites(it.sfx)]) }
     val favoritesInitialized: Flow<Boolean> = pref { it[Keys.favoritesInitialized(it.sfx)] ?: false }
     val hidden: Flow<Set<String>> = pref { it[Keys.hidden(it.sfx)].orEmpty() }
+
+    /** Vrai une fois l'assistant de configuration proposé (il ne s'ouvre seul qu'une fois). */
+    val setupShown: Flow<Boolean> = pref { it[Keys.setupShown] ?: false }
+
+    suspend fun setSetupShown() {
+        store.edit { it[Keys.setupShown] = true }
+    }
 
     /** Applis ouvertes depuis Kairo, la plus récente en tête (par profil). */
     val recentApps: Flow<List<String>> = pref { decode(it[Keys.recentApps(it.sfx)]) }
