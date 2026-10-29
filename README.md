@@ -50,8 +50,19 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - Navigation complète au D-pad, appui long ou touche Menu pour les actions d'une appli.
 - **Touches YouTube / Netflix / Prime Video / Disney+ réassignables** vers n'importe quelle appli.
 
+**Accueil animé au premier lancement**
+- Plein écran, fond vivant et pages qui glissent : bienvenue, puis **uniquement les étapes qui manquent** sur la box (recommandations, écran d'accueil, touches, mises à jour, écran de veille).
+- Chaque étape se coche toute seule une fois faite et passe à la suivante ; si la box refuse, la commande ADB exacte est affichée.
+- **Choix du thème en direct**, puis « Tout est prêt ! ». À revoir à tout moment dans Réglages › Assistant de configuration.
+
+| Bienvenue | Une étape |
+| --- | --- |
+| ![Accueil animé : bienvenue](docs/assets/onboarding-welcome.jpg) | ![Accueil animé : une étape](docs/assets/onboarding-step.jpg) |
+| **Choix du thème en direct** | **Tout est prêt** |
+| ![Accueil animé : thème](docs/assets/onboarding-theme.jpg) | ![Accueil animé : fin](docs/assets/onboarding-done.jpg) |
+
 **Réglages en panneau latéral**
-- **Accueil animé au premier lancement** (plein écran : bienvenue, étapes manquantes qui se cochent seules, choix du thème en direct), puis **assistant de configuration** dans les réglages : ce qui est prêt, ce qui s'active d'un clic (recommandations, mises à jour, touches, écran de veille, écran d'accueil) et, si la box refuse, la commande ADB exacte.
+- **Assistant de configuration** : ce qui est prêt, ce qui s'active d'un clic (recommandations, mises à jour, touches, écran de veille, écran d'accueil) et, si la box refuse, la commande ADB exacte.
 - Panneau à droite par-dessus l'accueil : les changements se voient en direct.
 - Réseau (Wi-Fi / Ethernet), raccourci HDMI-CEC et accès direct aux paramètres Android de la box.
 - Profils (dont un **profil enfant** verrouillé par code), sauvegarde et restauration, nettoyage mémoire, mise à jour depuis GitHub.
