@@ -9,6 +9,7 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.os.Bundle
+import com.tvhome.launcher.HomeActivity
 import com.tvhome.launcher.TvHomeApp
 import com.tvhome.launcher.ui.startSafely
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,21 @@ class KeyRemapService : AccessibilityService() {
         if (KeyLearner.shared.offer(code)) {
             consumed += code
             return true
+        }
+        // Touche Réglages (roue dentée). La télécommande Google TV envoie KEYCODE_NOTIFICATION, que le
+        // système passe au launcher Google (désactivé) : elle ne servait donc plus.
+        // Dans Kairo : panneau des réglages de Kairo ; dans une autre appli : paramètres Android.
+        if (code == KeyEvent.KEYCODE_SETTINGS || code == KeyEvent.KEYCODE_NOTIFICATION) {
+            val intent = if (rootInActiveWindow?.packageName == packageName || rootInActiveWindow == null) {
+                Intent(this, HomeActivity::class.java).putExtra("tvhome.open", "Settings")
+            } else {
+                Intent(Settings.ACTION_SETTINGS)
+            }
+            if (startSafely(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))) {
+                consumed += code
+                return true
+            }
+            return false
         }
         val pkg = bindingFor(code, bindings) ?: return false
         val container = (application as TvHomeApp).container
