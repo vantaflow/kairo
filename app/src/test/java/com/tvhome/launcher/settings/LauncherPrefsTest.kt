@@ -57,6 +57,17 @@ class LauncherPrefsTest {
     }
 
     @Test
+    fun recordLaunchKeepsMostRecentFirstWithoutDuplicates() = runTest(UnconfinedTestDispatcher()) {
+        val prefs = prefs()
+        prefs.recordLaunch("a")
+        prefs.recordLaunch("b")
+        prefs.recordLaunch("a")
+        assertEquals(listOf("a", "b"), prefs.recentApps.first())
+        repeat(MAX_RECENT_APPS + 3) { prefs.recordLaunch("p$it") }
+        assertEquals(MAX_RECENT_APPS, prefs.recentApps.first().size)
+    }
+
+    @Test
     fun addFavoriteIgnoresDuplicates() = runTest(UnconfinedTestDispatcher()) {
         val prefs = prefs()
         prefs.addFavorite("a")

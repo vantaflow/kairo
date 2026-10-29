@@ -1,0 +1,4 @@
+# Profil de démarrage de Kairo : tout le code de l'appli est compilé dès l'installation,
+# y compris après une mise à jour par Downloader (sans « cmd package compile »).
+HSPLcom/tvhome/launcher/**->**(**)**
+Lcom/tvhome/launcher/**;

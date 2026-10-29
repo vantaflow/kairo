@@ -33,7 +33,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 ## Fonctions
 
 **Accueil**
-- Favoris en tête, rangée « Toutes les applis », puis **À suivre** et les rangées de recommandations publiées par vos applis (Netflix, YouTube, SmartTube, TiviMate…).
+- Favoris en tête, rangée **Récentes** (dernières applis ouvertes, désactivable), « Toutes les applis », puis **À suivre** et les rangées de recommandations publiées par vos applis (Netflix, YouTube, SmartTube, TiviMate…).
 - **Fond « héros »** : l'affiche du contenu sélectionné, floutée et fondue en dégradé, comme sur Google TV.
 - Heure synchronisée sur un serveur de temps (NTP), date et **météo** (Open-Meteo, position par IP ou ville).
 - Rangée sélectionnée calée sous l'en-tête : rien n'est jamais coupé en défilant.
@@ -76,7 +76,8 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 Kairo est écrit en Kotlin avec Jetpack Compose et chaque écran a été profilé sur la box (traces système `atrace`) :
 
-- **Build release** R8 + profil de démarrage, compilé à l'avance (`cmd package compile -m speed`).
+- **Build release** R8 + profil de démarrage couvrant tout le code de Kairo : compilé à l'avance dès l'installation, même après une mise à jour par Downloader.
+- **Mémoire rendue** : quand la box manque de RAM, Kairo en arrière-plan libère ses images de tuiles pour l'appli en cours.
 - **Fonds figés dans une texture** : le fond d'écran et le fond « héros » ne sont redessinés que lorsqu'ils changent, jamais pendant la navigation.
 - **Tuiles et cartes légères** : zoom et contour lus uniquement au dessin, aucune recomposition au changement de focus ; une seule affiche décodée par contenu, en RGB 565.
 - **Accessibilité Compose coupée** : les box gardent toujours des services d'accessibilité actifs (télécommande, constructeur), ce qui faisait reparcourir tout l'écran à Compose à chaque défilement — environ 100 ms perdues par seconde.

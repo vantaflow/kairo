@@ -60,4 +60,10 @@ class TvHomeApp : Application() {
         super.onCreate()
         container = AppContainer(this)
     }
+
+    /** Box à 2 Go : Kairo en arrière-plan rend la mémoire des tuiles à l'appli lancée. */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_BACKGROUND) container.tileImages.clear()
+    }
 }
