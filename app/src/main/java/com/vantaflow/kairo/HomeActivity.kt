@@ -2,12 +2,14 @@ package com.vantaflow.kairo
 
 import com.vantaflow.kairo.apps.OurApps
 import com.vantaflow.kairo.radio.RadioScreen
+import com.vantaflow.kairo.radio.Radio
 import com.vantaflow.kairo.remote.KeyRemapService
 import com.vantaflow.kairo.system.MemoryCleaner
 import com.vantaflow.kairo.system.formatMb
 import com.vantaflow.kairo.tools.CleanerScreen
 import com.vantaflow.kairo.tools.SleepTimerDialog
 import com.vantaflow.kairo.tools.Tool
+import com.vantaflow.kairo.tools.ToolsMenu
 import com.vantaflow.kairo.tools.WeatherScreen
 import com.vantaflow.kairo.tools.formatMinutes
 import com.vantaflow.kairo.remote.KairoCommands
@@ -126,6 +128,10 @@ class HomeActivity : ComponentActivity() {
     private var actionsFor by mutableStateOf<AppInfo?>(null)
     /** Choix du minuteur de mise en veille ouvert. */
     private var sleepDialog by mutableStateOf(false)
+    /** Menu « Outils » de l'en-tête ouvert. */
+    private var toolsMenu by mutableStateOf(false)
+    /** L'écran Radio s'ouvre sur le lecteur (pastille « ♪ » de l'en-tête). */
+    private var radioPlayer by mutableStateOf(false)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
     private var searchWithVoice by mutableStateOf(false)
@@ -279,13 +285,7 @@ class HomeActivity : ComponentActivity() {
                 val recent by container.prefs.recentApps.collectAsStateWithLifecycle(emptyList())
                 val ourUpdates by container.ourApps.updates.collectAsStateWithLifecycle()
                 val showRecent = LocalHomeLayout.current.showRecentApps && !profile.kids
-                val radio by com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle()
-                val sleepEnd by container.sleepTimer.endsAt.collectAsStateWithLifecycle()
-                val tools = when {
-                    !LocalHomeLayout.current.showTools -> emptyList()
-                    profile.kids -> Tool.entries - Tool.Cleaner
-                    else -> Tool.entries
-                }
+                val tools = if (LocalHomeLayout.current.showTools) toolsFor(profile.kids) else emptyList()
                 HomeScreen(
                     // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
                     recentApps = if (!showRecent) emptyList() else remember(recent, apps, state.favorites) {
@@ -315,24 +315,13 @@ class HomeActivity : ComponentActivity() {
                         OurApps.filter { !container.ourApps.isInstalled(it) || it.id in ourUpdates }
                     },
                     ourAppUpdates = ourUpdates,
+                    onOpenTools = { toolsMenu = true },
+                    nowPlaying = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
+                        .let { r -> r.station?.name?.takeIf { r.active } },
+                    onOpenNowPlaying = { radioPlayer = true; destination = Destination.Radio },
                     tools = tools,
-                    // Recalculé à chaque minute (l'heure de l'accueil change) : temps restant, mémoire libre.
-                    toolSubtitles = remember(state.timeText, state.weatherText, radio, sleepEnd) {
-                        mapOf(
-                            Tool.Radio to (radio.station?.takeIf { radio.active }?.let { "♪ ${it.name}" } ?: "Radios en direct"),
-                            Tool.Weather to (state.weatherText ?: "Prévisions sur 7 jours"),
-                            Tool.Sleep to (container.sleepTimer.remainingMinutes()?.let { "Veille dans ${formatMinutes(it)}" } ?: "Éteindre plus tard"),
-                            Tool.Cleaner to "${formatMb(MemoryCleaner(this@HomeActivity).state().availableBytes)} de mémoire libre",
-                        )
-                    },
-                    onOpenTool = { tool ->
-                        when (tool) {
-                            Tool.Radio -> destination = Destination.Radio
-                            Tool.Weather -> destination = Destination.Weather
-                            Tool.Cleaner -> destination = Destination.Cleaner
-                            Tool.Sleep -> sleepDialog = true
-                        }
-                    },
+                    toolSubtitles = if (tools.isEmpty()) emptyMap() else rememberToolSubtitles(),
+                    onOpenTool = ::openTool,
                     ourAppStates = container.ourApps.states.collectAsStateWithLifecycle().value,
                     onInstallOurApp = container.ourApps::install,
                     focus = homeFocus,
@@ -376,12 +365,21 @@ class HomeActivity : ComponentActivity() {
                     initialQuery = phoneQuery,
                 )
             }
-            Destination.Radio -> RadioScreen()
+            Destination.Radio -> RadioScreen(startInPlayer = radioPlayer)
             Destination.Weather -> WeatherScreen()
             Destination.Cleaner -> {
                 val apps by appsViewModel.apps.collectAsStateWithLifecycle()
                 CleanerScreen(apps)
             }
+        }
+
+        if (toolsMenu) {
+            ToolsMenu(
+                tools = toolsFor(profile.kids),
+                subtitles = rememberToolSubtitles(),
+                onOpen = { toolsMenu = false; openTool(it) },
+                onDismiss = { toolsMenu = false; homeFocus.refocus() },
+            )
         }
 
         if (sleepDialog) {
@@ -437,6 +435,33 @@ class HomeActivity : ComponentActivity() {
                 onDismiss = { actionsFor = null },
                 onPlayStore = { openPlayStore(app.packageName) },
                 onMove = if (destination == Destination.Home) ({ movingFavorite = app.packageName }) else null,
+            )
+        }
+    }
+
+    private fun toolsFor(kids: Boolean) = if (kids) Tool.entries - Tool.Cleaner else Tool.entries
+
+    private fun openTool(tool: Tool) {
+        when (tool) {
+            Tool.Radio -> { radioPlayer = Radio.state.value.active; destination = Destination.Radio }
+            Tool.Weather -> destination = Destination.Weather
+            Tool.Cleaner -> destination = Destination.Cleaner
+            Tool.Sleep -> sleepDialog = true
+        }
+    }
+
+    /** État de chaque outil, recalculé à chaque minute (l'heure de l'accueil change). */
+    @Composable
+    private fun rememberToolSubtitles(): Map<Tool, String> {
+        val radio by com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle()
+        val sleepEnd by container.sleepTimer.endsAt.collectAsStateWithLifecycle()
+        val home by homeViewModel.state.collectAsStateWithLifecycle()
+        return remember(radio, sleepEnd, home.timeText, home.weatherText) {
+            mapOf(
+                Tool.Radio to (radio.station?.takeIf { radio.active }?.let { "♪ ${it.name}" } ?: "Radios en direct"),
+                Tool.Weather to (home.weatherText ?: "Prévisions sur 7 jours"),
+                Tool.Sleep to (container.sleepTimer.remainingMinutes()?.let { "Veille dans ${formatMinutes(it)}" } ?: "Éteindre plus tard"),
+                Tool.Cleaner to "${formatMb(MemoryCleaner(this).state().availableBytes)} de mémoire libre",
             )
         }
     }

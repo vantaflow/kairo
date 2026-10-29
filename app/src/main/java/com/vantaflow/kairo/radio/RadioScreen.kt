@@ -1,6 +1,13 @@
 package com.vantaflow.kairo.radio
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,7 +93,10 @@ private fun ipCountry(http: com.vantaflow.kairo.net.HttpGet): String =
 
 /** Écran Radio : radios en direct par pays, favorites et recherche ; la lecture continue hors de l'écran. */
 @Composable
-fun RadioScreen() {
+fun RadioScreen(
+    /** Ouvre directement le lecteur (pastille « ♪ » de l'accueil). */
+    startInPlayer: Boolean = false,
+) {
     val context = LocalContext.current
     val container = (context.applicationContext as TvHomeApp).container
     val scope = rememberCoroutineScope()
@@ -118,12 +128,33 @@ fun RadioScreen() {
         }
     }
     val favUrls = favorites.orEmpty().map { it.url }.toSet()
+    var player by remember { mutableStateOf(startInPlayer && Radio.state.value.station != null) }
+    BackHandler(enabled = player) { player = false }
+    /** Tuile choisie : lance la radio (ou reprend celle en cours) et ouvre le lecteur. */
+    fun open(s: Station, list: List<Station>) {
+        Radio.queue = list
+        player = true
+        if (now.active && now.station?.url == s.url) return
+        Radio.play(context, s)
+        scope.launch(Dispatchers.IO) { runCatching { browser.click(s.id) } }
+    }
     fun play(s: Station) {
         Radio.toggle(context, s)
-        scope.launch(Dispatchers.IO) { runCatching { browser.click(s.id) } }
     }
     fun toggleFavorite(s: Station) = scope.launch { container.prefs.toggleRadioFavorite(s) }
 
+    val station = now.station
+    if (player && station != null) {
+        RadioPlayer(
+            now, station,
+            isFavorite = station.url in favUrls,
+            onToggle = { play(station) },
+            onSkip = { Radio.skip(context, it) },
+            onFavorite = { toggleFavorite(station) },
+            onList = { player = false },
+        )
+        return
+    }
     Column(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFF2A1240), Background)))
@@ -175,7 +206,7 @@ fun RadioScreen() {
                         s,
                         playing = now.active && now.station?.url == s.url,
                         favorite = s.url in favUrls,
-                        onClick = { play(s) },
+                        onClick = { open(s, list) },
                         onLongClick = { toggleFavorite(s) },
                     )
                 }
@@ -184,6 +215,108 @@ fun RadioScreen() {
     }
     LaunchedEffect(current != null) {
         if (current != null) runCatching { firstChip.requestFocus() }
+    }
+}
+
+/** Lecteur plein écran : grand logo, égaliseur animé, précédente / lecture / suivante, favori. */
+@Composable
+private fun RadioPlayer(
+    now: RadioState,
+    station: Station,
+    isFavorite: Boolean,
+    onToggle: () -> Unit,
+    onSkip: (Int) -> Unit,
+    onFavorite: () -> Unit,
+    onList: () -> Unit,
+) {
+    val main = remember { FocusRequester() }
+    // Retour : vers la liste des radios (géré ici, le focus est dans le lecteur).
+    Box(
+        Modifier.fillMaxSize().background(Color(0xFF14091F)).onPreviewKeyEvent { e ->
+            if (e.key.nativeKeyCode != android.view.KeyEvent.KEYCODE_BACK) return@onPreviewKeyEvent false
+            if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) onList()
+            true
+        },
+    ) {
+        if (station.favicon.isNotBlank()) {
+            // Flou « gratuit » : une miniature de 16 px agrandie, pas d'effet GPU sur une petite box.
+            val context = LocalContext.current
+            coil.compose.AsyncImage(
+                model = remember(station.favicon) { coil.request.ImageRequest.Builder(context).data(station.favicon).size(16, 16).build() },
+                contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.45f },
+            )
+        }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x662A1240), Color(0xEE0B0612)))))
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            StationLogo(station, 230.dp)
+            Text(station.name, fontSize = 46.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val info = listOf(station.country, station.tags.split(',').filter { it.isNotBlank() }.take(3).joinToString(", ")).filter { it.isNotBlank() }
+            if (info.isNotEmpty()) Text(info.joinToString(" · "), fontSize = 20.sp, color = OnBackgroundMuted)
+            Row(Modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+                when (now.status) {
+                    RadioStatus.Playing -> Equalizer()
+                    RadioStatus.Loading -> Text("Connexion…", fontSize = 20.sp, color = OnBackgroundMuted)
+                    RadioStatus.Error -> Text("Cette radio ne répond pas : essayez la suivante.", fontSize = 20.sp, color = Color(0xFFFF8A80))
+                    RadioStatus.Idle -> Text("En pause", fontSize = 20.sp, color = OnBackgroundMuted)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                PlayerButton("⏮  Précédente") { onSkip(-1) }
+                PlayerButton(if (now.active) "■  Arrêter" else "▶  Écouter", Modifier.focusRequester(main), big = true, onClick = onToggle)
+                PlayerButton("Suivante  ⏭") { onSkip(+1) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                PlayerButton(if (isFavorite) "★  Retirer des favoris" else "☆  Ajouter aux favoris", onClick = onFavorite)
+                PlayerButton("☰  Toutes les radios", onClick = onList)
+            }
+            Text("La radio continue sur l'accueil · touches ⏮ ⏭ de la télécommande pour changer", fontSize = 16.sp, color = OnBackgroundMuted)
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { main.requestFocus() } }
+}
+
+@Composable
+private fun PlayerButton(text: String, modifier: Modifier = Modifier, big: Boolean = false, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(50)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.White.copy(alpha = if (big) 0.22f else 0.12f),
+            contentColor = Color.White,
+            focusedContainerColor = Color.White,
+            focusedContentColor = Color(0xFF101216),
+        ),
+    ) {
+        Text(text, fontSize = if (big) 24.sp else 19.sp, modifier = Modifier.padding(horizontal = if (big) 34.dp else 22.dp, vertical = if (big) 16.dp else 12.dp))
+    }
+}
+
+/** Égaliseur animé : cinq barres qui dansent tant que la radio joue (dessin seul, aucune recomposition). */
+@Composable
+private fun Equalizer() {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "égaliseur")
+    val bars = listOf(520, 380, 610, 450, 330).map { ms ->
+        t.animateFloat(
+            0.2f, 1f,
+            androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(ms), androidx.compose.animation.core.RepeatMode.Reverse),
+            label = "barre",
+        )
+    }
+    val color = AccentColor
+    androidx.compose.foundation.Canvas(Modifier.size(70.dp, 36.dp)) {
+        val w = size.width / (bars.size * 2 - 1)
+        bars.forEachIndexed { i, h ->
+            val barH = size.height * h.value
+            drawRoundRect(
+                color,
+                topLeft = androidx.compose.ui.geometry.Offset(i * 2 * w, size.height - barH),
+                size = androidx.compose.ui.geometry.Size(w, barH),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 2),
+            )
+        }
     }
 }
 

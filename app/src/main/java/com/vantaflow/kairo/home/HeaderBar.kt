@@ -40,6 +40,10 @@ fun HeaderBar(
     modifier: Modifier = Modifier,
     netState: NetState? = null,
     onOpenSearch: () -> Unit = {},
+    onOpenTools: (() -> Unit)? = null,
+    /** Radio en cours : pastille « ♪ » qui rouvre le lecteur (null = rien ne joue). */
+    nowPlaying: String? = null,
+    onOpenNowPlaying: () -> Unit = {},
 ) {
     val layout = LocalHomeLayout.current
     // Ligne 1 : heure et boutons. Ligne 2 : date et météo sur toute la largeur (jamais tronquées).
@@ -58,7 +62,13 @@ fun HeaderBar(
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 netState?.let { NetworkIndicator(it, Modifier.padding(end = 8.dp)) }
+                nowPlaying?.let { name ->
+                    Button(onClick = onOpenNowPlaying, colors = PillColors()) {
+                        Text("♪ " + name.take(22), maxLines = 1)
+                    }
+                }
                 HeaderButton(TvIcon.Search, "Rechercher", onOpenSearch)
+                onOpenTools?.let { HeaderButton(TvIcon.Tools, "Outils", it) }
                 HeaderButton(TvIcon.Apps, "Applications", onOpenApps)
                 HeaderButton(TvIcon.Settings, "Réglages", onOpenSettings)
             }

@@ -39,7 +39,8 @@ fun weatherEmoji(code: Int, night: Boolean = false): String = when (code) {
     1 -> if (night) "🌙" else "🌤️"
     2 -> "⛅"
     3 -> "☁️"
-    45, 48 -> "🌫️"
+    // Le symbole brouillard d'Android est un carré gris : un nuage se lit mieux.
+    45, 48 -> "☁️"
     in 51..57, in 61..67, in 80..82 -> "🌧️"
     in 71..77, 85, 86 -> "❄️"
     in 95..99 -> "⛈️"
@@ -47,7 +48,34 @@ fun weatherEmoji(code: Int, night: Boolean = false): String = when (code) {
 }
 
 data class HourForecast(val time: java.time.LocalDateTime, val temperature: Double, val code: Int, val rainChance: Int)
-data class DayForecast(val date: java.time.LocalDate, val code: Int, val max: Double, val min: Double, val rainChance: Int)
+data class DayForecast(
+    val date: java.time.LocalDate,
+    val code: Int,
+    val max: Double,
+    val min: Double,
+    val rainChance: Int,
+    val sunrise: java.time.LocalDateTime? = null,
+    val sunset: java.time.LocalDateTime? = null,
+    val uvMax: Double = 0.0,
+    val rainMm: Double = 0.0,
+    val windMax: Double = 0.0,
+    val gustMax: Double = 0.0,
+    /** Direction dominante du vent, en degrés (d'où il vient). */
+    val windDir: Int = -1,
+)
+
+/** Point cardinal d'où vient le vent : « N », « NE »… */
+fun windDirection(deg: Int): String =
+    if (deg < 0) "" else listOf("N", "NE", "E", "SE", "S", "SO", "O", "NO")[((deg % 360 + 22) / 45) % 8]
+
+/** Niveau d'UV en mots (échelle OMS). */
+fun uvLabel(uv: Double): String = when {
+    uv < 3 -> "faible"
+    uv < 6 -> "modéré"
+    uv < 8 -> "élevé"
+    uv < 11 -> "très élevé"
+    else -> "extrême"
+}
 
 /** Prévisions : maintenant, heure par heure et sur 7 jours. */
 data class Forecast(
@@ -60,6 +88,10 @@ data class Forecast(
     val humidity: Int,
     val windKmh: Double,
     val isDay: Boolean,
+    val gustKmh: Double = 0.0,
+    val windDir: Int = -1,
+    val pressure: Int = -1,
+    val cloudCover: Int = -1,
     val hours: List<HourForecast>,
     val days: List<DayForecast>,
 )
@@ -87,11 +119,24 @@ fun parseForecast(o: JSONObject, place: String): Forecast? = try {
         humidity = c.optInt("relative_humidity_2m", -1),
         windKmh = c.optDouble("wind_speed_10m", 0.0),
         isDay = c.optInt("is_day", 1) == 1,
+        gustKmh = c.optDouble("wind_gusts_10m", 0.0),
+        windDir = c.optInt("wind_direction_10m", -1),
+        pressure = c.optDouble("pressure_msl", -1.0).let { if (it < 0) -1 else kotlin.math.round(it).toInt() },
+        cloudCover = c.optInt("cloud_cover", -1),
         hours = (0 until hTime.length()).map { i ->
             HourForecast(java.time.LocalDateTime.parse(hTime.getString(i)), hTemp.getDouble(i), hCode.optInt(i, -1), hRain?.optInt(i, 0) ?: 0)
         },
         days = (0 until dTime.length()).map { i ->
-            DayForecast(java.time.LocalDate.parse(dTime.getString(i)), dCode.optInt(i, -1), dMax.getDouble(i), dMin.getDouble(i), dRain?.optInt(i, 0) ?: 0)
+            DayForecast(
+                java.time.LocalDate.parse(dTime.getString(i)), dCode.optInt(i, -1), dMax.getDouble(i), dMin.getDouble(i), dRain?.optInt(i, 0) ?: 0,
+                sunrise = d.optJSONArray("sunrise")?.optString(i)?.takeIf { it.isNotBlank() }?.let(java.time.LocalDateTime::parse),
+                sunset = d.optJSONArray("sunset")?.optString(i)?.takeIf { it.isNotBlank() }?.let(java.time.LocalDateTime::parse),
+                uvMax = d.optJSONArray("uv_index_max")?.optDouble(i, 0.0) ?: 0.0,
+                rainMm = d.optJSONArray("precipitation_sum")?.optDouble(i, 0.0) ?: 0.0,
+                windMax = d.optJSONArray("wind_speed_10m_max")?.optDouble(i, 0.0) ?: 0.0,
+                gustMax = d.optJSONArray("wind_gusts_10m_max")?.optDouble(i, 0.0) ?: 0.0,
+                windDir = d.optJSONArray("wind_direction_10m_dominant")?.optInt(i, -1) ?: -1,
+            )
         },
     )
 } catch (_: JSONException) {
@@ -134,9 +179,11 @@ class WeatherRepository(private val http: HttpGet) {
     fun forecast(place: Place, fahrenheit: Boolean): Forecast? {
         val unit = if (fahrenheit) "&temperature_unit=fahrenheit" else ""
         val url = "https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}" +
-            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day" +
+            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m," +
+            "pressure_msl,cloud_cover,weather_code,is_day" +
             "&hourly=temperature_2m,weather_code,precipitation_probability" +
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset," +
+            "uv_index_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant" +
             "&forecast_days=7&timezone=auto$unit"
         return json(url) { parseForecast(it, place.name) }
     }

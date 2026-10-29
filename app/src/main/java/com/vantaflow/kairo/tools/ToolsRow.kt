@@ -1,6 +1,27 @@
 package com.vantaflow.kairo.tools
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.LocalContentColor
+import androidx.tv.material3.Surface
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -74,4 +95,52 @@ fun ToolsRow(
             }
         }
     }
+}
+
+/** Menu « Outils » ouvert depuis l'en-tête : panneau en haut à droite, Retour le ferme. */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+fun ToolsMenu(tools: List<Tool>, subtitles: Map<Tool, String>, onOpen: (Tool) -> Unit, onDismiss: () -> Unit) {
+    val first = remember { FocusRequester() }
+    BackHandler(onBack = onDismiss)
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))) {
+        Column(
+            Modifier.align(Alignment.TopEnd).padding(top = 110.dp, end = 72.dp).width(420.dp)
+                .background(Color(0xFF202329), RoundedCornerShape(22.dp)).padding(14.dp)
+                .focusGroup().focusProperties { exit = { FocusRequester.Cancel } }
+                // Retour ferme le menu (le focus est dans le menu, la touche y passe d'abord).
+                .onPreviewKeyEvent { e ->
+                    if (e.key.nativeKeyCode != android.view.KeyEvent.KEYCODE_BACK) return@onPreviewKeyEvent false
+                    if (e.type == KeyEventType.KeyUp) onDismiss()
+                    true
+                },
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            tools.forEachIndexed { i, tool ->
+                Surface(
+                    onClick = { onOpen(tool) },
+                    modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
+                    shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(16.dp)),
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Transparent,
+                        contentColor = OnBackground,
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color(0xFF101216),
+                    ),
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(52.dp).background(Brush.linearGradient(tool.colors), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                            TvIconImage(tool.icon, Color.White, size = 28.dp)
+                        }
+                        Column(Modifier.padding(start = 14.dp)) {
+                            Text(tool.label, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                            subtitles[tool]?.let { Text(it, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = LocalContentColor.current.copy(alpha = 0.75f)) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 }

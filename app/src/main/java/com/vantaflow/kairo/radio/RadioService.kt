@@ -41,6 +41,16 @@ object Radio {
         RadioService.current?.let { s -> s.mainHandler.post { s.stopSelf() } }
     }
 
+    /** Liste d'où vient la radio en cours : suivante / précédente y circulent. */
+    @Volatile var queue: List<Station> = emptyList()
+
+    /** Radio voisine dans [queue] ([step] = +1 suivante, -1 précédente). */
+    fun skip(context: Context, step: Int) {
+        val list = queue.ifEmpty { return }
+        val i = list.indexOfFirst { it.url == state.value.station?.url }
+        play(context, list[Math.floorMod(i + step, list.size)])
+    }
+
     fun toggle(context: Context, station: Station) {
         val s = state.value
         if (s.active && s.station?.url == station.url) stop(context) else play(context, station)
@@ -85,6 +95,8 @@ class RadioService : Service() {
             setCallback(object : MediaSession.Callback() {
                 override fun onPause() = stopSelf()
                 override fun onStop() = stopSelf()
+                override fun onSkipToNext() = Radio.skip(this@RadioService, +1)
+                override fun onSkipToPrevious() = Radio.skip(this@RadioService, -1)
                 override fun onPlay() {
                     Radio.state.value.station?.let { Radio.play(this@RadioService, it) }
                 }
@@ -140,7 +152,8 @@ class RadioService : Service() {
     private fun publish(state: Int) {
         session.setPlaybackState(
             PlaybackState.Builder()
-                .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_STOP)
+                .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_STOP or
+                    PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS)
                 .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
                 .build(),
         )
