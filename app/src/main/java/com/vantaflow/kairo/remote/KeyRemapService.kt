@@ -123,8 +123,18 @@ class KeyRemapService : AccessibilityService() {
             pkg == packageName || (application as TvHomeApp).container.appRepository.launchIntent(pkg) != null
         }
         if (app) {
+            val previous = foreground
             foreground = pkg
-            (application as TvHomeApp).container.autoCleaner.onForeground(pkg)
+            val container = (application as TvHomeApp).container
+            container.autoCleaner.onForeground(pkg)
+            // « Reprendre » : dernière utilisation de l'appli quittée, et de celle qui s'ouvre.
+            if (pkg != previous) {
+                val now = System.currentTimeMillis()
+                scope.launch {
+                    if (previous != null && previous != packageName) container.prefs.recordAppUse(previous, now)
+                    if (pkg != packageName) container.prefs.recordAppUse(pkg, now)
+                }
+            }
         }
     }
 

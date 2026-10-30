@@ -61,7 +61,7 @@ class TvProviderEpgSource(
     override fun watchNext(): List<Program> =
         safeRead(TvContractCompat.WatchNextPrograms.CONTENT_URI, WATCH_NEXT_COLUMNS) { c ->
             if (c.int("browsable") == 0) null else c.long("last_engagement_time_utc_millis") to readProgram(c, c.string("package_name").orEmpty())
-        }.orEmpty().sortedByDescending { it.first }.map { it.second }
+        }.orEmpty().sortedByDescending { it.first }.map { (t, p) -> p.copy(engagedAt = t) }
 
     override fun liveChannels(): List<LiveChannel> =
         safeRead(TvContractCompat.Channels.CONTENT_URI, LIVE_COLUMNS) { c ->

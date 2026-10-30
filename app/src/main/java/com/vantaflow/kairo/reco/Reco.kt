@@ -13,6 +13,8 @@ data class Program(
     val intentUri: String?,
     val progressPercent: Int?,
     val description: String? = null,
+    /** Dernière utilisation (« À suivre » trié du plus récent au plus ancien), 0 si inconnue. */
+    val engagedAt: Long = 0L,
 )
 
 /** Chaîne publiée par une appli : une rangée sur l'accueil. */

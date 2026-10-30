@@ -91,6 +91,9 @@ class HomeActivity : ComponentActivity() {
                     nextWallpaper = container.nextWallpaper,
                     weather = container.weather,
                     tvInputs = { passthroughInputs(applicationContext) },
+                    resumePrograms = { usage, exclude ->
+                        com.vantaflow.kairo.reco.resumePrograms(applicationContext, usage, exclude, System.currentTimeMillis())
+                    },
                 )
             }
         }

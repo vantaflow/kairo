@@ -252,8 +252,8 @@ fun HomeScreen(
                     }
                     }
                 }
-                // Comme Google TV : « À suivre » et les recommandations juste sous les favoris,
-                // nos rangées (applis, outils) ensuite.
+                // Comme Google TV : « À suivre » sous les favoris, puis une rangée de recommandations,
+                // une rangée d'applis, et ainsi de suite (les deux restent proches du haut).
                 if (state.watchNext.isNotEmpty()) {
                     key("watch-next") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
@@ -263,10 +263,9 @@ fun HomeScreen(
                         }
                     }
                 }
-                state.recoRows.forEach { channel ->
-                    key("channel-${channel.id}") {
-                    val app = appLabels[channel.packageName]
-                    CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                val recoSlots: List<Pair<String, @Composable () -> Unit>> = state.recoRows.map { channel ->
+                    "channel-${channel.id}" to @Composable {
+                        val app = appLabels[channel.packageName]
                         RecoRow(
                             title = if (app != null) "${channel.name} · $app" else channel.name,
                             programs = channel.programs,
@@ -275,48 +274,30 @@ fun HomeScreen(
                             modifier = Modifier.alignRowOnFocus(),
                         ) { heroProgram.value = it }
                     }
-                    }
                 }
-                if (state.liveChannels.isNotEmpty()) {
-                    key("live-tv") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            LiveTvRow("Chaînes TV", state.liveChannels, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
-                        }
-                    }
+                val appSlots = buildList<Pair<String, @Composable () -> Unit>> {
+                    if (state.liveChannels.isNotEmpty()) add("live-tv" to @Composable {
+                        LiveTvRow("Chaînes TV", state.liveChannels, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    })
+                    if (state.tvInputs.isNotEmpty()) add("tv-inputs" to @Composable {
+                        LiveTvRow("Entrées", state.tvInputs, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    })
+                    if (recentApps.isNotEmpty()) add("recent-apps" to @Composable {
+                        AppsRow("Récentes", recentApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    })
+                    if (otherApps.isNotEmpty()) add("all-apps" to @Composable {
+                        AppsRow("Toutes les applis", otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    })
+                    if (tools.isNotEmpty()) add("tools" to @Composable {
+                        com.vantaflow.kairo.tools.ToolsRow(tools, toolSubtitles, onOpenTool, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    })
+                    if (ourApps.isNotEmpty()) add("our-apps" to @Composable {
+                        OurAppsRow(ourApps, ourAppStates, ourAppUpdates, onInstallOurApp, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    })
                 }
-                if (state.tvInputs.isNotEmpty()) {
-                    key("tv-inputs") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            LiveTvRow("Entrées", state.tvInputs, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
-                        }
-                    }
-                }
-                if (recentApps.isNotEmpty()) {
-                    key("recent-apps") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            AppsRow("Récentes", recentApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
-                        }
-                    }
-                }
-                if (otherApps.isNotEmpty()) {
-                    key("all-apps") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            AppsRow("Toutes les applis", otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
-                        }
-                    }
-                }
-                if (tools.isNotEmpty()) {
-                    key("tools") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            com.vantaflow.kairo.tools.ToolsRow(tools, toolSubtitles, onOpenTool, Modifier.alignRowOnFocus()) { heroProgram.value = null }
-                        }
-                    }
-                }
-                if (ourApps.isNotEmpty()) {
-                    key("our-apps") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            OurAppsRow(ourApps, ourAppStates, ourAppUpdates, onInstallOurApp, Modifier.alignRowOnFocus()) { heroProgram.value = null }
-                        }
+                interleave(recoSlots, appSlots).forEach { (id, row) ->
+                    key(id) {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) { row() }
                     }
                 }
             }
@@ -365,6 +346,14 @@ fun HomeScreen(
         rowState.scrollToItem(target)
         withFrameNanos { }
         runCatching { requesters[target].requestFocus() }
+    }
+}
+
+/** Une rangée de [first], une de [second], et ainsi de suite ; le reste de la plus longue à la fin. */
+fun <T> interleave(first: List<T>, second: List<T>): List<T> = buildList {
+    for (i in 0 until maxOf(first.size, second.size)) {
+        first.getOrNull(i)?.let(::add)
+        second.getOrNull(i)?.let(::add)
     }
 }
 

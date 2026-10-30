@@ -105,6 +105,8 @@ class HomeViewModel(
     private val weather: (suspend (String, Boolean) -> Weather?)? = null,
     /** Entrées HDMI de la box (vide si elle n'en a pas). */
     private val tvInputs: (() -> List<LiveChannel>)? = null,
+    /** Cartes « Reprendre » (applis récentes sans contenus publiés), lues hors du fil principal. */
+    private val resumePrograms: ((Map<String, Long>, Set<String>) -> List<Program>)? = null,
 ) : ViewModel() {
 
 
@@ -118,11 +120,21 @@ class HomeViewModel(
     private val epgSnapshot = MutableStateFlow(EpgSnapshot(emptyList(), emptyList()))
 
     private val reco: Flow<RecoState> = combine(
-        epgSnapshot, prefs.showWatchNext, prefs.recoAppOrder, prefs.hiddenChannels, prefs.hiddenRecoApps,
-    ) { snap, showWatchNext, order, hiddenChannels, hiddenApps ->
-        val watchNext = if (showWatchNext) snap.watchNext.filter { it.packageName !in hiddenApps } else emptyList()
-        RecoState(watchNext, orderRows(snap.channels, order, hiddenChannels, hiddenApps), snap.live, snap.inputs)
-    }
+        combine(
+            epgSnapshot, prefs.showWatchNext, prefs.recoAppOrder, prefs.hiddenChannels, prefs.hiddenRecoApps,
+        ) { snap, showWatchNext, order, hiddenChannels, hiddenApps ->
+            val watchNext = if (showWatchNext) snap.watchNext.filter { it.packageName !in hiddenApps } else emptyList()
+            Triple(RecoState(watchNext, orderRows(snap.channels, order, hiddenChannels, hiddenApps), snap.live, snap.inputs), showWatchNext, hiddenApps)
+        },
+        prefs.appUsage,
+    ) { (state, showWatchNext, hiddenApps), usage ->
+        // « À suivre » complété par « Reprendre » (Apple TV, Prime Video… qui ne publient rien), du plus récent au plus ancien.
+        val resume = if (showWatchNext) {
+            resumePrograms?.let { build -> runCatching { build(usage, state.watchNext.map { it.packageName }.toSet() + hiddenApps) }.getOrNull() }.orEmpty()
+        } else emptyList()
+        if (resume.isEmpty()) state
+        else RecoState((state.watchNext + resume).sortedByDescending { it.engagedAt }, state.rows, state.live, state.inputs)
+    }.flowOn(ioDispatcher)
 
     private val installed: Flow<List<AppInfo>> =
         merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
