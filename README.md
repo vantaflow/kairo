@@ -33,7 +33,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 ## Fonctions
 
 **Accueil**
-- Favoris en tête, rangée **Récentes** (dernières applis ouvertes, désactivable), « Toutes les applis », puis **À suivre** et les rangées de recommandations publiées par vos applis (Netflix, YouTube, SmartTube, TiviMate…).
+- Comme Google TV : favoris en tête, puis **À suivre** et les rangées de recommandations publiées par vos applis (YouTube, SmartTube, Ultra TV, TiviMate…), puis **Récentes** (désactivable), « Toutes les applis » et les outils.
 - **Box avec tuner TV ou entrées HDMI** : rangées **Chaînes TV** (logo, numéro, ouverture directe dans l'appli TV) et **Entrées**, affichées seulement si la box en a.
 - **Fond « héros »** : l'affiche du contenu sélectionné, floutée et fondue en dégradé, comme sur Google TV.
 - Heure synchronisée sur un serveur de temps (NTP), date et **météo** (Open-Meteo, position par IP ou ville).

@@ -252,6 +252,31 @@ fun HomeScreen(
                     }
                     }
                 }
+                // Comme Google TV : « À suivre » et les recommandations juste sous les favoris,
+                // nos rangées (applis, outils) ensuite.
+                if (state.watchNext.isNotEmpty()) {
+                    key("watch-next") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            RecoRow("À suivre", state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
+                                heroProgram.value = it
+                            }
+                        }
+                    }
+                }
+                state.recoRows.forEach { channel ->
+                    key("channel-${channel.id}") {
+                    val app = appLabels[channel.packageName]
+                    CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                        RecoRow(
+                            title = if (app != null) "${channel.name} · $app" else channel.name,
+                            programs = channel.programs,
+                            appLabels = appLabels,
+                            onClick = onProgramClick,
+                            modifier = Modifier.alignRowOnFocus(),
+                        ) { heroProgram.value = it }
+                    }
+                    }
+                }
                 if (state.liveChannels.isNotEmpty()) {
                     key("live-tv") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
@@ -292,29 +317,6 @@ fun HomeScreen(
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                             OurAppsRow(ourApps, ourAppStates, ourAppUpdates, onInstallOurApp, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                         }
-                    }
-                }
-                if (state.watchNext.isNotEmpty()) {
-                    key("watch-next") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            RecoRow("À suivre", state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
-                                heroProgram.value = it
-                            }
-                        }
-                    }
-                }
-                state.recoRows.forEach { channel ->
-                    key("channel-${channel.id}") {
-                    val app = appLabels[channel.packageName]
-                    CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                        RecoRow(
-                            title = if (app != null) "${channel.name} · $app" else channel.name,
-                            programs = channel.programs,
-                            appLabels = appLabels,
-                            onClick = onProgramClick,
-                            modifier = Modifier.alignRowOnFocus(),
-                        ) { heroProgram.value = it }
-                    }
                     }
                 }
             }
