@@ -62,6 +62,9 @@ fi
 # Installation des mises à jour depuis GitHub (Réglages › Mise à jour).
 "${ADB[@]}" shell appops set $PKG REQUEST_INSTALL_PACKAGES allow || true
 
+# Musique et vidéos en cours des autres applis (pastille « ♪ »).
+"${ADB[@]}" shell cmd notification allow_listener "$PKG/$PKG.media.MediaListener" || true
+
 # Écran de veille Kairo.
 "${ADB[@]}" shell settings put secure screensaver_components "$PKG/.dream.TvHomeDream" || true
 "${ADB[@]}" shell settings put secure screensaver_enabled 1 || true

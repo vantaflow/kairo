@@ -33,7 +33,9 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 ## Fonctions
 
 **Accueil**
-- Comme Google TV : favoris en tête, puis **À suivre** et les rangées de recommandations publiées par vos applis (YouTube, SmartTube, Ultra TV, TiviMate…), puis **Récentes** (désactivable), « Toutes les applis » et les outils.
+- Comme Google TV : favoris en tête, puis **À suivre**, puis une rangée de recommandations publiées par vos applis (YouTube, SmartTube, Ultra TV, TiviMate…) et une rangée d'applis (**Récentes**, « Toutes les applis », outils) en alternance.
+- **Reprendre** : Apple TV, Prime Video, Netflix, Shahid… ne publient rien dans Android ; la dernière appli de films ou séries ouverte a sa carte « Reprendre » dans « À suivre » (elle reprend là où vous en étiez).
+- **Musique en cours** : Spotify, Anghami, Deezer… sont traitées comme la radio : pastille « ♪ » sur l'accueil, petit lecteur (précédent, pause, suivant) et carte sur l'écran de veille. Demande une fois l'accès aux notifications (Réglages › Assistant de configuration).
 - **Box avec tuner TV ou entrées HDMI** : rangées **Chaînes TV** (logo, numéro, ouverture directe dans l'appli TV) et **Entrées**, affichées seulement si la box en a.
 - **Fond « héros »** : l'affiche du contenu sélectionné, floutée et fondue en dégradé, comme sur Google TV.
 - Heure synchronisée sur un serveur de temps (NTP), date et **météo** (Open-Meteo, position par IP ou ville).

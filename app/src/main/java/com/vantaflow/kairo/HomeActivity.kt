@@ -145,6 +145,8 @@ class HomeActivity : ComponentActivity() {
     private var radioPlayer by mutableStateOf(false)
     /** Petit lecteur radio ouvert par la pastille « ♪ ». */
     private var miniPlayer by mutableStateOf(false)
+    /** Petit lecteur d'une autre appli (Spotify, Anghami…). */
+    private var mediaPlayer by mutableStateOf(false)
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
     private var searchWithVoice by mutableStateOf(false)
@@ -228,6 +230,7 @@ class HomeActivity : ComponentActivity() {
         actionsFor = null
         toolsMenu = false
         miniPlayer = false
+        mediaPlayer = false
         settingsUnlocked = false
         homeFocus.reset()
     }
@@ -256,6 +259,7 @@ class HomeActivity : ComponentActivity() {
         // Retour sur l'accueil : l'appli quittée est notée, puis nettoyage si besoin (sans bloquer l'affichage).
         container.autoCleaner.onForeground(packageName)
         container.ensureAdBlock()
+        com.vantaflow.kairo.media.NowPlaying.start(this)
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             kotlinx.coroutines.delay(3_000)
             runCatching { container.autoCleaner.check() }
@@ -314,6 +318,10 @@ class HomeActivity : ComponentActivity() {
                 val ourUpdates by container.ourApps.updates.collectAsStateWithLifecycle()
                 val showRecent = LocalHomeLayout.current.showRecentApps && !profile.kids
                 val tools = if (LocalHomeLayout.current.showTools) toolsFor(profile.kids) else emptyList()
+                // Pastille « ♪ » : la radio de Kairo, sinon ce que joue une autre appli.
+                val radioName = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
+                    .let { r -> r.station?.name?.takeIf { r.active } }
+                val media by com.vantaflow.kairo.media.NowPlaying.state.collectAsStateWithLifecycle()
                 HomeScreen(
                     // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
                     recentApps = if (!showRecent) emptyList() else remember(recent, apps, state.favorites) {
@@ -344,9 +352,8 @@ class HomeActivity : ComponentActivity() {
                     },
                     ourAppUpdates = ourUpdates,
                     onOpenTools = { toolsMenu = true },
-                    nowPlaying = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
-                        .let { r -> r.station?.name?.takeIf { r.active } },
-                    onOpenNowPlaying = { miniPlayer = true },
+                    nowPlaying = radioName ?: media?.title,
+                    onOpenNowPlaying = { if (radioName != null) miniPlayer = true else mediaPlayer = true },
                     tools = tools,
                     toolSubtitles = if (tools.isEmpty()) emptyMap() else rememberToolSubtitles(),
                     onOpenTool = ::openTool,
@@ -399,6 +406,10 @@ class HomeActivity : ComponentActivity() {
                 val apps by appsViewModel.apps.collectAsStateWithLifecycle()
                 CleanerScreen(apps)
             }
+        }
+
+        if (mediaPlayer) {
+            com.vantaflow.kairo.media.MediaMiniPlayer(onDismiss = { mediaPlayer = false; homeFocus.refocus() })
         }
 
         if (miniPlayer) {

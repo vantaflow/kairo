@@ -128,9 +128,10 @@ class HomeViewModel(
         },
         prefs.appUsage,
     ) { (state, showWatchNext, hiddenApps), usage ->
-        // « À suivre » complété par « Reprendre » (Apple TV, Prime Video… qui ne publient rien), du plus récent au plus ancien.
+        // « À suivre » complété par « Reprendre » pour les applis qui ne publient rien (Apple TV, Prime Video…) ;
+        // celles qui ont leurs propres rangées (YouTube, SmartTube) n'en ont pas. Du plus récent au plus ancien.
         val resume = if (showWatchNext) {
-            resumePrograms?.let { build -> runCatching { build(usage, state.watchNext.map { it.packageName }.toSet() + hiddenApps) }.getOrNull() }.orEmpty()
+            resumePrograms?.let { build -> runCatching { build(usage, (state.watchNext + state.rows.flatMap { it.programs }).map { it.packageName }.toSet() + state.rows.map { it.packageName } + hiddenApps) }.getOrNull() }.orEmpty()
         } else emptyList()
         if (resume.isEmpty()) state
         else RecoState((state.watchNext + resume).sortedByDescending { it.engagedAt }, state.rows, state.live, state.inputs)

@@ -70,6 +70,16 @@
 
         <receiver android:name=".update.UpdateReceiver" android:exported="false" />
 
+        <!-- Lecteurs en cours des autres applis (Spotify, Anghami…) : carte « En cours de lecture ». -->
+        <service
+            android:name=".media.MediaListener"
+            android:exported="false"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- Bloqueur de pubs : VPN local qui ne capte que le DNS. -->
         <service
             android:name=".adblock.AdBlockVpn"

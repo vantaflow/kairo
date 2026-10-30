@@ -141,6 +141,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         container.startAutoClean()
         container.watchAdBlock()
         container.ensureAdBlock()
+        com.vantaflow.kairo.media.NowPlaying.start(this)
         container.ourApps.checkUpdates()
     }
 

@@ -29,9 +29,13 @@ class ResumeAppsTest {
     }
 
     @Test
-    fun `reconnaît les applis de streaming et de musique`() {
-        listOf("com.spotify.tv.android", "net.mbc.shahid", "com.viu.tv", "com.anghami", "com.netflix.ninja").forEach {
+    fun `films et séries en carte Reprendre, musique traitée comme la radio`() {
+        listOf("net.mbc.shahid", "com.viu.tv", "com.netflix.ninja", "com.apple.atve.androidtv.appletv").forEach {
             assertTrue(it, isMediaPackage(it))
+        }
+        listOf("com.spotify.tv.android", "com.anghami", "deezer.android.tv", "com.google.android.youtube.tvmusic").forEach {
+            assertTrue(it, isAudioPackage(it))
+            assertFalse(it, isMediaPackage(it))
         }
         assertFalse(isMediaPackage("com.android.tv.settings"))
     }

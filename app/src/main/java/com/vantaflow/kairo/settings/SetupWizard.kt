@@ -109,6 +109,15 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
                 optional = true,
             ),
             SetupStep(
+                "Musique et vidéos en cours",
+                "Pastille « ♪ » et petit lecteur pour Spotify, Anghami, Deezer… (accès aux notifications, rien n'est lu d'autre).",
+                com.vantaflow.kairo.media.NowPlaying.hasAccess(context),
+                "Autoriser",
+                { openSafely(context, Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+                adb = com.vantaflow.kairo.media.MEDIA_ACCESS_ADB,
+                optional = true,
+            ),
+            SetupStep(
                 "Écran de veille Kairo",
                 "Images, heure et météo quand la box est inactive.",
                 dreamEnabled(context),

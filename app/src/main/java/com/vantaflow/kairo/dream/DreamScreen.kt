@@ -119,6 +119,7 @@ fun DreamScreen(override: DreamConfig? = null) {
         }
         // Au-dessus du voile de l'heure : la carte radio reste nette.
         DreamRadio(Modifier.align(Alignment.BottomEnd).padding(48.dp))
+        DreamMedia(Modifier.align(Alignment.BottomEnd).padding(48.dp))
     }
 }
 
@@ -215,6 +216,29 @@ private fun DreamRadio(modifier: Modifier) {
                 else Text("Connexion…", fontSize = 16.sp, color = OnBackgroundMuted)
             }
             Text("← → changer de radio · OK arrêter", fontSize = 15.sp, color = OnBackgroundMuted)
+        }
+    }
+}
+
+/** Musique d'une autre appli (Spotify, Anghami…) pendant l'écran de veille, si la radio ne joue pas. */
+@Composable
+private fun DreamMedia(modifier: Modifier) {
+    val radio by com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle()
+    val now by com.vantaflow.kairo.media.NowPlaying.state.collectAsStateWithLifecycle()
+    val media = now
+    if (radio.active || media == null) return
+    androidx.compose.foundation.layout.Row(
+        modifier
+            .background(Color.Black.copy(alpha = 0.55f), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+            .padding(horizontal = 22.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(18.dp),
+    ) {
+        com.vantaflow.kairo.media.MediaArt(media, 72.dp)
+        Column(Modifier.widthIn(max = 520.dp)) {
+            Text(media.title, fontSize = 24.sp, color = OnBackground, maxLines = 1)
+            Text(listOfNotNull(media.subtitle, media.appLabel).distinct().joinToString(" · "), fontSize = 17.sp, color = OnBackgroundMuted, maxLines = 1)
+            Text(if (media.playing) "← → piste · OK pause" else "En pause · OK reprendre", fontSize = 15.sp, color = OnBackgroundMuted)
         }
     }
 }

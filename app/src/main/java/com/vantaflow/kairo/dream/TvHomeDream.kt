@@ -41,17 +41,26 @@ class TvHomeDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
         setContentView(view)
     }
 
-    /** Radio en cours : ← → / ⏮ ⏭ changent de radio, OK / ⏯ l'arrête ; toute autre touche réveille. */
+    /**
+     * Radio en cours : ← → / ⏮ ⏭ changent de radio, OK / ⏯ l'arrête. Musique d'une autre appli :
+     * ← → piste précédente / suivante, OK / ⏯ pause ou lecture. Toute autre touche réveille.
+     */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val action = if (Radio.state.value.active) radioAction(event.keyCode) else null
+        val radio = Radio.state.value.active
+        val media = !radio && com.vantaflow.kairo.media.NowPlaying.state.value != null
+        val action = if (radio || media) radioAction(event.keyCode) else null
         if (action == null) {
             if (event.action == KeyEvent.ACTION_UP) wakeUp()
             return true
         }
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-            when (action) {
-                -1, 1 -> Radio.skip(this, action)
-                else -> Radio.stop(this)
+            val now = com.vantaflow.kairo.media.NowPlaying
+            when {
+                radio && action != 0 -> Radio.skip(this, action)
+                radio -> Radio.stop(this)
+                action == -1 -> now.previous()
+                action == 1 -> now.next()
+                else -> now.togglePlay()
             }
         }
         return true
