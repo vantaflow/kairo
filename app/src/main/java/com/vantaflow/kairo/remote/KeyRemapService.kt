@@ -125,13 +125,27 @@ class KeyRemapService : AccessibilityService() {
         val app = launchable.getOrPut(pkg) {
             pkg == packageName || (application as TvHomeApp).container.appRepository.launchIntent(pkg) != null
         }
-        if (app) (application as TvHomeApp).container.autoCleaner.onForeground(pkg)
+        if (app) {
+            foreground = pkg
+            (application as TvHomeApp).container.autoCleaner.onForeground(pkg)
+        }
     }
+
+    /** Dernière appli passée au premier plan (null tant qu'aucune n'a été vue). */
+    @Volatile private var foreground: String? = null
 
     private val launchable = HashMap<String, Boolean>()
     override fun onInterrupt() = Unit
 
-    private fun kairoInFront(): Boolean = rootInActiveWindow.let { it == null || it.packageName == packageName }
+    /**
+     * Kairo au premier plan ? D'après la fenêtre active, sinon la dernière appli vue à l'écran : la
+     * fenêtre active est vide pour beaucoup de lecteurs vidéo (SmartTube, IPTV), qui passaient alors
+     * pour Kairo et la touche Réglages ramenait à l'accueil.
+     */
+    private fun kairoInFront(): Boolean {
+        val active = rootInActiveWindow?.packageName?.toString()
+        return (active ?: foreground ?: packageName) == packageName
+    }
 
     /**
      * Réglages de Kairo (section [section] ou menu). Kairo déjà à l'écran : le panneau s'ouvre

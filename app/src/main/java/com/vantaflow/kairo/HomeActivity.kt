@@ -119,6 +119,14 @@ class HomeActivity : ComponentActivity() {
 
     /** Écran demandé par un appui sur Home : on revient toujours à l'accueil. */
     private var destination by mutableStateOf(Destination.Home)
+    /** Écran laissé derrière le panneau des réglages (Météo, Radio…), retrouvé à leur fermeture. */
+    private var settingsReturn by mutableStateOf(Destination.Home)
+
+    /** Panneau des réglages par-dessus l'écran en cours, sans revenir à l'accueil. */
+    private fun openSettingsPanel() {
+        if (destination != Destination.Settings) settingsReturn = destination
+        destination = Destination.Settings
+    }
     /** Accueil animé plein écran (premier lancement d'une box pas encore configurée). */
     private var onboarding by mutableStateOf(false)
     /** Texte reçu du téléphone, pré-rempli dans la recherche. */
@@ -157,7 +165,7 @@ class HomeActivity : ComponentActivity() {
             KairoCommands.openSettings.collect { section ->
                 onboarding = false
                 settingsSection = Section.entries.firstOrNull { it.name == section }
-                destination = Destination.Settings
+                openSettingsPanel()
             }
         }
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback, Handler(mainLooper))
@@ -200,7 +208,8 @@ class HomeActivity : ComponentActivity() {
             onboarding = true
             return true
         }
-        destination = Destination.entries.firstOrNull { it.name == target } ?: return false
+        val next = Destination.entries.firstOrNull { it.name == target } ?: return false
+        if (next == Destination.Settings) openSettingsPanel() else destination = next
         // Texte tapé sur le téléphone : pré-rempli dans la recherche.
         phoneQuery = intent.getStringExtra("tvhome.query").orEmpty()
         settingsSection = Section.entries.firstOrNull { it.name == intent.getStringExtra("tvhome.section") }
@@ -227,7 +236,7 @@ class HomeActivity : ComponentActivity() {
         if (keyCode == KeyEvent.KEYCODE_SETTINGS || keyCode == KeyEvent.KEYCODE_NOTIFICATION) {
             onboarding = false
             settingsSection = null
-            destination = Destination.Settings
+            openSettingsPanel()
             return true
         }
         if (keyCode == KeyEvent.KEYCODE_SEARCH || voice) {
@@ -278,7 +287,11 @@ class HomeActivity : ComponentActivity() {
         // Sur l'accueil, Retour ne doit jamais fermer le launcher.
         BackHandler {
             // Sur l'accueil, Retour remonte au premier favori (comme Google TV).
-            if (destination == Destination.Home) homeFocus.reset() else destination = Destination.Home
+            when (destination) {
+                Destination.Home -> homeFocus.reset()
+                Destination.Settings -> destination = settingsReturn
+                else -> destination = Destination.Home
+            }
             settingsUnlocked = false
         }
         val profile by container.prefs.currentProfile.collectAsStateWithLifecycle(DefaultProfile)
@@ -288,7 +301,8 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
-        when (destination) {
+        // Réglages ouverts : l'écran d'où ils ont été ouverts reste affiché derrière le panneau.
+        when (if (destination == Destination.Settings) settingsReturn else destination) {
             Destination.Home, Destination.Settings -> {
                 val state by homeViewModel.state.collectAsStateWithLifecycle()
                 val apps by appsViewModel.apps.collectAsStateWithLifecycle()
@@ -339,7 +353,7 @@ class HomeActivity : ComponentActivity() {
                     onLaunch = launch,
                     onFavoriteLongClick = { if (!profile.kids) actionsFor = it },
                     onOpenApps = { destination = Destination.Apps },
-                    onOpenSettings = { destination = Destination.Settings },
+                    onOpenSettings = { openSettingsPanel() },
                     movingFavorite = movingFavorite,
                     onMoveFavorite = appsViewModel::moveFavoriteBy,
                     onMoveDone = { movingFavorite = null },
@@ -417,9 +431,9 @@ class HomeActivity : ComponentActivity() {
         if (destination == Destination.Settings) {
             val apps by appsViewModel.apps.collectAsStateWithLifecycle()
             val close = {
-                destination = Destination.Home
+                destination = settingsReturn
                 settingsUnlocked = false
-                homeFocus.refocus()
+                if (settingsReturn == Destination.Home) homeFocus.refocus()
             }
             if (profile.kids && !settingsUnlocked) {
                 PinPrompt(profile, pinGuard, onUnlocked = { settingsUnlocked = true }, onCancel = close)
