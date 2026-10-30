@@ -14,6 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -36,9 +41,22 @@ fun AppActionsDialog(
     onMove: (() -> Unit)? = null,
 ) {
     val first = remember { FocusRequester() }
+    // OK encore enfoncé après l'appui long : ses répétitions et son relâché ne doivent pas
+    // déclencher le 1er bouton (le menu se refermait aussitôt). On attend un nouvel appui.
+    val okReleased = remember { booleanArrayOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         Column(
             Modifier
+                .onPreviewKeyEvent { e ->
+                    val ok = e.key.nativeKeyCode in OK_KEYS
+                    if (!ok || okReleased[0]) return@onPreviewKeyEvent false
+                    if (e.type == KeyEventType.KeyUp) okReleased[0] = true
+                    else if (e.nativeKeyEvent.repeatCount == 0) {
+                        okReleased[0] = true
+                        return@onPreviewKeyEvent false
+                    }
+                    true
+                }
                 .width(420.dp)
                 .background(Color(0xFF202329), RoundedCornerShape(16.dp))
                 .padding(24.dp),
@@ -57,6 +75,12 @@ fun AppActionsDialog(
     }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 }
+
+private val OK_KEYS = setOf(
+    android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+    android.view.KeyEvent.KEYCODE_ENTER,
+    android.view.KeyEvent.KEYCODE_NUMPAD_ENTER,
+)
 
 @Composable
 private fun Action(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {

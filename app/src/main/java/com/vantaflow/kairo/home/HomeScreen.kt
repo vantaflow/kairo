@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -329,8 +330,33 @@ fun HomeScreen(
         runCatching { requesters[index].requestFocus() }
     }
 
+    // Appli ajoutée aux favoris depuis une autre rangée : le focus la suit.
+    val view = LocalView.current
+    LaunchedEffect(focus.followFavorite, state.favorites, requesters) {
+        val pkg = focus.followFavorite ?: return@LaunchedEffect
+        val index = state.favorites.indexOfFirst { it.packageName == pkg }
+        if (index < 0 || index > requesters.lastIndex) return@LaunchedEffect
+        focus.index = index
+        // Le menu de l'appui long doit être fermé (fenêtre de l'accueil de nouveau active), et la
+        // tuile, souvent hors écran, construite : la rangée défile d'abord, puis le focus est demandé.
+        for (attempt in 1..60) {
+            if (view.hasWindowFocus()) break
+            withFrameNanos { }
+        }
+        columnState.scrollTo(0)
+        rowState.scrollToItem((index - 1).coerceAtLeast(0))
+        for (attempt in 1..10) {
+            withFrameNanos { }
+            if (runCatching { requesters[index].requestFocus() }.isSuccess) break
+        }
+        // Effacé à la fin seulement : c'est une clé de l'effet, l'effacer plus tôt l'annulerait.
+        focus.followFavorite = null
+    }
+
     // Focus restauré à l'arrivée sur l'accueil, et ramené sur la 1re tuile par la touche Home.
-    LaunchedEffect(requesters, focus.resetToken) {
+    // Pas quand le nombre de favoris change (ajout / retrait par l'appui long) : le focus reste
+    // sur l'appli choisie au lieu de remonter aux favoris.
+    LaunchedEffect(requesters.isNotEmpty(), focus.resetToken) {
         if (requesters.isEmpty()) return@LaunchedEffect
         val target = focus.index.coerceIn(0, requesters.lastIndex)
         columnState.scrollTo(0)

@@ -440,7 +440,15 @@ class HomeActivity : ComponentActivity() {
                 app = app,
                 isFavorite = app.packageName in favorites,
                 isHidden = app.packageName in hidden,
-                onToggleFavorite = { appsViewModel.toggleFavorite(app.packageName) },
+                onToggleFavorite = {
+                    // Ajoutée aux favoris : elle quitte sa rangée, le focus la suit dans les favoris.
+                    // Retirée : le focus passe au favori voisin.
+                    if (destination == Destination.Home) {
+                        val i = favorites.indexOf(app.packageName)
+                        homeFocus.followFavorite = if (i < 0) app.packageName else favorites.getOrNull(i + 1) ?: favorites.getOrNull(i - 1)
+                    }
+                    appsViewModel.toggleFavorite(app.packageName)
+                },
                 onToggleHidden = { appsViewModel.toggleHidden(app.packageName) },
                 onAppInfo = {
                     startSafely(
