@@ -93,13 +93,10 @@ class KeyRemapService : AccessibilityService() {
         }
         // Touche Réglages (roue dentée). La télécommande Google TV envoie KEYCODE_NOTIFICATION, que le
         // système passe au launcher Google (désactivé) : elle ne servait donc plus.
-        // Dans Kairo : panneau des réglages de Kairo ; dans une autre appli : paramètres Android.
+        // Partout, même dans une autre appli : réglages de Kairo (les paramètres Android y sont
+        // accessibles par la section « Paramètres Android »).
         if (code == KeyEvent.KEYCODE_SETTINGS || code == KeyEvent.KEYCODE_NOTIFICATION) {
-            val opened = if (kairoInFront()) {
-                openInKairo(null)
-            } else {
-                startSafely(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
+            val opened = openInKairo(null)
             if (opened) consumed += code
             return opened
         }

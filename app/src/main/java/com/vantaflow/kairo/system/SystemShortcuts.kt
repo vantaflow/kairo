@@ -14,6 +14,8 @@ private fun shortcut(title: String, vararg actions: String) =
 
 /** Paramètres Android de la box accessibles depuis le launcher. */
 val SettingsShortcuts: List<SettingsShortcut> = listOf(
+    // En tête : la touche Réglages ouvre Kairo, Android est à un clic.
+    shortcut("Tous les paramètres"),
     shortcut("Réseau et Internet", Settings.ACTION_WIFI_SETTINGS, Settings.ACTION_WIRELESS_SETTINGS),
     shortcut("Télécommandes et accessoires (Bluetooth)", Settings.ACTION_BLUETOOTH_SETTINGS),
     shortcut("Affichage et image", Settings.ACTION_DISPLAY_SETTINGS),
@@ -30,7 +32,6 @@ val SettingsShortcuts: List<SettingsShortcut> = listOf(
     shortcut("Options pour les développeurs", Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
     shortcut("Mise à jour du système", "android.settings.SYSTEM_UPDATE_SETTINGS"),
     shortcut("À propos de la box", Settings.ACTION_DEVICE_INFO_SETTINGS),
-    shortcut("Tous les paramètres"),
 )
 
 /** Ouvre le premier écran de paramètres disponible sur la box. */
