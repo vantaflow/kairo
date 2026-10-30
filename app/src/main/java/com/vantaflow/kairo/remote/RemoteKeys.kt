@@ -3,6 +3,7 @@ package com.vantaflow.kairo.remote
 import android.view.KeyEvent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /** Actions déclenchées par une touche de la télécommande dans le launcher. */
@@ -26,6 +27,9 @@ class HomeFocus {
         index = 0
         resetToken++
     }
+
+    /** Favori à focaliser dès qu'il apparaît (appli ajoutée aux favoris par l'appui long). */
+    var followFavorite by mutableStateOf<String?>(null)
 
     /** Redonne le focus à la même tuile (ex. à la fermeture du panneau de réglages). */
     fun refocus() {
