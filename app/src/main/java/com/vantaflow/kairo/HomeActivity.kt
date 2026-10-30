@@ -1,5 +1,14 @@
 package com.vantaflow.kairo
 
+import com.vantaflow.kairo.catalog.CATALOG_SCHEME
+import com.vantaflow.kairo.catalog.CatalogDetail
+import com.vantaflow.kairo.catalog.CatalogItem
+import com.vantaflow.kairo.catalog.CatalogRow
+import com.vantaflow.kairo.catalog.MediaType
+import com.vantaflow.kairo.catalog.catalogUri
+import com.vantaflow.kairo.catalog.toChannel
+import com.vantaflow.kairo.catalog.toProgram
+import com.vantaflow.kairo.home.HomeTab
 import com.vantaflow.kairo.apps.OurApps
 import com.vantaflow.kairo.radio.RadioScreen
 import com.vantaflow.kairo.radio.Radio
@@ -147,6 +156,19 @@ class HomeActivity : ComponentActivity() {
     private var miniPlayer by mutableStateOf(false)
     /** Petit lecteur d'une autre appli (Spotify, Anghami…). */
     private var mediaPlayer by mutableStateOf(false)
+    /** Onglet de l'accueil, rangées du catalogue (TMDB) et fiche ouverte. */
+    private var homeTab by mutableStateOf(HomeTab.ForYou)
+    private var catalogRows by mutableStateOf<List<CatalogRow>>(emptyList())
+    private var catalogDetail by mutableStateOf<CatalogItem?>(null)
+
+    /** Catalogue relu (fichier de la box) ou téléchargé s'il date de plus d'un jour, sans bloquer l'affichage. */
+    private fun refreshCatalog() {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val installed = container.appRepository.installedApps().map { it.packageName }.toSet()
+            val rows = runCatching { container.catalog.rows(installed) }.getOrDefault(emptyList())
+            if (rows.isNotEmpty()) catalogRows = rows
+        }
+    }
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
     private var searchWithVoice by mutableStateOf(false)
@@ -260,6 +282,7 @@ class HomeActivity : ComponentActivity() {
         container.autoCleaner.onForeground(packageName)
         container.ensureAdBlock()
         com.vantaflow.kairo.media.NowPlaying.start(this)
+        refreshCatalog()
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             kotlinx.coroutines.delay(3_000)
             runCatching { container.autoCleaner.check() }
@@ -302,7 +325,13 @@ class HomeActivity : ComponentActivity() {
             settingsUnlocked = false
         }
         val profile by container.prefs.currentProfile.collectAsStateWithLifecycle(DefaultProfile)
-        val programClick: (Program) -> Unit = { program ->
+        val myList by container.prefs.myList.collectAsStateWithLifecycle(emptyList())
+        val programClick: (Program) -> Unit = click@{ program ->
+            // Carte du catalogue : fiche dans Kairo (où le regarder, Ma liste).
+            program.intentUri?.takeIf { it.startsWith(CATALOG_SCHEME) }?.let { uri ->
+                catalogDetail = (catalogRows.flatMap { it.items } + myList).firstOrNull { catalogUri(it) == uri }
+                return@click
+            }
             launchProgram(program, container.appRepository::launchIntent) {
                 startSafely(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
@@ -367,6 +396,12 @@ class HomeActivity : ComponentActivity() {
                     movingFavorite = movingFavorite,
                     onMoveFavorite = appsViewModel::moveFavoriteBy,
                     onMoveDone = { movingFavorite = null },
+                    tab = homeTab.takeIf { catalogRows.isNotEmpty() && !profile.kids },
+                    onTab = { homeTab = it },
+                    catalog = if (profile.kids) emptyList() else remember(catalogRows, homeTab) { catalogFor(homeTab, catalogRows) },
+                    myList = if (profile.kids) emptyList() else remember(myList, homeTab) {
+                        myList.filter { homeTab.mediaType().let { t -> t == null || it.type == t } }.map { it.toProgram() }
+                    },
                 )
             }
             Destination.Apps -> {
@@ -406,6 +441,19 @@ class HomeActivity : ComponentActivity() {
                 val apps by appsViewModel.apps.collectAsStateWithLifecycle()
                 CleanerScreen(apps)
             }
+        }
+
+        catalogDetail?.let { item ->
+            val installed = remember { container.appRepository.installedApps().map { it.packageName }.toSet() }
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+            CatalogDetail(
+                item = item,
+                repository = container.catalog,
+                installed = installed,
+                inMyList = myList.any { it.type == item.type && it.id == item.id },
+                onToggleMyList = { scope.launch { container.prefs.toggleMyList(item) } },
+                onDismiss = { catalogDetail = null },
+            )
         }
 
         if (mediaPlayer) {
@@ -533,3 +581,17 @@ class HomeActivity : ComponentActivity() {
         lifecycleScope.launch { container.prefs.recordLaunch(pkg) }
     }
 }
+
+private fun HomeTab.mediaType(): MediaType? = when (this) {
+    HomeTab.Movies -> MediaType.Movie
+    HomeTab.Shows -> MediaType.Tv
+    else -> null
+}
+
+/** Rangées du catalogue d'un onglet : Pour vous = tendances et plateformes installées ; Films / Séries = leur type. */
+private fun catalogFor(tab: HomeTab, rows: List<CatalogRow>) = rows.filter { r ->
+    when (val type = tab.mediaType()) {
+        null -> r.key == "trending" || r.key.startsWith("movies-") || r.key.startsWith("shows-")
+        else -> r.type == type
+    }
+}.mapIndexed { i, r -> r.toChannel(i) }

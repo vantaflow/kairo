@@ -22,6 +22,7 @@ android {
         versionName = "1.18.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PIXABAY_API_KEY", "\"${secrets.getProperty("PIXABAY_API_KEY", "")}\"")
+        buildConfigField("String", "TMDB_READ_TOKEN", "\"${secrets.getProperty("TMDB_READ_TOKEN", "")}\"")
     }
 
     // Clé dédiée (hors git, sauvegardée par l'utilisateur) : debug (ADB) et release (mises à jour)

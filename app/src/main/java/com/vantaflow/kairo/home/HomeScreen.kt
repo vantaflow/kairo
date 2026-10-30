@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.home
 
+import androidx.compose.ui.graphics.Color
+import com.vantaflow.kairo.reco.Channel
 import com.vantaflow.kairo.apps.InstallState
 import com.vantaflow.kairo.apps.OurApp
 import com.vantaflow.kairo.reco.LiveChannel
@@ -114,7 +116,16 @@ fun HomeScreen(
     movingFavorite: String? = null,
     onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
     onMoveDone: () -> Unit = {},
+    /** Onglet affiché (Pour vous, Films, Séries, Applis) ; null = pas d'onglets (catalogue indisponible). */
+    tab: HomeTab? = null,
+    onTab: (HomeTab) -> Unit = {},
+    /** Rangées du catalogue (TMDB) déjà choisies pour l'onglet, et « Ma liste ». */
+    catalog: List<Channel> = emptyList(),
+    myList: List<Program> = emptyList(),
 ) {
+    val forYou = tab == null || tab == HomeTab.ForYou
+    val tabRequesters = remember { HomeTab.entries.associateWith { FocusRequester() } }
+    val showApps = forYou || tab == HomeTab.Apps
     val requesters = remember(state.favorites.size) { List(state.favorites.size) { FocusRequester() } }
     val rowState = rememberRowState()
     val columnState = rememberScrollState()
@@ -144,15 +155,23 @@ fun HomeScreen(
                     // Bas depuis l'en-tête : retour sur le favori quitté, pas sur le plus proche à l'écran.
                     .focusProperties {
                         exit = { direction ->
-                            if (direction == FocusDirection.Down && requesters.isNotEmpty()) {
-                                requesters[focus.index.coerceIn(0, requesters.lastIndex)]
-                            } else {
-                                FocusRequester.Default
+                            when {
+                                direction != FocusDirection.Down -> FocusRequester.Default
+                                showApps && requesters.isNotEmpty() -> requesters[focus.index.coerceIn(0, requesters.lastIndex)]
+                                else -> FocusRequester.Default
                             }
                         }
                     }
                     .focusGroup(),
                 netState = netState,
+                tabs = tab?.let { current ->
+                    {
+                        HomeTabs(
+                            current, onTab, tabRequesters,
+                            Modifier.focusProperties { enter = { tabRequesters.getValue(current) } },
+                        )
+                    }
+                },
             )
             // Rangée sélectionnée calée en haut de la liste (comme Google TV) : jamais à moitié
             // coupée sous l'en-tête. Les rangées horizontales gardent le défilement par défaut.
@@ -197,7 +216,7 @@ fun HomeScreen(
                     .padding(top = 24.dp, bottom = 480.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                key("favorites") {
+                if (showApps) key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                     Column(Modifier.alignRowOnFocus()) {
                         if (layout.showFavoritesLabel || movingFavorite != null) {
@@ -254,7 +273,7 @@ fun HomeScreen(
                 }
                 // Comme Google TV : « À suivre » sous les favoris, puis une rangée de recommandations,
                 // une rangée d'applis, et ainsi de suite (les deux restent proches du haut).
-                if (state.watchNext.isNotEmpty()) {
+                if (forYou && state.watchNext.isNotEmpty()) {
                     key("watch-next") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                             RecoRow("À suivre", state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
@@ -263,7 +282,14 @@ fun HomeScreen(
                         }
                     }
                 }
-                val recoSlots: List<Pair<String, @Composable () -> Unit>> = state.recoRows.map { channel ->
+                if (tab != HomeTab.Apps && myList.isNotEmpty()) {
+                    key("my-list") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            RecoRow("Ma liste", myList, appLabels, onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
+                        }
+                    }
+                }
+                val recoSlots: List<Pair<String, @Composable () -> Unit>> = (if (forYou) state.recoRows else emptyList()).map { channel ->
                     "channel-${channel.id}" to @Composable {
                         val app = appLabels[channel.packageName]
                         RecoRow(
@@ -274,8 +300,12 @@ fun HomeScreen(
                             modifier = Modifier.alignRowOnFocus(),
                         ) { heroProgram.value = it }
                     }
+                } + (if (tab == HomeTab.Apps) emptyList() else catalog).map { row ->
+                    "catalog-${row.id}" to @Composable {
+                        RecoRow(row.name, row.programs, appLabels, onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
+                    }
                 }
-                val appSlots = buildList<Pair<String, @Composable () -> Unit>> {
+                val appSlots = if (!showApps) emptyList() else buildList<Pair<String, @Composable () -> Unit>> {
                     if (state.liveChannels.isNotEmpty()) add("live-tv" to @Composable {
                         LiveTvRow("Chaînes TV", state.liveChannels, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
@@ -346,6 +376,36 @@ fun HomeScreen(
         rowState.scrollToItem(target)
         withFrameNanos { }
         runCatching { requesters[target].requestFocus() }
+    }
+}
+
+/** Onglets de l'accueil, comme Google TV. */
+enum class HomeTab(val label: String) { ForYou("Pour vous"), Movies("Films"), Shows("Séries"), Apps("Applis") }
+
+/** Rangée d'onglets : l'onglet qui reçoit le focus s'affiche aussitôt (comme Google TV). */
+@Composable
+private fun HomeTabs(current: HomeTab, onTab: (HomeTab) -> Unit, requesters: Map<HomeTab, FocusRequester>, modifier: Modifier) {
+    androidx.compose.foundation.layout.Row(
+        modifier.focusGroup(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        HomeTab.entries.forEach { t ->
+            val selected = t == current
+            androidx.tv.material3.Surface(
+                onClick = { onTab(t) },
+                modifier = Modifier.focusRequester(requesters.getValue(t)).onFocusChanged { if (it.isFocused && !selected) onTab(t) },
+                shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(androidx.compose.foundation.shape.RoundedCornerShape(50)),
+                colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                    containerColor = if (selected) Color.White.copy(alpha = 0.18f) else Color.Transparent,
+                    focusedContainerColor = Color.White,
+                    contentColor = OnBackground,
+                    focusedContentColor = Color(0xFF101216),
+                ),
+                scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            ) {
+                Text(t.label, fontSize = 19.sp, modifier = Modifier.padding(horizontal = 22.dp, vertical = 9.dp))
+            }
+        }
     }
 }
 

@@ -37,6 +37,12 @@ class AppContainer(val app: Application) {
     val clock = TrustedClock(SntpClient())
     val tileImages = TileImageCache<TileImage>()
     val http = UrlConnectionHttpGet
+
+    /** Catalogue de films et séries (TMDB), gardé sur la box une journée. */
+    val catalog = com.vantaflow.kairo.catalog.CatalogRepository(
+        BuildConfig.TMDB_READ_TOKEN.takeIf { it.isNotBlank() }?.let { com.vantaflow.kairo.catalog.tmdbHttp(it) },
+        java.io.File(app.filesDir, "catalog.json"),
+    )
     /** Nos applis (Kairo Player, Ultra TV) : installation et mises à jour depuis GitHub. */
     val ourApps = OurAppsStore(app)
 

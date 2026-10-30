@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.home
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,8 +46,38 @@ fun HeaderBar(
     /** Radio en cours : pastille « ♪ » qui rouvre le lecteur (null = rien ne joue). */
     nowPlaying: String? = null,
     onOpenNowPlaying: () -> Unit = {},
+    /** Onglets (Pour vous, Films…) : ils prennent la place de la grande heure, comme Google TV. */
+    tabs: (@Composable () -> Unit)? = null,
 ) {
     val layout = LocalHomeLayout.current
+    if (tabs != null) {
+        // Une seule ligne : onglets à gauche ; à droite, boutons en icônes (sans indicateur réseau) puis heure et météo.
+        Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            tabs()
+            Spacer(Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                nowPlaying?.let { name ->
+                    Button(onClick = onOpenNowPlaying, colors = PillColors()) {
+                        Text("♪ " + name.take(22), maxLines = 1)
+                    }
+                }
+                IconButton(TvIcon.Search, "Rechercher", onOpenSearch)
+                onOpenTools?.let { IconButton(TvIcon.Tools, "Outils", it) }
+                IconButton(TvIcon.Apps, "Applications", onOpenApps)
+                IconButton(TvIcon.Settings, "Réglages", onOpenSettings)
+                if (layout.showClock) {
+                    // Météo courte (« 18° ») lue dans la ligne de date : « Vendredi 30 octobre · 18° · Couvert ».
+                    val temp = dateText.split(" · ").getOrNull(1)?.takeIf { layout.showDate && it.endsWith("°") }
+                    Text(
+                        listOfNotNull(temp, timeText).joinToString("   "),
+                        fontSize = 26.sp, color = OnBackground, maxLines = 1,
+                        modifier = Modifier.padding(start = 12.dp).testTag("time"),
+                    )
+                }
+            }
+        }
+        return
+    }
     // Ligne 1 : heure et boutons. Ligne 2 : date et météo sur toute la largeur (jamais tronquées).
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -83,6 +115,19 @@ fun HeaderBar(
                 modifier = Modifier.testTag("date"),
             )
         }
+    }
+}
+
+/** Bouton rond de l'en-tête (icône seule), comme Google TV ; le libellé reste pour l'accessibilité. */
+@Composable
+private fun IconButton(icon: TvIcon, label: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = PillColors(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+        modifier = Modifier.semantics { contentDescription = label },
+    ) {
+        TvIconImage(icon, LocalContentColor.current, size = 22.dp)
     }
 }
 

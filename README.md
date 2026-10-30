@@ -34,6 +34,9 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 **Accueil**
 - Comme Google TV : favoris en tête, puis **À suivre**, puis une rangée de recommandations publiées par vos applis (YouTube, SmartTube, Ultra TV, TiviMate…) et une rangée d'applis (**Récentes**, « Toutes les applis », outils) en alternance.
+- **Onglets comme Google TV** : *Pour vous*, *Films*, *Séries*, *Applis* en haut à gauche ; à droite, boutons en icônes, température et heure.
+- **Films et séries à voir** (TMDB) : tendances de la semaine, « Films sur Netflix », « Séries sur Prime Video »… pour chaque plateforme installée sur la box, et les mieux notés. Catalogue mis à jour une fois par jour et gardé sur la box (l'accueil n'attend jamais le réseau). Fiche avec résumé, note et **« Regarder sur »** chaque appli de la box où le titre est disponible au Maroc.
+- **Ma liste** : un clic sur « + Ma liste » dans la fiche ; la rangée apparaît dans *Pour vous*, *Films* et *Séries*.
 - **Reprendre** : Apple TV, Prime Video, Netflix, Shahid… ne publient rien dans Android ; la dernière appli de films ou séries ouverte a sa carte « Reprendre » dans « À suivre » (elle reprend là où vous en étiez).
 - **Musique en cours** : Spotify, Anghami, Deezer… sont traitées comme la radio : pastille « ♪ » sur l'accueil, petit lecteur (précédent, pause, suivant) et carte sur l'écran de veille. Demande une fois l'accès aux notifications (Réglages › Assistant de configuration).
 - **Box avec tuner TV ou entrées HDMI** : rangées **Chaînes TV** (logo, numéro, ouverture directe dans l'appli TV) et **Entrées**, affichées seulement si la box en a.
@@ -91,6 +94,10 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 | Toutes les applications | Recherche |
 | --- | --- |
 | ![Toutes les applications](docs/assets/apps.jpg) | ![Recherche](docs/assets/search.jpg) |
+| **Onglet Films** | **Onglet Séries** |
+| ![Films](docs/assets/catalog-films.jpg) | ![Séries](docs/assets/catalog-series.jpg) |
+| **Fiche d'un titre** | |
+| ![Fiche](docs/assets/catalog-detail.jpg) | |
 | **Rangées de recommandations** | **Déplacer un favori** |
 | ![Rangées de recommandations](docs/assets/reco-rows.jpg) | ![Déplacer un favori](docs/assets/move.jpg) |
 | **Écran de veille : dégradé animé** | **Réglages de l'écran de veille** |
@@ -217,3 +224,5 @@ Kairo n'a ni compte, ni publicité, ni statistiques. Les seuls appels réseau : 
 ---
 
 <p align="center"><img src="docs/assets/icon.png" width="64" alt=""><br><sub>Kairo — fait pour les box modestes et les gens exigeants.</sub></p>
+
+> Ce produit utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB ([themoviedb.org](https://www.themoviedb.org)).

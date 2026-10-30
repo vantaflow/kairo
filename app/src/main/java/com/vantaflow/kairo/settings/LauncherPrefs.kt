@@ -1,5 +1,8 @@
 package com.vantaflow.kairo.settings
 
+import com.vantaflow.kairo.catalog.CatalogItem
+import com.vantaflow.kairo.catalog.decodeListItem
+import com.vantaflow.kairo.catalog.encodeListItem
 import com.vantaflow.kairo.dream.DreamConfig
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -37,6 +40,7 @@ private val SECRET_KEYS = setOf("github_token", "pixabay_key", "phone_remote_tok
 /** Nombre d'applis gardées dans « Récentes ». */
 const val MAX_RECENT_APPS = 12
 const val MAX_APP_USAGE = 30
+const val MAX_MY_LIST = 60
 
 fun resolveFavorites(saved: List<String>, installed: List<AppInfo>, initialized: Boolean): List<AppInfo> {
     if (!initialized) return installed.take(DEFAULT_FAVORITES_COUNT)
@@ -176,6 +180,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val phoneRemoteToken = stringPreferencesKey("phone_remote_token")
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
         val appUsage = stringPreferencesKey("app_usage")
+        fun myList(s: String) = stringPreferencesKey("my_list$s")
         val clockSize = intPreferencesKey("clock_size")
         val tileWidth = intPreferencesKey("tile_width")
         val heroTransition = stringPreferencesKey("hero_transition")
@@ -317,6 +322,21 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             val (pkg, t) = line.split('\t').takeIf { it.size == 2 } ?: return@mapNotNull null
             t.toLongOrNull()?.let { pkg to it }
         }.toMap()
+
+    /** « Ma liste » : films et séries gardés pour plus tard, le dernier ajouté en tête (par profil). */
+    val myList: Flow<List<CatalogItem>> = pref { decode(it[Keys.myList(it.sfx)]).mapNotNull(::decodeListItem) }
+
+    suspend fun toggleMyList(item: CatalogItem) {
+        store.edit {
+            val list = decode(it[Keys.myList(it.sfx)])
+            val prefix = "${item.type.path}\t${item.id}\t"
+            val present = list.any { line -> line.startsWith(prefix) }
+            it[Keys.myList(it.sfx)] = encode(
+                if (present) list.filterNot { line -> line.startsWith(prefix) }
+                else (listOf(encodeListItem(item)) + list).take(MAX_MY_LIST),
+            )
+        }
+    }
 
     /** Applis ouvertes depuis Kairo, la plus récente en tête (par profil). */
     val recentApps: Flow<List<String>> = pref { decode(it[Keys.recentApps(it.sfx)]) }
