@@ -73,7 +73,8 @@ fun ProfileSettings() {
     var kids by remember { mutableStateOf(false) }
     var pin by remember { mutableStateOf("") }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item { Text("Profil actif : ${current.name}", color = OnBackground, fontSize = 20.sp) }
         items(profiles, key = { it.id }) { p ->
             Row(

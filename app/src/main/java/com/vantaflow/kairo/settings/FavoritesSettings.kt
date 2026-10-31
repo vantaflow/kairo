@@ -31,7 +31,8 @@ fun FavoritesSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
         SettingHint("Aucun favori. Ajoutez-en depuis Applications (appui long ou touche Menu sur une appli).")
         return
     }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item { SettingHint("L'ordre ici est celui de la rangée Favoris de l'accueil.") }
         itemsIndexed(favorites, key = { _, pkg -> pkg }) { index, pkg ->
             Row(

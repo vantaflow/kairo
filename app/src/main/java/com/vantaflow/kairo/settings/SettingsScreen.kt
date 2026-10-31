@@ -123,7 +123,7 @@ fun SettingsScreen(
             Modifier
                 .align(Alignment.CenterEnd)
                 .padding(16.dp)
-                .width(480.dp)
+                .width(540.dp)
                 .fillMaxHeight()
                 .background(SurfaceColor, RoundedCornerShape(24.dp))
                 // Le focus reste dans le panneau tant qu'il est ouvert.

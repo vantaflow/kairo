@@ -214,15 +214,22 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
-        Text(
-            listOfNotNull(program.title, program.subtitle).joinToString(" · "),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-        )
+        // Titre sur 2 lignes au plus, puis année, note ou épisode en dessous : rien n'est coupé
+        // pour faire tenir le sous-titre sur la même ligne.
+        Column(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 10.dp)) {
+            Text(
+                program.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White,
+                lineHeight = 17.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            program.subtitle?.let {
+                Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
     }
 }
 

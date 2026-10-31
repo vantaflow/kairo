@@ -27,7 +27,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
-import com.vantaflow.kairo.ui.theme.CUSTOM_THEME_ID
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.ui.theme.Themes
@@ -37,13 +36,11 @@ import com.vantaflow.kairo.ui.theme.Themes
 @Composable
 fun ThemeSettings(vm: SettingsViewModel) {
     val current by vm.themeId.collectAsStateWithLifecycle()
-    Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Thème personnalisé : activé en modifiant une option plus bas (pas de 7e choix, la rangée tient sur une ligne).
         ChoiceRow {
             Themes.forEach { theme ->
                 ChoiceChip(selected = theme.id == current, onClick = { vm.setThemeId(theme.id) }) { Text(theme.name) }
-            }
-            ChoiceChip(selected = current == CUSTOM_THEME_ID, onClick = { vm.setThemeId(CUSTOM_THEME_ID) }) {
-                Text("Personnalisé")
             }
         }
         Text("Le thème change les couleurs des écrans, de l'en-tête et de ce panneau, l'accent, le contour de sélection, l'arrondi et le zoom des tuiles.", color = OnBackgroundMuted)

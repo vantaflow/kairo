@@ -32,8 +32,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.tv.material3.OutlinedButton
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -72,7 +70,7 @@ fun ChoiceChip(selected: Boolean, onClick: () -> Unit, content: @Composable RowS
         ),
     ) {
         Row(
-            Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -82,12 +80,31 @@ fun ChoiceChip(selected: Boolean, onClick: () -> Unit, content: @Composable RowS
     }
 }
 
-/** Rangée de choix qui passe à la ligne au lieu d'être coupée au bord de l'écran. */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Rangée de choix sur une seule ligne, en entier : si elle dépasse la largeur du panneau, elle est
+ * réduite d'un bloc (texte compris) juste assez pour tenir, sans rien couper.
+ */
 @Composable
 fun ChoiceRow(content: @Composable () -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        content()
+    androidx.compose.ui.layout.Layout(
+        content = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) { content() }
+        },
+        // Marge : le choix sélectionné grossit au focus sans être coupé.
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+    ) { measurables, constraints ->
+        val row = measurables.first().measure(constraints.copy(minWidth = 0, maxWidth = androidx.compose.ui.unit.Constraints.Infinity))
+        val scale = if (constraints.hasBoundedWidth && row.width > constraints.maxWidth) constraints.maxWidth.toFloat() / row.width else 1f
+        layout((row.width * scale).toInt(), (row.height * scale).toInt()) {
+            row.placeWithLayer(0, 0) {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+            }
+        }
     }
 }
 

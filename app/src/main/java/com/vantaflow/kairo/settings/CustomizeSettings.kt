@@ -97,7 +97,8 @@ private fun ColorRow(selected: Long, onPick: (Long) -> Unit) {
 @Composable
 fun LayoutSettings(vm: SettingsViewModel) {
     val layout by vm.homeLayout.collectAsStateWithLifecycle()
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item { Toggle("Afficher l'heure", layout.showClock) { vm.setHomeLayout(layout.copy(showClock = it)) } }
         item { Toggle("Afficher la date et la météo", layout.showDate) { vm.setHomeLayout(layout.copy(showDate = it)) } }
         item { Toggle("Afficher le titre « Favoris »", layout.showFavoritesLabel) { vm.setHomeLayout(layout.copy(showFavoritesLabel = it)) } }

@@ -67,7 +67,8 @@ fun DreamSettings() {
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (ok) photosGranted = 1 }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 SmallButton("Aperçu", { context.startSafely(Intent(context, DreamPreviewActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })

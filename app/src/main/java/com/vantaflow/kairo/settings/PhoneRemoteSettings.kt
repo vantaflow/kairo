@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -72,7 +73,8 @@ fun PhoneRemoteSettings() {
     LaunchedEffect(enabled, renewed) { if (enabled) token = container.prefs.phoneRemoteToken() }
     val ip = remember(enabled) { localIpv4(context) }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
         item {
             SwitchRow(
                 "Activer la télécommande sur téléphone",

@@ -130,7 +130,8 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
     }
     val ready = steps.count { it.done == true }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item {
             Text(
                 if (ready == steps.size) "Tout est prêt." else "$ready étapes prêtes sur ${steps.size}.",

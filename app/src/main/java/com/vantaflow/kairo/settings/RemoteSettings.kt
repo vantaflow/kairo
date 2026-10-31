@@ -116,7 +116,7 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
         } else {
             Button(onClick = learner::start) { Text("Ajouter une touche") }
         }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
             items(bindings.entries.sortedBy { it.key }, key = { it.key }) { entry ->
                 Row(
                     Modifier.fillMaxWidth(),
@@ -144,7 +144,7 @@ fun AppPicker(title: String, apps: List<AppInfo>, onPick: (AppInfo) -> Unit, onC
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title, color = OnBackground, fontSize = 20.sp)
         OutlinedButton(onClick = onCancel) { Text("Annuler") }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
             items(apps, key = { it.packageName }) { app ->
                 ListItem(
                     selected = false,
