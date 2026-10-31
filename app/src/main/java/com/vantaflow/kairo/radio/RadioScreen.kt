@@ -53,6 +53,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.vantaflow.kairo.TvHomeApp
 import com.vantaflow.kairo.settings.ChoiceChip
 import com.vantaflow.kairo.settings.ChoiceRow
@@ -238,11 +239,11 @@ private fun RadioPlayer(
             true
         },
     ) {
-        if (station.favicon.isNotBlank()) {
+        station.logoCandidates().firstOrNull()?.let { logo ->
             // Flou « gratuit » : une miniature de 16 px agrandie, pas d'effet GPU sur une petite box.
             val context = LocalContext.current
             coil.compose.AsyncImage(
-                model = remember(station.favicon) { coil.request.ImageRequest.Builder(context).data(station.favicon).size(16, 16).build() },
+                model = remember(logo) { coil.request.ImageRequest.Builder(context).data(logo).size(16, 16).build() },
                 contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.45f },
             )
@@ -376,6 +377,9 @@ private fun StationTile(s: Station, playing: Boolean, favorite: Boolean, onClick
     }
 }
 
+/** En dessous (en pixels), l'image est une icône floue une fois agrandie : on passe à la suivante. */
+private const val MIN_LOGO_PX = 40f
+
 /** Logo de la radio, sinon ses initiales sur un fond de couleur stable. */
 @Composable
 internal fun StationLogo(s: Station?, size: Dp) {
@@ -388,15 +392,25 @@ internal fun StationLogo(s: Station?, size: Dp) {
             )
         }
     }
+    // Logos essayés l'un après l'autre : introuvable ou trop petit (icône floue) → le suivant.
+    val candidates = remember(s) { s?.logoCandidates().orEmpty() }
+    var tried by remember(s) { mutableStateOf(0) }
     Box(Modifier.size(size).clip(RoundedCornerShape(size / 5)).background(Color.White.copy(alpha = 0.08f))) {
-        if (s == null || s.favicon.isBlank()) fallback()
+        val logo = candidates.getOrNull(tried)
+        if (logo == null) fallback()
         else SubcomposeAsyncImage(
-            model = s.favicon,
+            model = logo,
             contentDescription = null,
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             loading = { fallback() },
-            error = { fallback() },
+            error = { fallback(); LaunchedEffect(logo) { tried++ } },
+            success = { st ->
+                if (st.painter.intrinsicSize.width < MIN_LOGO_PX) {
+                    fallback()
+                    LaunchedEffect(logo) { tried++ }
+                } else SubcomposeAsyncImageContent()
+            },
         )
     }
 }

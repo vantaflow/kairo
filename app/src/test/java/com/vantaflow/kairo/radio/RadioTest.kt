@@ -52,4 +52,18 @@ class RadioTest {
         assertEquals(RadioCountries.size, radioCountriesFor("FR").size)
         assertEquals("SN" to "Sénégal", radioCountriesFor("SN").first())
     }
+
+    @Test
+    fun logoFromStationSiteBeforeFavicon() {
+        val site = "https://www.google.com/s2/favicons?domain=radioaswat.ma&sz=256"
+        // favicon.ico (souvent WordPress ou 16 px) : l'icône du site d'abord.
+        assertEquals(
+            listOf(site, "http://www.radioaswat.ma/favicon.ico"),
+            Station("1", "Aswat", "u", "http://www.radioaswat.ma/favicon.ico", homepage = "http://www.radioaswat.ma/").logoCandidates(),
+        )
+        // Vraie image de l'annuaire : gardée en premier.
+        assertEquals("https://x.ma/logo.png", Station("2", "X", "u", "https://x.ma/logo.png", homepage = "https://x.ma").logoCandidates().first())
+        // Page d'un annuaire ou d'un flux : pas son icône.
+        assertTrue(Station("3", "Z", "u", homepage = "https://stream.zeno.fm/abc").logoCandidates().isEmpty())
+    }
 }
