@@ -213,7 +213,8 @@ fun HomeScreen(
                     .clipToBounds()
                     .onPlaced { viewport = it }
                     .verticalScroll(columnState)
-                    .padding(top = 24.dp, bottom = 480.dp),
+                    // Peu de marge en bas : la dernière rangée remonte juste assez pour être entière, sans vide dessous.
+                    .padding(top = 24.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 if (showApps) key("favorites") {
@@ -343,6 +344,13 @@ fun HomeScreen(
         runCatching { requesters[index].requestFocus() }
     }
 
+    // Carte focalisée disparue (retirée de Ma liste) : le focus revient sur l'onglet affiché.
+    LaunchedEffect(focus.tabsToken) {
+        if (focus.tabsToken == 0 || tab == null) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { tabRequesters.getValue(tab).requestFocus() }
+    }
+
     // Appli ajoutée aux favoris depuis une autre rangée : le focus la suit.
     val view = LocalView.current
     LaunchedEffect(focus.followFavorite, state.favorites, requesters) {
@@ -386,7 +394,8 @@ enum class HomeTab(val label: String) { ForYou("Pour vous"), Movies("Films"), Sh
 @Composable
 private fun HomeTabs(current: HomeTab, onTab: (HomeTab) -> Unit, requesters: Map<HomeTab, FocusRequester>, modifier: Modifier) {
     androidx.compose.foundation.layout.Row(
-        modifier.focusGroup(),
+        // Texte du 1er onglet aligné sur le bord des tuiles (la pilule déborde à gauche, comme Google TV).
+        modifier.offset(x = (-22).dp).focusGroup(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         HomeTab.entries.forEach { t ->

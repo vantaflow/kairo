@@ -51,14 +51,13 @@ import kotlinx.coroutines.withContext
 
 /**
  * Fiche d'un film ou d'une série : image, résumé, « Regarder sur » chaque appli de la box qui l'a
- * au Maroc, et « Ma liste ». Retour la ferme.
+ * dans le pays de la box, et « Ma liste ». Retour la ferme.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CatalogDetail(
     item: CatalogItem,
     repository: CatalogRepository,
-    installed: Set<String>,
     inMyList: Boolean,
     onToggleMyList: () -> Unit,
     onDismiss: () -> Unit,
@@ -69,7 +68,7 @@ fun CatalogDetail(
     LaunchedEffect(item) {
         withContext(Dispatchers.IO) {
             if (overview.isBlank()) repository.overview(item)?.let { overview = it }
-            where = repository.whereToWatch(item, installed)
+            where = repository.whereToWatch(item)
         }
     }
     val first = remember { FocusRequester() }
@@ -112,7 +111,7 @@ fun CatalogDetail(
             Text(
                 when {
                     where == null -> "Recherche des applis où le regarder…"
-                    where!!.isEmpty() -> "Pas disponible dans vos applis au Maroc."
+                    where!!.isEmpty() -> "Pas disponible dans vos applis (${countryName(repository.region())})."
                     else -> "Disponible sur : " + where!!.joinToString(", ") { it.first.name }
                 },
                 fontSize = 16.sp, color = OnBackgroundMuted,
@@ -120,6 +119,7 @@ fun CatalogDetail(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                 where.orEmpty().forEachIndexed { i, (p, pkg) ->
                     PlayerButton("▶  ${p.name}", if (i == 0) Modifier.focusRequester(first) else Modifier, big = i == 0) {
+                        com.vantaflow.kairo.reco.LaunchedTitles.record(context, pkg, item)
                         openInApp(context, pkg, item.title)
                     }
                 }

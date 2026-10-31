@@ -114,8 +114,13 @@ fun RecoRow(
         if (LocalHomeLayout.current.showRowTitles) {
             Text(title, fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
         }
+        val state = rememberRowState()
+        // Nouvelle carte en tête (ex. « Reprendre » de l'appli quittée) : la rangée revient au début
+        // au lieu de garder la carte précédente en premier et de cacher la nouvelle à gauche.
+        val first = programs.firstOrNull()?.let { "${it.packageName}:${it.id}" }
+        LaunchedEffect(first) { if (state.firstVisibleItemIndex != 0) state.scrollToItem(0) }
         LazyRow(
-            state = rememberRowState(),
+            state = state,
             contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {

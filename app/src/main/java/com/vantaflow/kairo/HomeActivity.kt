@@ -164,7 +164,7 @@ class HomeActivity : ComponentActivity() {
     /** Catalogue relu (fichier de la box) ou téléchargé s'il date de plus d'un jour, sans bloquer l'affichage. */
     private fun refreshCatalog() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val installed = container.appRepository.installedApps().map { it.packageName }.toSet()
+            val installed = container.appRepository.installedApps().associate { it.packageName to it.label }
             val rows = runCatching { container.catalog.rows(installed) }.getOrDefault(emptyList())
             if (rows.isNotEmpty()) catalogRows = rows
         }
@@ -253,6 +253,8 @@ class HomeActivity : ComponentActivity() {
         toolsMenu = false
         miniPlayer = false
         mediaPlayer = false
+        catalogDetail = null
+        homeTab = HomeTab.ForYou
         settingsUnlocked = false
         homeFocus.reset()
     }
@@ -444,16 +446,29 @@ class HomeActivity : ComponentActivity() {
         }
 
         catalogDetail?.let { item ->
-            val installed = remember { container.appRepository.installedApps().map { it.packageName }.toSet() }
+            // Titre déjà dans Ma liste à l'ouverture de la fiche : sa carte de Ma liste peut disparaître.
+            val openedInList = remember(item) { myList.any { it.type == item.type && it.id == item.id } }
             val scope = androidx.compose.runtime.rememberCoroutineScope()
-            CatalogDetail(
-                item = item,
-                repository = container.catalog,
-                installed = installed,
-                inMyList = myList.any { it.type == item.type && it.id == item.id },
-                onToggleMyList = { scope.launch { container.prefs.toggleMyList(item) } },
-                onDismiss = { catalogDetail = null },
-            )
+            // Fenêtre à part : à sa fermeture, le focus revient sur la carte d'où la fiche a été ouverte.
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { catalogDetail = null },
+                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+            ) {
+                // Même mise à l'échelle que l'écran principal (la fenêtre de la fiche est à part).
+                DesignScale {
+                    CatalogDetail(
+                        item = item,
+                        repository = container.catalog,
+                        inMyList = myList.any { it.type == item.type && it.id == item.id },
+                        onToggleMyList = { scope.launch { container.prefs.toggleMyList(item) } },
+                        onDismiss = {
+                            // Retiré de Ma liste depuis sa carte de Ma liste : la carte disparaît, le focus va aux onglets.
+                            if (openedInList && myList.none { it.type == item.type && it.id == item.id }) homeFocus.tabsToken++
+                            catalogDetail = null
+                        },
+                    )
+                }
+            }
         }
 
         if (mediaPlayer) {

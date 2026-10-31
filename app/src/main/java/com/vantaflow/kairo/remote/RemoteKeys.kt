@@ -28,6 +28,9 @@ class HomeFocus {
         resetToken++
     }
 
+    /** Demande de focus sur les onglets (la carte focalisée a disparu, ex. retirée de Ma liste). */
+    var tabsToken by mutableIntStateOf(0)
+
     /** Favori à focaliser dès qu'il apparaît (appli ajoutée aux favoris par l'appui long). */
     var followFavorite by mutableStateOf<String?>(null)
 

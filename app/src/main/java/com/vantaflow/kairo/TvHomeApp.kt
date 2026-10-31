@@ -40,9 +40,29 @@ class AppContainer(val app: Application) {
 
     /** Catalogue de films et séries (TMDB), gardé sur la box une journée. */
     val catalog = com.vantaflow.kairo.catalog.CatalogRepository(
-        BuildConfig.TMDB_READ_TOKEN.takeIf { it.isNotBlank() }?.let { com.vantaflow.kairo.catalog.tmdbHttp(it) },
+        BuildConfig.TMDB_READ_TOKEN.takeIf { it.isNotBlank() }?.let { com.vantaflow.kairo.catalog.tmdbHttp(it, ::catalogLanguage) },
         java.io.File(app.filesDir, "catalog.json"),
+        region = ::catalogRegion,
+        language = ::catalogLanguage,
     )
+
+    /**
+     * Pays du catalogue : là où se trouve la box (adresse IP, gardée pour la session), sinon celui de
+     * la langue de la box (une box en français au Maroc est réglée « France »), sinon les États-Unis.
+     */
+    @Volatile private var ipRegion: String? = null
+
+    private fun catalogRegion(): String {
+        ipRegion?.let { return it }
+        val fromIp = runCatching {
+            org.json.JSONObject(http.get("https://get.geojs.io/v1/ip/country.json")!!).optString("country")
+        }.getOrNull()?.takeIf { it.length == 2 }?.uppercase()
+        if (fromIp != null) return fromIp.also { ipRegion = it }
+        return java.util.Locale.getDefault().country.takeIf { it.length == 2 }?.uppercase() ?: com.vantaflow.kairo.catalog.DEFAULT_REGION
+    }
+
+    /** Langue des titres : celle de la box (« fr-FR », « ar », « en-US »…). */
+    private fun catalogLanguage(): String = java.util.Locale.getDefault().toLanguageTag().ifBlank { "fr-FR" }
     /** Nos applis (Kairo Player, Ultra TV) : installation et mises à jour depuis GitHub. */
     val ourApps = OurAppsStore(app)
 

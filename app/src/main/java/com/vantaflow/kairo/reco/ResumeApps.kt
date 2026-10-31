@@ -16,6 +16,9 @@ import kotlin.math.absoluteValue
 /** Fenêtre de « Reprendre » : au-delà, l'appli n'est plus proposée. */
 const val RESUME_WINDOW_MS = 14L * 24 * 3_600_000
 
+/** Durée maximale entre le lancement d'un titre depuis Kairo et la sortie de l'appli pour garder son affiche. */
+const val RESUME_TITLE_MS = 6L * 3_600_000
+
 /** Nombre maximal de cartes « Reprendre ». */
 const val MAX_RESUME = 6
 
@@ -71,17 +74,43 @@ fun formatAgo(elapsedMs: Long): String {
 }
 
 /** Cartes « Reprendre » prêtes pour la rangée (lecture du gestionnaire de paquets : à appeler hors du fil principal). */
+/**
+ * Dernier film ou série lancé depuis Kairo dans chaque appli (« Regarder sur » de la fiche) : la
+ * carte « Reprendre » prend son affiche et son titre, puisque l'appli elle-même ne dit rien.
+ */
+object LaunchedTitles {
+    private fun file(context: Context) = java.io.File(context.filesDir, "launched_titles.txt")
+
+    fun record(context: Context, pkg: String, item: com.vantaflow.kairo.catalog.CatalogItem) {
+        val now = System.currentTimeMillis()
+        val lines = read(context).filterKeys { it != pkg }.map { (p, v) -> "$p\t${v.first}\t${com.vantaflow.kairo.catalog.encodeListItem(v.second)}" }
+        runCatching { file(context).writeText((listOf("$pkg\t$now\t${com.vantaflow.kairo.catalog.encodeListItem(item)}") + lines).take(20).joinToString("\n")) }
+    }
+
+    /** Appli → (moment du lancement, titre). */
+    fun read(context: Context): Map<String, Pair<Long, com.vantaflow.kairo.catalog.CatalogItem>> =
+        runCatching { file(context).readLines() }.getOrDefault(emptyList()).mapNotNull { line ->
+            val p = line.split('\t', limit = 3)
+            if (p.size < 3) return@mapNotNull null
+            val item = com.vantaflow.kairo.catalog.decodeListItem(p[2]) ?: return@mapNotNull null
+            p[0] to ((p[1].toLongOrNull() ?: return@mapNotNull null) to item)
+        }.toMap()
+}
+
 fun resumePrograms(context: Context, usage: Map<String, Long>, exclude: Set<String>, now: Long): List<Program> {
     val pm = context.packageManager
+    val launched = LaunchedTitles.read(context)
     return resumeCandidates(usage, now, exclude + context.packageName, { pkg -> isMediaApp(pm, pkg) }).mapNotNull { (pkg, t) ->
         val launch = pm.getLeanbackLaunchIntentForPackage(pkg) ?: pm.getLaunchIntentForPackage(pkg) ?: return@mapNotNull null
         val app = runCatching { pm.getApplicationInfo(pkg, 0) }.getOrNull() ?: return@mapNotNull null
+        // Titre lancé depuis Kairo pendant cette séance dans l'appli (avant sa dernière utilisation).
+        val title = launched[pkg]?.takeIf { (at, _) -> at <= t && t - at < RESUME_TITLE_MS }?.second
         Program(
             id = -(pkg.hashCode().toLong().absoluteValue + 1),
             packageName = pkg,
-            title = pm.getApplicationLabel(app).toString(),
+            title = title?.title ?: pm.getApplicationLabel(app).toString(),
             subtitle = "Reprendre · ${formatAgo(now - t)}",
-            posterUri = bannerUri(pm, pkg, app, launch.component),
+            posterUri = title?.let { com.vantaflow.kairo.catalog.tmdbImage(it.backdrop ?: it.poster) } ?: bannerUri(pm, pkg, app, launch.component),
             intentUri = launch.toUri(Intent.URI_INTENT_SCHEME),
             progressPercent = null,
             engagedAt = t,

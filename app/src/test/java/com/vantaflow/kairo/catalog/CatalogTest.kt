@@ -28,9 +28,29 @@ class CatalogTest {
     }
 
     @Test
-    fun `plateformes du Maroc, abonnement d'abord`() {
+    fun `plateformes du pays, sans location ni achat`() {
         val json = """{"results":{"MA":{"buy":[{"provider_id":2}],"flatrate":[{"provider_id":8}]},"FR":{"flatrate":[{"provider_id":381}]}}}"""
-        assertEquals(listOf(8, 2), parseProviders(json))
+        assertEquals(listOf(8), parseProviders(json, "MA"))
+        assertEquals(listOf(381), parseProviders(json, "FR"))
+    }
+
+    @Test
+    fun `plateformes du pays reconnues par paquet connu ou par nom d'appli`() {
+        val regional = listOf(
+            RegionProvider(8, "Netflix", 0),
+            RegionProvider(119, "Amazon Prime Video", 1),
+            RegionProvider(9999, "Shahid VIP", 2),
+            RegionProvider(4242, "Inconnue", 3),
+        )
+        val installed = mapOf(
+            "com.netflix.ninja" to "Netflix",
+            "com.amazon.amazonvideo.livingroom" to "Prime Video",
+            "net.mbc.shahidTV" to "Shahid",
+            "com.android.tv.settings" to "Paramètres",
+        )
+        val m = matchProviders(regional, installed)
+        assertEquals(listOf("com.netflix.ninja", "com.amazon.amazonvideo.livingroom", "net.mbc.shahidTV"), m.map { it.second })
+        assertTrue(9999 in m[2].first.tmdbIds)
     }
 
     @Test
@@ -44,13 +64,13 @@ class CatalogTest {
     @Test
     fun `catalogue construit une fois puis relu sans réseau`() {
         var calls = 0
-        val http = TmdbGet { path -> calls++; if (path.startsWith("trending") || path.startsWith("discover")) trending else """{"results":[]}""" }
+        val http = TmdbGet { path -> calls++; if (path.startsWith("discover")) trending else """{"results":[]}""" }
         val file = File.createTempFile("catalog", ".json").apply { delete() }
-        val installed = setOf("com.netflix.ninja")
-        val rows = CatalogRepository(http, file).rows(installed)
-        assertTrue(rows.any { it.title == "Films sur Netflix" })
+        val installed = mapOf("com.netflix.ninja" to "Netflix")
+        val rows = CatalogRepository(http, file, region = { "MA" }).rows(installed)
+        assertTrue(rows.any { it.title == "Films tendance sur Netflix" })
         val before = calls
-        val again = CatalogRepository(http, file).rows(installed)
+        val again = CatalogRepository(http, file, region = { "MA" }).rows(installed)
         assertEquals(before, calls)
         assertEquals(rows.map { it.title }, again.map { it.title })
         file.delete()
