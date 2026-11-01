@@ -128,6 +128,9 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text(stateText(state), color = OnBackground, fontSize = 20.sp) }
+        // Au-dessus de la liste Wi-Fi : le résultat de la recherche arrive après coup et ferait
+        // sauter le DNS (et le focus) vers le bas.
+        item(key = "dns") { PrivateDnsPicker() }
         message?.let { item { Text(it, color = OnBackgroundMuted) } }
         item {
             Button(onClick = {
@@ -197,7 +200,6 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
                 )
             }
         }
-        item { PrivateDnsPicker() }
         item { Text("Options avancées (paramètres Android)", color = OnBackgroundMuted, modifier = Modifier.padding(top = 8.dp)) }
         items(NetworkShortcuts, key = { it.title }) { s ->
             ListItem(selected = false, onClick = { context.openSettings(s) }, headlineContent = { Text(s.title) })
