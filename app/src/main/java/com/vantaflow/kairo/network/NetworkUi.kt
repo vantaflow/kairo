@@ -197,6 +197,7 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
                 )
             }
         }
+        item { PrivateDnsPicker() }
         item { Text("Options avancées (paramètres Android)", color = OnBackgroundMuted, modifier = Modifier.padding(top = 8.dp)) }
         items(NetworkShortcuts, key = { it.title }) { s ->
             ListItem(selected = false, onClick = { context.openSettings(s) }, headlineContent = { Text(s.title) })

@@ -19,6 +19,9 @@ const val RESUME_WINDOW_MS = 14L * 24 * 3_600_000
 /** Durée maximale entre le lancement d'un titre depuis Kairo et la sortie de l'appli pour garder son affiche. */
 const val RESUME_TITLE_MS = 6L * 3_600_000
 
+/** Le lecteur peut encore annoncer un peu après la dernière utilisation relevée par Android. */
+private const val LAST_PLAYED_SLACK_MS = 5L * 60_000
+
 /** Nombre maximal de cartes « Reprendre ». */
 const val MAX_RESUME = 6
 
@@ -100,17 +103,24 @@ object LaunchedTitles {
 fun resumePrograms(context: Context, usage: Map<String, Long>, exclude: Set<String>, now: Long): List<Program> {
     val pm = context.packageManager
     val launched = LaunchedTitles.read(context)
+    val played = com.vantaflow.kairo.media.LastPlayed.read(context)
     return resumeCandidates(usage, now, exclude + context.packageName, { pkg -> isMediaApp(pm, pkg) }).mapNotNull { (pkg, t) ->
         val launch = pm.getLeanbackLaunchIntentForPackage(pkg) ?: pm.getLaunchIntentForPackage(pkg) ?: return@mapNotNull null
         val app = runCatching { pm.getApplicationInfo(pkg, 0) }.getOrNull() ?: return@mapNotNull null
         // Titre lancé depuis Kairo pendant cette séance dans l'appli (avant sa dernière utilisation).
+        val launchedAt = launched[pkg]?.first
         val title = launched[pkg]?.takeIf { (at, _) -> at <= t && t - at < RESUME_TITLE_MS }?.second
+        // Ce que le lecteur de l'appli a annoncé (YouTube, SmartTube…), s'il est plus récent.
+        val heard = played[pkg]?.takeIf { it.at <= t + LAST_PLAYED_SLACK_MS && t - it.at < RESUME_TITLE_MS }
+            ?.takeIf { title == null || launchedAt == null || it.at > launchedAt }
         Program(
             id = -(pkg.hashCode().toLong().absoluteValue + 1),
             packageName = pkg,
-            title = title?.title ?: pm.getApplicationLabel(app).toString(),
+            title = heard?.title ?: title?.title ?: pm.getApplicationLabel(app).toString(),
             subtitle = "Reprendre · ${formatAgo(now - t)}",
-            posterUri = title?.let { com.vantaflow.kairo.catalog.tmdbImage(it.backdrop ?: it.poster) } ?: bannerUri(pm, pkg, app, launch.component),
+            posterUri = heard?.image?.let { android.net.Uri.fromFile(it).toString() }
+                ?: title?.let { com.vantaflow.kairo.catalog.tmdbImage(it.backdrop ?: it.poster) }
+                ?: bannerUri(pm, pkg, app, launch.component),
             intentUri = launch.toUri(Intent.URI_INTENT_SCHEME),
             progressPercent = null,
             engagedAt = t,

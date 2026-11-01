@@ -124,6 +124,13 @@ object NowPlaying {
         val title = meta?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
             ?: meta?.getString(MediaMetadata.METADATA_KEY_TITLE)
         val label = appLabel(c.packageName)
+        if (!title.isNullOrBlank()) appContext?.let { ctx ->
+            LastPlayed.record(
+                ctx, c.packageName, title,
+                meta?.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE) ?: meta?.getString(MediaMetadata.METADATA_KEY_ARTIST),
+                sourceArt(meta),
+            )
+        }
         mutable.value = MediaNow(
             packageName = c.packageName,
             appLabel = label,
@@ -139,11 +146,13 @@ object NowPlaying {
     /** Pochette réduite (une seule petite image en mémoire), réutilisée tant que le titre ne change pas. */
     private var lastArt: Pair<Bitmap, ImageBitmap>? = null
 
-    private fun art(meta: MediaMetadata?): ImageBitmap? {
-        val source = meta?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+    private fun sourceArt(meta: MediaMetadata?): Bitmap? =
+        meta?.getBitmap(MediaMetadata.METADATA_KEY_ART)
             ?: meta?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
             ?: meta?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
-            ?: return null
+
+    private fun art(meta: MediaMetadata?): ImageBitmap? {
+        val source = sourceArt(meta) ?: return null
         lastArt?.let { (bitmap, image) -> if (bitmap === source) return image }
         val scale = ART_SIZE.toFloat() / maxOf(source.width, source.height)
         val small = if (scale < 1f) Bitmap.createScaledBitmap(source, (source.width * scale).toInt().coerceAtLeast(1), (source.height * scale).toInt().coerceAtLeast(1), true) else source

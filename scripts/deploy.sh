@@ -43,6 +43,8 @@ fi
 # Indispensable pour lire le « À suivre » des autres applis (sinon le TvProvider ne renvoie que nos lignes).
 "${ADB[@]}" shell pm grant $PKG android.permission.READ_TV_LISTINGS || true
 "${ADB[@]}" shell pm grant $PKG android.permission.ACCESS_FINE_LOCATION || true
+# Choix du DNS privé depuis Réglages › Réseau.
+"${ADB[@]}" shell pm grant $PKG android.permission.WRITE_SECURE_SETTINGS || true
 
 # Service de touches : ajouté aux services déjà actifs, sans les écraser. Toujours réécrit :
 # après une mise à jour, la box ne relance le service que si le réglage change.

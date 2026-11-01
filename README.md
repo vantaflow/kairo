@@ -37,7 +37,9 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - **Onglets comme Google TV** : *Pour vous*, *Films*, *Séries*, *Applis* en haut à gauche ; à droite, boutons en icônes, température et heure.
 - **Films et séries à voir** (TMDB), **dans tous les pays** : Kairo repère le pays de la box et les plateformes qui y sont proposées (Netflix, Prime Video, Apple TV, Disney+, Shahid, Max, Canal+…), les rapproche des applis installées, puis affiche seulement ce qui est **inclus dans vos abonnements** (pas de location ni d'achat) : tendances, mieux notés, et une rangée par plateforme quand il y en a plusieurs. Catalogue mis à jour une fois par jour et gardé sur la box (l'accueil n'attend jamais le réseau). Fiche avec résumé, note et **« Regarder sur »** chaque appli où le titre est disponible.
 - **Ma liste** : un clic sur « + Ma liste » dans la fiche ; la rangée apparaît dans *Pour vous*, *Films* et *Séries*.
-- **Reprendre** : les applis qui ne publient pas leur « À suivre » dans Android (Apple TV, Prime Video, Shahid…) ont une carte « Reprendre » quand vous les avez ouvertes récemment. Un titre lancé depuis la fiche de Kairo y garde son affiche.
+- **Reprendre** : les applis qui ne publient pas leur « À suivre » dans Android (Apple TV, Prime Video, Shahid…) ont une carte « Reprendre » quand vous les avez ouvertes récemment. Un titre lancé depuis la fiche de Kairo y garde son affiche, et **la vidéo en cours dans YouTube (ou toute appli qui l'annonce à Android) y apparaît avec son image et son titre**. Apple TV n'annonce rien : sa carte garde la bannière de l'appli.
+
+![Reprendre : la vidéo YouTube en cours dans « À suivre »](docs/assets/resume.jpg)
 - **Musique en cours** : Spotify, Anghami, Deezer… sont traitées comme la radio : pastille « ♪ » sur l'accueil, petit lecteur (précédent, pause, suivant) et carte sur l'écran de veille. Demande une fois l'accès aux notifications (Réglages › Assistant de configuration).
 - **Box avec tuner TV ou entrées HDMI** : rangées **Chaînes TV** (logo, numéro, ouverture directe dans l'appli TV) et **Entrées**, affichées seulement si la box en a.
 - **Fond « héros »** : l'affiche du contenu sélectionné, floutée et fondue en dégradé, comme sur Google TV.
@@ -79,11 +81,14 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - **Assistant de configuration** : ce qui est prêt, ce qui s'active d'un clic (recommandations, mises à jour, touches, écran de veille, écran d'accueil) et, si la box refuse, la commande ADB exacte.
 - Panneau à droite par-dessus l'accueil : les changements se voient en direct.
 - Réseau (Wi-Fi / Ethernet), raccourci HDMI-CEC et accès direct aux paramètres Android de la box.
+- **DNS privé (DNS sur TLS) en un clic** (Réglages › Réseau) : Automatique, Cloudflare, Google, Quad9, AdGuard, AdGuard Famille, Cloudflare Famille, Mullvad, Mullvad anti-pub. Appliqué à toute la box (autorisation à donner une fois par ADB : `adb shell pm grant com.vantaflow.kairo android.permission.WRITE_SECURE_SETTINGS`).
 - Profils (dont un **profil enfant** verrouillé par code), sauvegarde et restauration, nettoyage mémoire, mise à jour depuis GitHub.
 
 | Menu des réglages | Section Thème |
 | --- | --- |
 | ![Menu des réglages](docs/assets/settings.jpg) | ![Réglages du thème](docs/assets/settings-theme.jpg) |
+| **DNS privé (DNS sur TLS)** | |
+| ![DNS privé](docs/assets/dns.jpg) | |
 
 **Et aussi**
 - **Favoris à déplacer directement sur l'accueil**, comme sur Google TV : appui long › Déplacer, puis ← →.

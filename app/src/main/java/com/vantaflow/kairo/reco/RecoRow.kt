@@ -189,8 +189,20 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
             // (touches de la télécommande) et Compose reparcourt tout l'arbre à chaque défilement.
             .clearAndSetSemantics { contentDescription = program.title },
     ) {
+        // Au réveil de la box, le Wi-Fi revient après Kairo : une affiche ratée est redemandée
+        // un peu plus tard au lieu de rester vide jusqu'au prochain rafraîchissement de la rangée.
+        var attempt by remember(program.posterUri) { mutableStateOf(0) }
+        var failed by remember(program.posterUri) { mutableStateOf(false) }
+        if (failed && attempt < POSTER_RETRY_MS.size) {
+            LaunchedEffect(attempt) {
+                delay(POSTER_RETRY_MS[attempt])
+                failed = false
+                attempt++
+            }
+        }
         AsyncImage(
-            model = remember(program.posterUri) { posterRequest(context, program.posterUri) },
+            model = remember(program.posterUri, attempt) { posterRequest(context, program.posterUri, attempt) },
+            onError = { failed = true },
             contentDescription = program.title,
             contentScale = ContentScale.Crop,
             // Dégradé sous le texte (et non par-dessus) pour que le titre reste blanc.
@@ -237,8 +249,15 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
  * Une seule taille d'affiche pour la carte et le fond « héros » : l'image décodée pour la carte
  * est reprise telle quelle du cache mémoire, sans second décodage plein écran.
  */
-private fun posterRequest(context: Context, uri: String?) =
-    ImageRequest.Builder(context).data(uri).size(POSTER_W, POSTER_H).allowRgb565(true).build()
+private fun posterRequest(context: Context, uri: String?, attempt: Int = 0) =
+    ImageRequest.Builder(context).data(uri).size(POSTER_W, POSTER_H).allowRgb565(true)
+        // Paramètre sans effet sur le cache : il rend seulement chaque nouvel essai distinct.
+        .setParameter("attempt", attempt, memoryCacheKey = null)
+        .listener(onError = { _, r -> android.util.Log.w("KairoPoster", "échec ($attempt) $uri : ${r.throwable}") })
+        .build()
+
+/** Délais avant chaque nouvel essai d'une affiche ratée (réseau pas encore revenu au réveil). */
+private val POSTER_RETRY_MS = longArrayOf(2_000, 5_000, 10_000, 20_000, 40_000, 60_000)
 
 /** Affiche décodée en toute petite taille puis agrandie : un flou doux qui ne coûte rien au GPU. */
 private fun blurredRequest(context: Context, uri: String?) =
