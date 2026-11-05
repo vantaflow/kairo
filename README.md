@@ -42,6 +42,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 ![Reprendre : la vidéo YouTube en cours dans « À suivre »](docs/assets/resume.jpg)
 - **Musique en cours** : Spotify, Anghami, Deezer… sont traitées comme la radio : pastille « ♪ » sur l'accueil, petit lecteur (précédent, pause, suivant) et carte sur l'écran de veille. Demande une fois l'accès aux notifications (Réglages › Assistant de configuration).
 - **Box avec tuner TV ou entrées HDMI** : rangées **Chaînes TV** (logo, numéro, ouverture directe dans l'appli TV) et **Entrées**, affichées seulement si la box en a.
+- **Vignettes YouTube et SmartTube toujours affichées** : une vignette expirée (404) est remplacée par la vignette standard de la vidéo, sinon par la bannière de l'appli, jamais une carte vide.
 - **Fond « héros »** : l'affiche du contenu sélectionné, floutée et fondue en dégradé, comme sur Google TV.
 - Heure synchronisée sur un serveur de temps (NTP), date et **météo** (Open-Meteo, position par IP ou ville).
 - Rangée sélectionnée calée sous l'en-tête : rien n'est jamais coupé en défilant.
@@ -142,6 +143,7 @@ Kairo met en avant et installe les autres applis Vantaflow, et les intègre part
 - **Rangée « Nos applications »** sur l'accueil (désactivable) : les applis pas encore installées ou qui ont une **mise à jour**, installées en un clic depuis GitHub (avec progression), puis la rangée disparaît.
 - **Accueil animé** : page facultative « Nos applications » au premier lancement.
 - **Réglages › Mise à jour** : version installée, version publiée, installation ou mise à jour.
+- **Kairo se signale tout seul** : une nouvelle version est cherchée au démarrage puis toutes les 12 h ; une carte « Mise à jour » apparaît en tête de « Nos applications », installation en un clic (désactivable : Réglages › Personnaliser).
 - **Recherche** : « Chercher dans Ultra TV » et « Chercher dans Kairo Player » en tête des suggestions.
 - **Accueil** : « À suivre » et rangées publiées par Ultra TV et Kairo Player (vidéos récentes, reprise de lecture).
 - **Kairo Remote** : une vidéo ou une musique envoyée du téléphone s'ouvre directement dans Kairo Player.

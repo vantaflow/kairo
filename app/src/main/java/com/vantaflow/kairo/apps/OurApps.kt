@@ -51,6 +51,23 @@ val OurApps: List<OurApp> = listOf(
     ),
 )
 
+/** Kairo lui-même : vérifié comme nos autres applis, proposé sur l'accueil seulement s'il a une mise à jour. */
+val KairoSelf = OurApp(
+    id = "kairo",
+    name = "Kairo",
+    tagline = "Nouvelle version de Kairo : nouveautés et corrections.",
+    packages = listOf(com.vantaflow.kairo.BuildConfig.APPLICATION_ID),
+    repo = "vantaflow/kairo",
+    banner = R.drawable.banner,
+    pickAsset = { names -> "kairo.apk".takeIf { it in names } },
+)
+
+/** Applis dont Kairo surveille les mises à jour. */
+private val Checked: List<OurApp> get() = OurApps + KairoSelf
+
+/** Écart entre deux vérifications au retour sur l'accueil (la box reste allumée des jours). */
+private const val CHECK_EVERY_MS = 12 * 60 * 60 * 1000L
+
 /** APK trouvé dans les publications GitHub d'une appli. */
 data class RemoteApk(val version: String, val assetUrl: String, val size: Long)
 
@@ -92,11 +109,14 @@ class OurAppsStore(private val context: Context) {
 
     /** Vérifie les mises à jour de nos applis installées (au démarrage, sans le ralentir). */
     fun checkUpdates(delayMs: Long = 20_000) {
+        lastCheckMs = System.currentTimeMillis()
         scope.launch {
             kotlinx.coroutines.delay(delayMs)
-            _updates.value = OurApps.filter { isInstalled(it) && hasUpdate(it, latest(it)) }.map { it.id }.toSet()
+            _updates.value = Checked.filter { isInstalled(it) && hasUpdate(it, latest(it)) }.map { it.id }.toSet()
         }
     }
+
+    @Volatile private var lastCheckMs = 0L
 
     /** Version installée (null si absente). */
     fun installedVersion(app: OurApp): String? = app.packages.firstNotNullOfOrNull { pkg ->
@@ -151,9 +171,10 @@ class OurAppsStore(private val context: Context) {
 
     /** Au retour dans Kairo : une appli installée entre-temps repasse à l'état normal. */
     fun refresh() {
-        _states.update { states -> states.filterNot { (id, s) -> s is InstallState.Confirm && OurApps.firstOrNull { it.id == id }?.let(::isInstalled) == true } }
+        _states.update { states -> states.filterNot { (id, s) -> s is InstallState.Confirm && id != KairoSelf.id && OurApps.firstOrNull { it.id == id }?.let(::isInstalled) == true } }
         // Mise à jour installée : la version ne dépasse plus celle publiée, on la retire au prochain contrôle.
-        if (_updates.value.isNotEmpty()) checkUpdates(delayMs = 0)
+        // Sinon, nouvelle vérification toutes les 12 h : la box reste allumée et Kairo n'est pas relancé.
+        if (_updates.value.isNotEmpty() || System.currentTimeMillis() - lastCheckMs > CHECK_EVERY_MS) checkUpdates(delayMs = 0)
     }
 
     private fun set(app: OurApp, state: InstallState) = _states.update { it + (app.id to state) }

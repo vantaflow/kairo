@@ -81,9 +81,11 @@ def run(client: paramiko.SSHClient, cmd: str) -> int:
 
 
 def main() -> int:
+    # Mot de passe, sinon la clé SSH du poste (~/.ssh/id_ed25519).
     password = os.environ.get("KAIRO_SSH_PW")
-    if not password:
-        print("KAIRO_SSH_PW manquant", file=sys.stderr)
+    key = os.path.expanduser("~/.ssh/id_ed25519")
+    if not password and not os.path.exists(key):
+        print("KAIRO_SSH_PW manquant (et pas de clé ~/.ssh/id_ed25519)", file=sys.stderr)
         return 2
     root = repo_root()
     conf = load_config(root)
@@ -96,7 +98,7 @@ def main() -> int:
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(conf["host"], username=conf["user"], password=password, timeout=20,
-                   allow_agent=False, look_for_keys=False)
+                   key_filename=None if password else key, allow_agent=False, look_for_keys=False)
     sftp = client.open_sftp()
     run(client, f"mkdir -p ~/{REMOTE_DIR}")
     with sftp.open(f"{REMOTE_DIR}/src.tar.gz", "wb") as fh:

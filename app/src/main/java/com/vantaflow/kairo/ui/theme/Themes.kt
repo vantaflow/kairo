@@ -52,6 +52,8 @@ data class HomeLayout(
     val showLiveTv: Boolean = true,
     /** Rangée « Nos applications » (nos applis pas encore installées). */
     val showOurApps: Boolean = true,
+    /** Carte « Mise à jour » de Kairo sur l'accueil quand une version plus récente est publiée. */
+    val showKairoUpdate: Boolean = true,
     /** Rangée « Outils » : radio, météo, minuteur, nettoyeur. */
     val showTools: Boolean = true,
     val clockSizeSp: Int = 72,

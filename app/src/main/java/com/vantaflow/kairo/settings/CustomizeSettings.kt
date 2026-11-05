@@ -107,6 +107,7 @@ fun LayoutSettings(vm: SettingsViewModel) {
         item { Toggle("Afficher les chaînes TV et entrées (box avec tuner ou HDMI)", layout.showLiveTv) { vm.setHomeLayout(layout.copy(showLiveTv = it)) } }
         item { Toggle("Rangée Outils sur l'accueil (radio, météo, minuteur, nettoyeur)", layout.showTools) { vm.setHomeLayout(layout.copy(showTools = it)) } }
         item { Toggle("Proposer nos applications (Kairo Player, Ultra TV)", layout.showOurApps) { vm.setHomeLayout(layout.copy(showOurApps = it)) } }
+        item { Toggle("Signaler les mises à jour de Kairo sur l'accueil", layout.showKairoUpdate) { vm.setHomeLayout(layout.copy(showKairoUpdate = it)) } }
         item {
             Choices("Taille de l'horloge", ClockSizes, layout.clockSizeSp) { vm.setHomeLayout(layout.copy(clockSizeSp = it)) }
         }

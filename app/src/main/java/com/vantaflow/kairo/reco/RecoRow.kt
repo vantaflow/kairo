@@ -200,9 +200,21 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
                 attempt++
             }
         }
+        var loaded by remember(program.posterUri) { mutableStateOf(false) }
+        // Affiche absente ou ratée (adresse cassée, image supprimée) : la bannière de l'appli
+        // plutôt qu'une carte vide. Rien n'est dessiné en plus pendant un premier chargement normal.
+        if (program.posterUri == null || (failed || attempt > 0) && !loaded) {
+            AsyncImage(
+                model = remember(program.packageName) { appArt(context, program.packageName) },
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(start = 40.dp, end = 40.dp, top = 16.dp, bottom = 52.dp),
+            )
+        }
         AsyncImage(
             model = remember(program.posterUri, attempt) { posterRequest(context, program.posterUri, attempt) },
             onError = { failed = true },
+            onSuccess = { loaded = true },
             contentDescription = program.title,
             contentScale = ContentScale.Crop,
             // Dégradé sous le texte (et non par-dessus) pour que le titre reste blanc.
@@ -250,11 +262,27 @@ fun ProgramCard(program: Program, appLabel: String?, onClick: () -> Unit, modifi
  * est reprise telle quelle du cache mémoire, sans second décodage plein écran.
  */
 private fun posterRequest(context: Context, uri: String?, attempt: Int = 0) =
-    ImageRequest.Builder(context).data(uri).size(POSTER_W, POSTER_H).allowRgb565(true)
+    ImageRequest.Builder(context).data(if (attempt > 0) stablePosterUrl(uri) else uri).size(POSTER_W, POSTER_H).allowRgb565(true)
         // Paramètre sans effet sur le cache : il rend seulement chaque nouvel essai distinct.
         .setParameter("attempt", attempt, memoryCacheKey = null)
         .listener(onError = { _, r -> android.util.Log.w("KairoPoster", "échec ($attempt) $uri : ${r.throwable}") })
         .build()
+
+private val YT_THUMB = Regex("""^https?://i\d?\.ytimg\.com/(vi|vi_webp)/([\w-]{11})/[^/]+$""")
+
+/**
+ * YouTube et SmartTube publient des vignettes signées (`sddefault_custom_2.jpg?sqp=…`) qui expirent
+ * et renvoient 404 : on se rabat sur la vignette standard de la vidéo, qui existe toujours.
+ */
+internal fun stablePosterUrl(uri: String?): String? {
+    val m = uri?.let { YT_THUMB.matchEntire(it.substringBefore('?')) } ?: return uri
+    return "https://i.ytimg.com/vi/${m.groupValues[2]}/hqdefault.jpg"
+}
+
+/** Bannière TV de l'appli (sinon son icône) : image de repli d'une carte sans affiche. */
+private fun appArt(context: Context, pkg: String): android.graphics.drawable.Drawable? = runCatching {
+    context.packageManager.getApplicationBanner(pkg) ?: context.packageManager.getApplicationIcon(pkg)
+}.getOrNull()
 
 /** Délais avant chaque nouvel essai d'une affiche ratée (réseau pas encore revenu au réveil). */
 private val POSTER_RETRY_MS = longArrayOf(2_000, 5_000, 10_000, 20_000, 40_000, 60_000)

@@ -161,6 +161,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showRecentApps = booleanPreferencesKey("show_recent_apps")
         val showLiveTv = booleanPreferencesKey("show_live_tv")
         val showOurApps = booleanPreferencesKey("show_our_apps")
+        val showKairoUpdate = booleanPreferencesKey("show_kairo_update")
         val showTools = booleanPreferencesKey("show_tools")
         val autoClean = booleanPreferencesKey("auto_clean")
         val adBlockEnabled = booleanPreferencesKey("adblock_enabled")
@@ -403,6 +404,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             showRecentApps = it[Keys.showRecentApps] ?: d.showRecentApps,
             showLiveTv = it[Keys.showLiveTv] ?: d.showLiveTv,
             showOurApps = it[Keys.showOurApps] ?: d.showOurApps,
+            showKairoUpdate = it[Keys.showKairoUpdate] ?: d.showKairoUpdate,
             showTools = it[Keys.showTools] ?: d.showTools,
             clockSizeSp = it[Keys.clockSize] ?: d.clockSizeSp,
             tileWidthDp = it[Keys.tileWidth] ?: d.tileWidthDp,
@@ -420,6 +422,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             it[Keys.showRecentApps] = layout.showRecentApps
             it[Keys.showLiveTv] = layout.showLiveTv
             it[Keys.showOurApps] = layout.showOurApps
+            it[Keys.showKairoUpdate] = layout.showKairoUpdate
             it[Keys.showTools] = layout.showTools
             it[Keys.clockSize] = layout.clockSizeSp
             it[Keys.tileWidth] = layout.tileWidthDp

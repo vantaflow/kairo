@@ -9,6 +9,7 @@ import com.vantaflow.kairo.catalog.catalogUri
 import com.vantaflow.kairo.catalog.toChannel
 import com.vantaflow.kairo.catalog.toProgram
 import com.vantaflow.kairo.home.HomeTab
+import com.vantaflow.kairo.apps.KairoSelf
 import com.vantaflow.kairo.apps.OurApps
 import com.vantaflow.kairo.radio.RadioScreen
 import com.vantaflow.kairo.radio.Radio
@@ -378,8 +379,14 @@ class HomeActivity : ComponentActivity() {
                     },
                     onOpenTv = ::openTv,
                     // Nos applis à proposer : recalculées quand la liste des applis change (installation).
-                    ourApps = if (profile.kids || !LocalHomeLayout.current.showOurApps) emptyList() else remember(apps, ourUpdates) {
-                        OurApps.filter { !container.ourApps.isInstalled(it) || it.id in ourUpdates }
+                    // Kairo en tête quand une version plus récente est publiée (réglable à part).
+                    ourApps = run {
+                        val layout = LocalHomeLayout.current
+                        if (profile.kids) emptyList() else remember(apps, ourUpdates, layout.showOurApps, layout.showKairoUpdate) {
+                            val self = if (layout.showKairoUpdate && KairoSelf.id in ourUpdates) listOf(KairoSelf) else emptyList()
+                            val others = if (layout.showOurApps) OurApps.filter { !container.ourApps.isInstalled(it) || it.id in ourUpdates } else emptyList()
+                            self + others
+                        }
                     },
                     ourAppUpdates = ourUpdates,
                     onOpenTools = { toolsMenu = true },
