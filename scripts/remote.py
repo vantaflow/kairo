@@ -38,8 +38,13 @@ OUTPUTS = [
     "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
     "app/build/outputs/apk/release/app-release.apk",
     "player/build/outputs/apk/release/player-release.apk",
+    "player/build/outputs/apk/debug/player-debug.apk",
+    "files/build/outputs/apk/debug/files-debug.apk",
+    "files/build/outputs/apk/release/files-release.apk",
+    "send/build/outputs/apk/debug/send-debug.apk",
+    "send/build/outputs/apk/release/send-release.apk",
 ]
-REPORTS = "app/build/test-results"
+REPORTS = "app/build/test-results player/build/test-results files/build/test-results send/build/test-results"
 
 
 def repo_root() -> str:
@@ -121,10 +126,10 @@ def main() -> int:
         except OSError:
             continue
         sftp.get(f"{REMOTE_DIR}/{rel}", os.path.join(out_dir, os.path.basename(rel)))
-    run(client, f"cd ~/{REMOTE_DIR} && for f in {REPORTS}/*/TEST-*.xml; do "
+    run(client, f"cd ~/{REMOTE_DIR} && for f in {" ".join(d + "/*/TEST-*.xml" for d in REPORTS.split())}; do "
                 f"[ -e \"$f\" ] && grep -ho '<testsuite name=\"[^\"]*\" tests=\"[0-9]*\" skipped=\"[0-9]*\" "
                 f"failures=\"[0-9]*\" errors=\"[0-9]*\"' \"$f\"; done; true")
-    run(client, f"cd ~/{REMOTE_DIR} && test -d {REPORTS} && tar czf ~/{REMOTE_DIR}/reports.tgz {REPORTS} || true")
+    run(client, f"cd ~/{REMOTE_DIR} && tar czf ~/{REMOTE_DIR}/reports.tgz --ignore-failed-read {REPORTS} 2>/dev/null || true")
     try:
         sftp.get(f"{REMOTE_DIR}/reports.tgz", os.path.join(out_dir, "test-results.tgz"))
     except OSError:

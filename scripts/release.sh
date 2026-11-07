@@ -12,19 +12,22 @@ VERSION="${1:?Usage : scripts/release.sh <version, ex. 0.3.0>}"
 # versionCode = MAJ*10000 + MIN*100 + PATCH
 IFS=. read -r MAJ MIN PAT <<<"$VERSION"
 CODE=$((MAJ * 10000 + MIN * 100 + PAT))
-# Kairo et Kairo Player partagent le même numéro de version.
-sed -i -E "s/versionCode = [0-9]+/versionCode = $CODE/; s/versionName = \"[^\"]+\"/versionName = \"$VERSION\"/" app/build.gradle.kts player/build.gradle.kts
+# Kairo et ses applis (Player, Files, Send Files) partagent le même numéro de version.
+sed -i -E "s/versionCode = [0-9]+/versionCode = $CODE/; s/versionName = \"[^\"]+\"/versionName = \"$VERSION\"/" app/build.gradle.kts player/build.gradle.kts files/build.gradle.kts send/build.gradle.kts
 git commit -qam "chore: version $VERSION"
 
 # Build signé avec la clé du projet (la même pour toutes les versions : mise à jour possible).
-scripts/remote_build.sh :app:testDebugUnitTest :player:testDebugUnitTest :app:assembleRelease :player:assembleRelease
+scripts/remote_build.sh :app:testDebugUnitTest :player:testDebugUnitTest :files:testDebugUnitTest :send:testDebugUnitTest :app:assembleRelease :player:assembleRelease :files:assembleRelease :send:assembleRelease
 APK="build-remote/kairo-$VERSION.apk"
 cp build-remote/app-release.apk "$APK"
 # Nom fixe pour le lien permanent …/releases/latest/download/kairo.apk (Downloader, site).
 cp build-remote/app-release.apk build-remote/kairo.apk
 # Kairo Player : lien permanent …/releases/latest/download/kairo-player.apk
 cp build-remote/player-release.apk build-remote/kairo-player.apk
+# Kairo Files et Kairo Send Files : liens permanents …/latest/download/kairo-files.apk et kairo-send.apk
+cp build-remote/files-release.apk build-remote/kairo-files.apk
+cp build-remote/send-release.apk build-remote/kairo-send.apk
 
 git push -q origin master
-gh release create "v$VERSION" "$APK" build-remote/kairo.apk build-remote/kairo-player.apk --repo vantaflow/kairo --title "Kairo $VERSION" --generate-notes
+gh release create "v$VERSION" "$APK" build-remote/kairo.apk build-remote/kairo-player.apk build-remote/kairo-files.apk build-remote/kairo-send.apk --repo vantaflow/kairo --title "Kairo $VERSION" --generate-notes
 echo "Version $VERSION publiée."

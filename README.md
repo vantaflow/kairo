@@ -151,6 +151,8 @@ Kairo met en avant et installe les autres applis Vantaflow, et les intègre part
 | Application | Ce qu'elle fait |
 | --- | --- |
 | [Kairo Player](#kairo-player) | Vidéos, photos et musique de la box et des clés USB, reprise dans « À suivre ». |
+| [Kairo Files](#kairo-files) | Gestionnaire de fichiers de la box et des clés USB : copier, déplacer, renommer, supprimer, installer un APK. |
+| [Kairo Send Files](#kairo-send-files) | Fichiers, textes et liens du téléphone ou de l'ordinateur vers la TV, et inversement, par QR code. |
 | [Kairo Cast](#kairo-cast) | L'écran du Mac sur la TV (recopie AirPlay), avec le son, sans limite de durée. |
 | [Ultra TV](https://github.com/vantaflow/ultra-tv) | Lecteur IPTV : Xtream Codes et M3U, guide TV, replay, pause du direct, profils. |
 
@@ -163,6 +165,7 @@ L'appli compagnon pour lire **vos vidéos, photos et musiques** de la box et des
 - Accueil par rangées : **Reprendre**, **Dossiers** (avec le nom de la clé USB), vidéos et photos récentes, musique.
 - Lecteur Media3 (ExoPlayer) : MKV, MP4, sous-titres et pistes audio intégrés, ← → pour reculer / avancer de 10 s, OK pour pause, **épisode suivant du dossier** à la fin.
 - **Reprise là où vous vous êtes arrêté**, et la vidéo apparaît dans **« À suivre » de Kairo** (et de Google TV) avec sa vignette.
+- **PDF** page par page (← → pages, ↑ ↓ défiler, OK zoom) et **textes** (.txt, sous-titres, accents Windows ou UTF-8), ouverts depuis Kairo Files ou toute appli.
 - Photos plein écran, **diaporama** d'un appui sur OK. Mise à jour automatique quand une clé est branchée.
 - Ouvre aussi les vidéos envoyées depuis le téléphone avec Kairo Remote (Téléchargements › Kairo).
 
@@ -171,6 +174,33 @@ Installation : <https://github.com/vantaflow/kairo/releases/latest/download/kair
 | Kairo Player | Reprise dans « À suivre » de Kairo |
 | --- | --- |
 | ![Kairo Player](docs/assets/player-home.jpg) | ![À suivre](docs/assets/player-watchnext.jpg) |
+
+## Kairo Files
+
+Le **gestionnaire de fichiers** pensé pour la télécommande : la box et les **clés ou disques USB** (place libre affichée), puis Téléchargements, Films, Musique et Images en accès direct.
+
+- OK ouvre un dossier ou un fichier dans la bonne appli : **vidéos, musiques, PDF et textes dans Kairo Player**, l'installateur d'Android pour un **APK** ; « Ouvrir avec… » pour choisir.
+- **Archives ZIP, RAR, 7z, TAR, GZ, BZ2, XZ** : voir le contenu, « Extraire dans un dossier » ou « Extraire ici », avec progression. RAR 5 et archives protégées par mot de passe : « Ouvrir avec… » une autre appli.
+- **Appui long ou touche Menu** : copier, couper, coller, renommer, supprimer (avec confirmation), propriétés, **envoyer au téléphone** (avec Kairo Send Files).
+- Copie et déplacement avec **progression** et annulation, place vérifiée avant de copier ; d'une clé USB vers la box, le déplacement passe par une copie.
+- Tri par nom (ordre naturel : « Épisode 2 » avant « Épisode 10 »), date ou taille ; fichiers cachés à la demande. Retour revient au dossier parent, sur l'élément quitté.
+
+Autorisation « accès à tous les fichiers » demandée au premier lancement ; si la box n'a pas l'écran de réglage :
+`adb shell appops set com.vantaflow.kairo.files MANAGE_EXTERNAL_STORAGE allow`
+
+Installation : <https://github.com/vantaflow/kairo/releases/latest/download/kairo-files.apk>
+
+## Kairo Send Files
+
+**Échangez des fichiers avec la TV sans câble ni appli à installer** : la TV affiche un QR code, le téléphone (ou l'ordinateur, par l'adresse affichée) ouvre une page dans son navigateur.
+
+- **Vers la TV** : vidéos, photos, APK, documents, plusieurs à la fois et sans limite de taille, avec progression et vitesse ; ils arrivent dans Téléchargements › Kairo Send, OK les ouvre.
+- **Textes et liens** : un lien envoyé s'ouvre d'un clic sur la TV.
+- **Vers le téléphone** : dans Kairo Files, « Envoyer au téléphone » ; le fichier apparaît dans « Sur la box » de la page, prêt à télécharger.
+- **Supprimer depuis la page** : chaque fichier de « Sur la box » a son bouton « Supprimer » (avec confirmation).
+- Page protégée par une clé propre à la box (dans le QR code) ; aucune donnée ne quitte le réseau local. Les envois continuent si l'on quitte l'écran.
+
+Installation : <https://github.com/vantaflow/kairo/releases/latest/download/kairo-send.apk>
 
 ## Kairo Cast
 

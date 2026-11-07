@@ -55,6 +55,25 @@
             </intent-filter>
         </activity>
 
+        <!-- Documents : PDF page par page, textes et sous-titres (depuis Kairo Files ou toute appli). -->
+        <activity
+            android:name=".DocumentActivity"
+            android:exported="true"
+            android:label="Kairo Player"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="application/json" />
+                <data android:mimeType="application/x-subrip" />
+            </intent-filter>
+        </activity>
+
         <!-- Vignettes publiées pour « À suivre » : lecture seule, vignettes uniquement. -->
         <provider
             android:name=".ThumbProvider"

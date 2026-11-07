@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14111f">
+<title>Kairo Send Files</title>
+<style>
+  :root { --bg:#14111f; --card:#1f1b2e; --line:#2f2944; --text:#efedf6; --muted:#a39dba; --accent:#a98bff; --ok:#5fd394; --err:#ff7a7a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:4px 0 2px; }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 12px; }
+  .drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:150px; border:2px dashed var(--line); border-radius:14px; text-align:center; padding:16px; cursor:pointer; }
+  .drop.over { border-color:var(--accent); background:#241f38; }
+  .drop b { font-size:18px; }
+  .btn { display:inline-block; background:var(--accent); color:#14111f; border:0; border-radius:999px; padding:11px 20px; font:600 15px system-ui,sans-serif; cursor:pointer; }
+  .btn:disabled { opacity:.5; }
+  textarea { width:100%; min-height:80px; resize:vertical; background:#16131f; color:var(--text); border:1px solid var(--line); border-radius:12px; padding:12px; font:inherit; }
+  .row { display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .meta { color:var(--muted); font-size:13px; }
+  .bar { height:6px; background:#16131f; border-radius:3px; overflow:hidden; margin-top:6px; }
+  .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+  .ok { color:var(--ok); } .err { color:var(--err); }
+  a.dl { color:var(--accent); text-decoration:none; font-weight:600; white-space:nowrap; }
+  button.del { background:none; border:0; color:var(--err); font:600 15px system-ui,sans-serif; cursor:pointer; padding:4px 0 4px 8px; }
+  .empty { color:var(--muted); }
+  .actions { display:flex; justify-content:flex-end; margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kairo Send Files</h1>
+  <p class="sub">Envoyez des fichiers à la TV, ou récupérez ceux que la box vous propose.</p>
+
+  <section class="card">
+    <h2>Envoyer à la TV</h2>
+    <label class="drop" id="drop">
+      <b>Choisir des fichiers</b>
+      <span class="meta">ou glissez-les ici · vidéos, photos, APK, documents…</span>
+      <input type="file" id="pick" multiple hidden>
+    </label>
+    <div id="queue"></div>
+  </section>
+
+  <section class="card">
+    <h2>Envoyer un texte ou un lien</h2>
+    <textarea id="text" placeholder="Un lien s'ouvre directement sur la TV"></textarea>
+    <div class="actions"><button class="btn" id="sendText">Envoyer</button></div>
+    <div id="textState" class="meta"></div>
+  </section>
+
+  <section class="card">
+    <h2>Sur la box</h2>
+    <div id="files"><p class="empty">Chargement…</p></div>
+  </section>
+</main>
+<script>
+(() => {
+  const key = new URLSearchParams(location.search).get('k') || '';
+  const q = (s) => document.querySelector(s);
+  const size = (b) => {
+    if (b < 1024) return b + ' o';
+    const u = ['Ko', 'Mo', 'Go', 'To']; let v = b / 1024, i = 0;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return (v >= 100 ? v.toFixed(0) : v.toFixed(1)).replace('.', ',') + ' ' + u[i];
+  };
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const queue = [];
+  let busy = false;
+
+  function addFiles(list) {
+    for (const f of list) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<div class="name"><div>' + esc(f.name) + '</div><div class="meta">' + size(f.size) + ' · en attente</div><div class="bar"><i></i></div></div>';
+      q('#queue').prepend(row);
+      queue.push({ f, row });
+    }
+    next();
+  }
+
+  function next() {
+    if (busy || !queue.length) return;
+    busy = true;
+    const { f, row } = queue.shift();
+    const meta = row.querySelector('.meta'), bar = row.querySelector('i');
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', '/up?k=' + encodeURIComponent(key) + '&name=' + encodeURIComponent(f.name));
+    if (f.type) xhr.setRequestHeader('Content-Type', f.type);
+    const t0 = Date.now();
+    xhr.upload.onprogress = (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round(e.loaded * 100 / e.total);
+      const speed = e.loaded / Math.max(1, (Date.now() - t0) / 1000);
+      bar.style.width = pct + '%';
+      meta.textContent = size(f.size) + ' · ' + pct + ' % · ' + size(speed) + '/s';
+    };
+    xhr.onload = () => {
+      const ok = xhr.status === 200;
+      bar.style.width = ok ? '100%' : bar.style.width;
+      meta.innerHTML = size(f.size) + ' · ' + (ok ? '<span class="ok">envoyé sur la TV</span>' : '<span class="err">échec : ' + esc(xhr.responseText || ('erreur ' + xhr.status)) + '</span>');
+      done();
+    };
+    xhr.onerror = () => { meta.innerHTML = size(f.size) + ' · <span class="err">connexion perdue (même Wi-Fi que la box ?)</span>'; done(); };
+    xhr.send(f);
+    function done() { busy = false; loadFiles(); next(); }
+  }
+
+  const drop = q('#drop');
+  q('#pick').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+  ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+
+  q('#sendText').addEventListener('click', async () => {
+    const text = q('#text').value.trim();
+    if (!text) return;
+    q('#sendText').disabled = true;
+    try {
+      const r = await fetch('/text?k=' + encodeURIComponent(key), { method: 'POST', body: text });
+      q('#textState').innerHTML = r.ok ? '<span class="ok">Affiché sur la TV</span>' : '<span class="err">Échec</span>';
+      if (r.ok) q('#text').value = '';
+    } catch (e) {
+      q('#textState').innerHTML = '<span class="err">Connexion perdue</span>';
+    }
+    q('#sendText').disabled = false;
+  });
+
+  async function loadFiles() {
+    try {
+      const r = await fetch('/api/files?k=' + encodeURIComponent(key));
+      if (r.status === 403) { q('#files').innerHTML = '<p class="err">Scannez le QR code affiché sur la TV.</p>'; return; }
+      const list = await r.json();
+      q('#files').innerHTML = list.length ? list.map((f) =>
+        '<div class="row"><div class="name"><div>' + esc(f.name) + '</div><div class="meta">' + size(f.size) + ' · ' +
+        new Date(f.added).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) + '</div></div>' +
+        '<a class="dl" href="/dl/' + f.id + '?k=' + encodeURIComponent(key) + '" download>Télécharger</a>' +
+        '<button class="del" data-id="' + f.id + '" data-name="' + esc(f.name) + '">Supprimer</button></div>').join('')
+        : '<p class="empty">Aucun fichier pour l\'instant. Sur la TV, Kairo Files › Envoyer au téléphone.</p>';
+    } catch (e) { /* box en veille : on réessaie */ }
+  }
+  q('#files').addEventListener('click', async (e) => {
+    const b = e.target.closest('button.del');
+    if (!b || !confirm('Supprimer « ' + b.dataset.name + ' » de la box ?')) return;
+    b.disabled = true;
+    try {
+      const r = await fetch('/api/files/' + b.dataset.id + '?k=' + encodeURIComponent(key), { method: 'DELETE' });
+      if (!r.ok) alert('Suppression impossible');
+    } catch (err) { alert('Connexion perdue'); }
+    loadFiles();
+  });
+
+  loadFiles();
+  setInterval(() => { if (!busy) loadFiles(); }, 5000);
+})();
+</script>
+</body>
+</html>
