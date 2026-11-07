@@ -151,6 +151,7 @@ Kairo met en avant et installe les autres applis Vantaflow, et les intègre part
 | Application | Ce qu'elle fait |
 | --- | --- |
 | [Kairo Player](#kairo-player) | Vidéos, photos et musique de la box et des clés USB, reprise dans « À suivre ». |
+| [Kairo Cast](#kairo-cast) | L'écran du Mac sur la TV (recopie AirPlay), avec le son, sans limite de durée. |
 | [Ultra TV](https://github.com/vantaflow/ultra-tv) | Lecteur IPTV : Xtream Codes et M3U, guide TV, replay, pause du direct, profils. |
 
 ![Nos applications au premier lancement](docs/assets/our-apps.jpg)
@@ -170,6 +171,21 @@ Installation : <https://github.com/vantaflow/kairo/releases/latest/download/kair
 | Kairo Player | Reprise dans « À suivre » de Kairo |
 | --- | --- |
 | ![Kairo Player](docs/assets/player-home.jpg) | ![À suivre](docs/assets/player-watchnext.jpg) |
+
+## Kairo Cast
+
+Récepteur **AirPlay de recopie d'écran** pour Android TV : sur le Mac, Centre de contrôle › Recopie de l'écran › **« Kairo »**, et l'écran s'affiche sur la TV, **sans limite de durée**.
+
+- **Son** du Mac sur la TV.
+- **Netteté réglable** : 1080p, 1440p (par défaut) ou 4K.
+- Affichage **Étirer** (par défaut), **Remplir** ou **Ajuster**.
+- **Démarre avec la box** : la TV est toujours prête à recevoir.
+- Proposée dans l'assistant de premier lancement de Kairo et dans « Nos applications », installée en un clic.
+
+Une autorisation est à donner une fois par ADB pour que l'appli s'ouvre quand le Mac se connecte :
+`adb shell appops set com.vantaflow.kairo.cast SYSTEM_ALERT_WINDOW allow`
+
+Code source : <https://github.com/vantaflow/kairo-cast> (GPL-3.0, basé sur [UxPlay](https://github.com/FDH2/UxPlay)) · Installation : <https://github.com/vantaflow/kairo-cast/releases/latest/download/kairo-cast.apk>
 
 ## Comment rester fluide sur une petite box
 

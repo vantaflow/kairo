@@ -439,13 +439,17 @@ private fun OurAppsPage(refresh: Int, onNext: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text("Installez-les en un clic : Android vous demandera de confirmer.", fontSize = 18.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(1))
         Spacer(Modifier.height(36.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(32.dp), modifier = Modifier.reveal(2)) {
-            com.vantaflow.kairo.apps.OurApps.forEachIndexed { i, app ->
+        val apps = com.vantaflow.kairo.apps.OurApps
+        // Écran TV de 960 dp de large : les cartes rétrécissent quand il y a plus de deux applis.
+        val cardWidth = if (apps.size > 2) 260.dp else 340.dp
+        Row(horizontalArrangement = Arrangement.spacedBy(if (apps.size > 2) 24.dp else 32.dp), modifier = Modifier.reveal(2)) {
+            apps.forEachIndexed { i, app ->
                 val installed = remember(refresh, states[app.id]) { store.isInstalled(app) }
-                Column(Modifier.width(340.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val adb = remember(refresh, installed) { if (installed) store.missingOverlayCommand(app) else null }
+                Column(Modifier.width(cardWidth), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Surface(
-                        onClick = { if (!installed) store.install(app) },
-                        modifier = Modifier.size(340.dp, 191.dp).then(if (i == 0) Modifier.focusRequester(focus) else Modifier),
+                        onClick = { if (installed) store.open(app) else store.install(app) },
+                        modifier = Modifier.size(cardWidth, cardWidth * 9 / 16).then(if (i == 0) Modifier.focusRequester(focus) else Modifier),
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(18.dp)),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
                         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color.White))),
@@ -455,10 +459,15 @@ private fun OurAppsPage(refresh: Int, onNext: () -> Unit) {
                     Text(app.name, fontSize = 20.sp, color = OnBackground, fontWeight = FontWeight.SemiBold)
                     Text(app.tagline, fontSize = 14.sp, color = OnBackgroundMuted)
                     Text(
-                        if (installed) "✓ Installée" else com.vantaflow.kairo.home.installLabel(states[app.id]),
+                        if (installed) "✓ Installée · OK pour ouvrir" else com.vantaflow.kairo.home.installLabel(states[app.id]),
                         fontSize = 15.sp,
                         color = if (installed) Color(0xFF6DD58C) else AccentColor,
                     )
+                    // La box refuse l'affichage par-dessus les autres applis : commande ADB à lancer une fois.
+                    adb?.let {
+                        Text("Pour s'ouvrir quand le Mac se connecte, lancez une fois depuis un ordinateur :", fontSize = 13.sp, color = OnBackgroundMuted)
+                        Text(it, fontSize = 13.sp, color = OnBackground, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    }
                 }
             }
         }

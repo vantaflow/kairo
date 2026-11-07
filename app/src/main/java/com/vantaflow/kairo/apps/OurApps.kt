@@ -27,6 +27,8 @@ data class OurApp(
     val banner: Int,
     /** Nom de l'APK à prendre parmi ceux d'une publication (selon le processeur de la box). */
     val pickAsset: (names: List<String>) -> String?,
+    /** Doit pouvoir s'afficher par-dessus les autres applis (autorisation donnée par ADB). */
+    val needsOverlay: Boolean = false,
 )
 
 val OurApps: List<OurApp> = listOf(
@@ -38,6 +40,16 @@ val OurApps: List<OurApp> = listOf(
         repo = "vantaflow/kairo",
         banner = R.drawable.app_kairo_player,
         pickAsset = { names -> "kairo-player.apk".takeIf { it in names } },
+    ),
+    OurApp(
+        id = "cast",
+        name = "Kairo Cast",
+        tagline = "L'écran du Mac sur la TV : Recopie de l'écran › « Kairo », avec le son, sans limite de durée.",
+        packages = listOf("com.vantaflow.kairo.cast"),
+        repo = "vantaflow/kairo-cast",
+        banner = R.drawable.app_kairo_cast,
+        pickAsset = { names -> "kairo-cast.apk".takeIf { it in names } },
+        needsOverlay = true,
     ),
     OurApp(
         id = "ultratv",
@@ -124,6 +136,28 @@ class OurAppsStore(private val context: Context) {
     }
 
     fun isInstalled(app: OurApp) = installedVersion(app) != null
+
+    /** Ouvre une appli installée (écran d'accueil TV de l'appli). */
+    fun open(app: OurApp) {
+        val pm = context.packageManager
+        val pkg = app.packages.firstOrNull { runCatching { pm.getPackageInfo(it, 0) }.isSuccess } ?: return
+        val intent = pm.getLeanbackLaunchIntentForPackage(pkg) ?: pm.getLaunchIntentForPackage(pkg) ?: return
+        runCatching { context.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+
+    /**
+     * Commande ADB à lancer si l'appli doit s'afficher par-dessus les autres et que la box ne
+     * l'y autorise pas encore (null sinon : autorisation déjà donnée, ou appli absente).
+     */
+    fun missingOverlayCommand(app: OurApp): String? {
+        if (!app.needsOverlay) return null
+        val pkg = app.packages.first()
+        val uid = runCatching { context.packageManager.getApplicationInfo(pkg, 0).uid }.getOrNull() ?: return null
+        val ops = context.getSystemService(android.app.AppOpsManager::class.java)
+        val mode = runCatching { ops.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW, uid, pkg) }.getOrNull()
+        return if (mode == android.app.AppOpsManager.MODE_ALLOWED) null
+        else "adb shell appops set $pkg SYSTEM_ALERT_WINDOW allow"
+    }
 
     suspend fun latest(app: OurApp): RemoteApk? = withContext(Dispatchers.IO) {
         updater.getText("https://api.github.com/repos/${app.repo}/releases?per_page=10")?.let { findApk(it, app.pickAsset) }

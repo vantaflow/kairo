@@ -249,6 +249,9 @@ private fun OurAppsSection() {
                     fontSize = 14.sp,
                 )
                 states[app.id]?.takeIf { it != InstallState.Idle }?.let { Text(installLabel(it), color = OnBackgroundMuted, fontSize = 14.sp) }
+                if (installed != null) store.missingOverlayCommand(app)?.let {
+                    Text("Autorisation à donner une fois par ADB : $it", color = OnBackgroundMuted, fontSize = 14.sp)
+                }
             }
             when {
                 installed == null -> SmallButton("Installer", { store.install(app) })
