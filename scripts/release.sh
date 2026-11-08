@@ -13,7 +13,10 @@ VERSION="${1:?Usage : scripts/release.sh <version, ex. 0.3.0>}"
 IFS=. read -r MAJ MIN PAT <<<"$VERSION"
 CODE=$((MAJ * 10000 + MIN * 100 + PAT))
 # Kairo et ses applis (Player, Files, Send Files) partagent le même numéro de version.
-sed -i -E "s/versionCode = [0-9]+/versionCode = $CODE/; s/versionName = \"[^\"]+\"/versionName = \"$VERSION\"/" app/build.gradle.kts player/build.gradle.kts files/build.gradle.kts send/build.gradle.kts
+# -i.bak : accepté par le sed de macOS comme par celui de Linux.
+GRADLE_FILES=(app/build.gradle.kts player/build.gradle.kts files/build.gradle.kts send/build.gradle.kts)
+sed -E -i.bak "s/versionCode = [0-9]+/versionCode = $CODE/; s/versionName = \"[^\"]+\"/versionName = \"$VERSION\"/" "${GRADLE_FILES[@]}"
+for f in "${GRADLE_FILES[@]}"; do rm -f "$f.bak"; done
 git commit -qam "chore: version $VERSION"
 
 # Build signé avec la clé du projet (la même pour toutes les versions : mise à jour possible).
