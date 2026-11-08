@@ -18,8 +18,8 @@ android {
         applicationId = "com.vantaflow.kairo.player"
         minSdk = 30
         targetSdk = 34
-        versionCode = 12200
-        versionName = "1.22.0"
+        versionCode = 12300
+        versionName = "1.23.0"
     }
 
     // Même clé que Kairo (hors git) : les mises à jour s'installent par-dessus.
