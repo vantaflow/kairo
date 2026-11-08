@@ -82,6 +82,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - **Assistant de configuration** : ce qui est prêt, ce qui s'active d'un clic (recommandations, mises à jour, touches, écran de veille, écran d'accueil) et, si la box refuse, la commande ADB exacte.
 - Panneau à droite par-dessus l'accueil : les changements se voient en direct.
 - Réseau (Wi-Fi / Ethernet), raccourci HDMI-CEC et accès direct aux paramètres Android de la box.
+- **Alimentation et HDMI-CEC** (Réglages › Paramètres de la box), comme sur Google TV : mise en veille sans touche pressée (20 min à 24 h, la télé s'éteint avec la box), mise en veille pendant une vidéo (3 h à jamais), contrôle HDMI-CEC et contrôle du volume. Même autorisation ADB que le DNS privé.
 - **DNS privé (DNS sur TLS) en un clic** (Réglages › Réseau) : Automatique, Cloudflare, Google, Quad9, AdGuard, AdGuard Famille, Cloudflare Famille, Mullvad, Mullvad anti-pub. Appliqué à toute la box (autorisation à donner une fois par ADB : `adb shell pm grant com.vantaflow.kairo android.permission.WRITE_SECURE_SETTINGS`).
 - Profils (dont un **profil enfant** verrouillé par code), sauvegarde et restauration, nettoyage mémoire, mise à jour depuis GitHub.
 

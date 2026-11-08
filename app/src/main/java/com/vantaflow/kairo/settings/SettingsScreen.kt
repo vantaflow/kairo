@@ -72,6 +72,7 @@ enum class Section(val title: String, val group: Group, val icon: TvIcon, val de
     Profiles("Profils", Group.App, TvIcon.Profiles, "Un accueil par personne, profil enfant protégé."),
     Backup("Sauvegarde", Group.App, TvIcon.Backup, "Sauvegarder et restaurer vos réglages."),
     Update("Mise à jour", Group.App, TvIcon.Update, "Installer la dernière version de Kairo."),
+    Power("Alimentation et HDMI-CEC", Group.Box, TvIcon.Timer, "Mise en veille automatique et pilotage de la télé."),
     Inputs("Entrées et HDMI", Group.Box, TvIcon.Android, "Entrées de la box et réglages de la sortie HDMI."),
     Network("Réseau (Wi-Fi, Ethernet)", Group.Box, TvIcon.Network, "Connexion actuelle et réseaux Wi-Fi."),
     Memory("Mémoire", Group.Box, TvIcon.Memory, "Mémoire libre et fermeture des applis en arrière-plan."),
@@ -286,6 +287,7 @@ private fun SectionContent(
                 Section.Network -> NetworkSettings(networkMonitor, networkState)
                 Section.Android -> BoxSettings()
                 Section.Inputs -> InputsSettings()
+                Section.Power -> com.vantaflow.kairo.system.PowerSettings()
             }
     }
 }
