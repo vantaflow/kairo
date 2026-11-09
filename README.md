@@ -205,10 +205,11 @@ Installation : <https://github.com/vantaflow/kairo/releases/latest/download/kair
 
 ## Kairo Cast
 
-Récepteur de **recopie d'écran** pour Android TV : sur le Mac, Centre de contrôle › Recopie de l'écran › **« Kairo »** ; sur un PC Windows, l'application **[Kairo Cast pour Windows](https://github.com/vantaflow/kairo-cast/releases/latest/download/KairoCast.exe)** › Recopier. L'écran s'affiche sur la TV, **sans limite de durée**.
+Récepteur de **recopie d'écran** pour Android TV : sur le Mac, Centre de contrôle › Recopie de l'écran › **« Kairo »** ; sur un PC Windows, l'application **[Kairo Cast pour Windows](https://github.com/vantaflow/kairo-cast/releases/latest/download/KairoCast.exe)** › Win+K › Partager. L'écran s'affiche sur la TV, **sans limite de durée**.
 
 - **Son** du Mac ou du PC sur la TV.
-- **Windows 10/11** : encodage par la carte graphique (NVIDIA, Intel, AMD), un seul fichier à lancer.
+- **Windows 10/11** : un seul fichier à lancer, encodage par la carte graphique.
+- **Jusqu'à quatre écrans** à la fois, en mosaïque, avec le son de la source choisie.
 - **Netteté réglable** : 1080p, 1440p (par défaut) ou 4K.
 - Affichage **Étirer** (par défaut), **Remplir** ou **Ajuster**.
 - **Démarre avec la box** : la TV est toujours prête à recevoir.
