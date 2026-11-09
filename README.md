@@ -154,7 +154,7 @@ Kairo met en avant et installe les autres applis Vantaflow, et les intègre part
 | [Kairo Player](#kairo-player) | Vidéos, photos et musique de la box et des clés USB, reprise dans « À suivre ». |
 | [Kairo Files](#kairo-files) | Gestionnaire de fichiers de la box et des clés USB : copier, déplacer, renommer, supprimer, installer un APK. |
 | [Kairo Send Files](#kairo-send-files) | Fichiers, textes et liens du téléphone ou de l'ordinateur vers la TV, et inversement, par QR code. |
-| [Kairo Cast](#kairo-cast) | L'écran du Mac sur la TV (recopie AirPlay), avec le son, sans limite de durée. |
+| [Kairo Cast](#kairo-cast) | L'écran du Mac (AirPlay) ou du PC Windows sur la TV, avec le son, sans limite de durée. |
 | [Ultra TV](https://github.com/vantaflow/ultra-tv) | Lecteur IPTV : Xtream Codes et M3U, guide TV, replay, pause du direct, profils. |
 
 ![Nos applications au premier lancement](docs/assets/our-apps.jpg)
@@ -205,9 +205,10 @@ Installation : <https://github.com/vantaflow/kairo/releases/latest/download/kair
 
 ## Kairo Cast
 
-Récepteur **AirPlay de recopie d'écran** pour Android TV : sur le Mac, Centre de contrôle › Recopie de l'écran › **« Kairo »**, et l'écran s'affiche sur la TV, **sans limite de durée**.
+Récepteur de **recopie d'écran** pour Android TV : sur le Mac, Centre de contrôle › Recopie de l'écran › **« Kairo »** ; sur un PC Windows, l'application **[Kairo Cast pour Windows](https://github.com/vantaflow/kairo-cast/releases/latest/download/KairoCast.exe)** › Recopier. L'écran s'affiche sur la TV, **sans limite de durée**.
 
-- **Son** du Mac sur la TV.
+- **Son** du Mac ou du PC sur la TV.
+- **Windows 10/11** : encodage par la carte graphique (NVIDIA, Intel, AMD), un seul fichier à lancer.
 - **Netteté réglable** : 1080p, 1440p (par défaut) ou 4K.
 - Affichage **Étirer** (par défaut), **Remplir** ou **Ajuster**.
 - **Démarre avec la box** : la TV est toujours prête à recevoir.

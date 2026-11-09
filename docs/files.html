@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kairo Files — gestionnaire de fichiers pour Android TV</title>
+<meta name="description" content="Kairo Files : le gestionnaire de fichiers pensé pour la télécommande. Box et clés USB, copier, déplacer, archives ZIP, RAR, 7z, installation d'APK.">
+<meta property="og:title" content="Kairo Files — gestionnaire de fichiers pour Android TV">
+<meta property="og:description" content="Kairo Files : le gestionnaire de fichiers pensé pour la télécommande. Box et clés USB, copier, déplacer, archives ZIP, RAR, 7z, installation d'APK.">
+<meta property="og:image" content="assets/kairo-files.png">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body class="tool-page">
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="assets/icon.png" alt="">Kairo</a>
+    <button class="burger" aria-label="Menu" aria-expanded="false">☰</button>
+    <div class="links">
+      <a href="index.html#fonctions">Fonctions</a>
+      <div class="drop">
+        <button aria-haspopup="true" aria-expanded="false">Applis</button>
+        <div class="menu">
+          <a href="player.html">Kairo Player</a>
+          <a href="files.html" aria-current="page">Kairo Files</a>
+          <a href="send.html">Send Files</a>
+          <a href="cast.html">Kairo Cast</a>
+          <a href="remote.html">Kairo Remote</a>
+        </div>
+      </div>
+      <a href="index.html#performance">Performance</a>
+      <a href="index.html#galerie">Captures</a>
+      <a href="index.html#installation">Installation</a>
+      <a href="ultra-tv.html">Ultra TV</a>
+      <a class="gh" href="https://github.com/vantaflow/kairo">GitHub</a>
+    </div>
+  </div>
+</nav>
+<script src="assets/site.js"></script>
+
+<header class="hero tool">
+  <div class="wrap">
+    <a class="crumb" href="index.html">← Retour à l'accueil de Kairo</a>
+    <img class="tool-banner" src="assets/kairo-files.png" alt="Kairo Files">
+    <h1>Kairo <span class="grad">Files</span></h1>
+    <p class="lead">Le gestionnaire de fichiers pensé pour la télécommande : la box et les clés ou disques USB (place libre affichée), puis Téléchargements, Films, Musique et Images en accès direct.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/vantaflow/kairo/releases/latest/download/kairo-files.apk">Télécharger l'APK</a>
+      <a class="btn ghost" href="https://github.com/vantaflow/kairo/tree/master/files">Code source</a>
+    </div>
+    <div class="shot"><img src="assets/files-tv.jpg" alt="Kairo Files : la box, les clés USB et les dossiers" loading="eager"></div>
+  </div>
+</header>
+
+<section id="fonctions">
+  <div class="wrap">
+    <div class="eyebrow">Fonctions</div>
+    <h2>Tous vos fichiers, à la télécommande.</h2>
+    <div class="feats">
+      <div class="card"><h3>Le bon fichier dans la bonne appli</h3><p>OK ouvre un dossier ou un fichier dans la bonne appli : <b>vidéos, musiques, PDF et textes dans Kairo Player</b>, l'installateur d'Android pour un <b>APK</b> ; « Ouvrir avec… » pour choisir.</p></div>
+      <div class="card"><h3>Archives</h3><p><b>ZIP, RAR, 7z, TAR, GZ, BZ2, XZ</b> : voir le contenu, « Extraire dans un dossier » ou « Extraire ici », avec progression.</p><p>RAR 5 et archives protégées par mot de passe : « Ouvrir avec… » une autre appli.</p></div>
+      <div class="card"><h3>Toutes les actions</h3><p><b>Appui long ou touche Menu</b> : copier, couper, coller, renommer, supprimer (avec confirmation), propriétés, <b>envoyer au téléphone</b> (avec Kairo Send Files).</p></div>
+      <div class="card"><h3>Copie et déplacement</h3><p>Avec <b>progression</b> et annulation, place vérifiée avant de copier ; d'une clé USB vers la box, le déplacement passe par une copie.</p></div>
+      <div class="card"><h3>Tri et navigation</h3><p>Tri par nom (ordre naturel : « Épisode 2 » avant « Épisode 10 »), date ou taille ; fichiers cachés à la demande.</p><p>Retour revient au dossier parent, sur l'élément quitté.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="installation">
+  <div class="wrap">
+    <div class="eyebrow">Installation</div>
+    <h2>Installer Kairo Files.</h2>
+    <div class="feats">
+      <div class="card"><h3>Depuis Kairo</h3><p>Rangée « Nos applications » de l'accueil : installation et mises à jour en un clic.</p></div>
+      <div class="card"><h3>Par l'APK</h3><p>Téléchargez <a href="https://github.com/vantaflow/kairo/releases/latest/download/kairo-files.apk">kairo-files.apk</a>, puis installez-le par clé USB ou <code>adb install</code>.</p></div>
+      <div class="card"><h3>Accès aux fichiers</h3><p>L'autorisation « accès à tous les fichiers » est demandée au premier lancement. Si la box n'a pas l'écran de réglage :</p><pre class="cmd">adb shell appops set com.vantaflow.kairo.files MANAGE_EXTERNAL_STORAGE allow</pre></div>
+    </div>
+  </div>
+</section>
+
+<section id="autres">
+  <div class="wrap">
+    <div class="eyebrow">Les autres applis</div>
+    <h2>Tout l'univers Kairo.</h2>
+    <p class="sub">Chaque appli se propose et s'installe en un clic depuis Kairo.</p>
+    <div class="others">
+      <a class="card" href="index.html"><h3>Kairo</h3><p>Le launcher Android TV, fluide sur les petites box.</p></a>
+      <a class="card" href="player.html"><h3>Kairo Player</h3><p>Vidéos, photos et musique de la box et des clés USB.</p></a>
+      <a class="card" href="send.html"><h3>Kairo Send Files</h3><p>Fichiers, textes et liens entre le téléphone et la TV.</p></a>
+      <a class="card" href="cast.html"><h3>Kairo Cast</h3><p>L'écran du Mac ou du PC Windows sur la TV.</p></a>
+      <a class="card" href="remote.html"><h3>Kairo Remote</h3><p>Le téléphone devient la télécommande.</p></a>
+      <a class="card" href="ultra-tv.html"><h3>Ultra TV</h3><p>Le lecteur IPTV, intégré à Kairo.</p></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="assets/icon.png" alt="">Kairo</a>
+    <span>Fait pour les box modestes et les gens exigeants · <a href="https://github.com/vantaflow/kairo">GitHub</a> · <a href="https://vantaflow.github.io/ultra-tv/">Ultra TV</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

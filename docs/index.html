@@ -12,165 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0b0d1a;
-    --bg-2: #11152a;
-    --card: rgba(255, 255, 255, 0.04);
-    --line: rgba(255, 255, 255, 0.09);
-    --text: #eef1fb;
-    --muted: #9aa3bf;
-    --accent: #60cdff;
-    --accent-2: #2563eb;
-    --radius: 18px;
-  }
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
-  a { color: inherit; }
-  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
-
-  /* En-tête */
-  nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); background: rgba(11, 13, 26, 0.72); border-bottom: 1px solid var(--line); }
-  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
-  .brand img { width: 30px; height: 30px; border-radius: 8px; }
-  .brand { flex-shrink: 0; }
-  nav .links { display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--muted); white-space: nowrap; }
-  nav .links a, .drop > button { text-decoration: none; transition: color .2s; }
-  nav .links a:hover, .drop > button:hover, .drop:focus-within > button { color: var(--text); }
-  .drop { position: relative; }
-  .drop > button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-  .drop > button::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
-  .drop:hover > button::after, .drop.open > button::after { transform: translateY(1px) rotate(-135deg); }
-  .drop .menu { position: absolute; top: 100%; left: -14px; padding: 8px; margin-top: 10px; min-width: 190px; display: none; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.45); }
-  .drop .menu::before { content: ""; position: absolute; inset: -12px 0 auto; height: 12px; }
-  .drop:hover .menu, .drop:focus-within .menu, .drop.open .menu { display: flex; }
-  .drop .menu a { padding: 9px 12px; border-radius: 8px; }
-  .drop .menu a:hover { background: var(--card); }
-  nav .links a.gh { padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); }
-  nav .links a.gh:hover { background: var(--card); }
-  .burger { all: unset; display: none; cursor: pointer; width: 40px; height: 40px; place-items: center; border-radius: 10px; color: var(--text); font-size: 22px; }
-
-  /* Héros */
-  .hero { position: relative; padding: 96px 0 72px; text-align: center; }
-  .hero::before {
-    content: ""; position: absolute; inset: -20% -10% auto; height: 720px; z-index: -1;
-    background:
-      radial-gradient(600px 320px at 30% 30%, rgba(37, 99, 235, .35), transparent 70%),
-      radial-gradient(520px 300px at 72% 20%, rgba(96, 205, 255, .22), transparent 70%),
-      radial-gradient(480px 300px at 50% 80%, rgba(124, 58, 237, .20), transparent 70%);
-    filter: blur(10px);
-  }
-  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; color: var(--muted); background: var(--card); }
-  .pill b { color: var(--accent); font-weight: 600; }
-  h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.04; letter-spacing: -0.035em; margin: 22px 0 18px; font-weight: 800; }
-  h1 .grad { background: linear-gradient(100deg, #fff 10%, var(--accent) 55%, #818cf8 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .lead { max-width: 660px; margin: 0 auto; font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); }
-  .cta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 12px; font-weight: 600; font-size: 15px; text-decoration: none; transition: transform .15s, box-shadow .2s, background .2s; }
-  .btn:hover { transform: translateY(-1px); }
-  .btn.primary { background: linear-gradient(135deg, var(--accent-2), #3b82f6 60%, var(--accent)); box-shadow: 0 10px 30px -10px rgba(59, 130, 246, .7); }
-  .btn.ghost { border: 1px solid var(--line); background: var(--card); }
-  .shot { margin: 64px auto 0; max-width: 1040px; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 40px 120px -40px rgba(37, 99, 235, .55), 0 0 0 8px rgba(255, 255, 255, .02); }
-  .shot img { display: block; width: 100%; height: auto; }
-
-  .dl-code { margin: 18px 0 0; color: var(--muted); font-size: 15px; }
-  .dl-code b { color: var(--text); }
-  .dl-code b:last-child { color: var(--accent); letter-spacing: .08em; }
-
-  /* Chiffres */
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 72px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-  .stat { background: var(--bg-2); padding: 26px 22px; text-align: center; }
-  .stat b { display: block; font-size: 30px; letter-spacing: -0.02em; }
-  .stat span { color: var(--muted); font-size: 14px; }
-
-  /* Sections */
-  section { padding: 96px 0 0; }
-  .eyebrow { color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
-  h2 { font-size: clamp(30px, 4.4vw, 44px); letter-spacing: -0.03em; line-height: 1.1; margin: 10px 0 14px; }
-  .sub { color: var(--muted); max-width: 640px; margin: 0 0 40px; }
-
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; transition: border-color .2s, transform .2s; }
-  .card:hover { border-color: rgba(96, 205, 255, .35); transform: translateY(-2px); }
-  .card .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, rgba(37, 99, 235, .35), rgba(96, 205, 255, .18)); margin-bottom: 16px; }
-  .card .ico svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .card h3 { margin: 0 0 6px; font-size: 18px; }
-  .card p { margin: 0; color: var(--muted); font-size: 15px; }
-
-  /* Galerie */
-  .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: 48px; align-items: center; }
-  .split.rev { grid-template-columns: 1.25fr 1fr; }
-  .split.rev .text { order: 2; }
-  .frame { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 80px -40px rgba(0, 0, 0, .9); }
-  .frame img { display: block; width: 100%; height: auto; }
-  ul.checks { list-style: none; padding: 0; margin: 18px 0 0; }
-  ul.checks li { position: relative; padding-left: 28px; margin: 10px 0; color: #cdd3e6; }
-  ul.checks li::before { content: ""; position: absolute; left: 0; top: 7px; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, var(--accent) 35%, rgba(96, 205, 255, .18) 40%); }
-
-  /* Performance */
-  .perf { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-  .bar { margin-top: 16px; }
-  .bar .row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
-  .bar .track { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .06); overflow: hidden; }
-  .bar .fill { height: 100%; border-radius: 99px; }
-  .fill.before { width: 100%; background: linear-gradient(90deg, #f97316, #ef4444); }
-  .fill.after { width: 36%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
-
-  /* Installation */
-  .steps { counter-reset: step; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .step { position: relative; padding-top: 58px; }
-  .step::before { counter-increment: step; content: counter(step); position: absolute; top: 22px; left: 24px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--accent-2); }
-  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13.5px; background: rgba(255, 255, 255, .06); padding: 2px 7px; border-radius: 6px; }
-
-  /* Galerie */
-  .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-  .gallery figure { margin: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--bg-2); }
-  .gallery img { display: block; width: 100%; height: auto; }
-  .gallery figcaption { padding: 12px 16px; color: var(--muted); font-size: 14px; }
-  .card.ultra { padding: 40px; background: linear-gradient(135deg, rgba(220, 38, 38, .16), rgba(37, 99, 235, .12)); }
-  .cta.left { justify-content: flex-start; margin-top: 8px; }
-
-  footer { margin-top: 110px; padding: 40px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
-  footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-
-  @media (max-width: 900px) {
-    .grid, .steps { grid-template-columns: 1fr 1fr; }
-    .split, .split.rev { grid-template-columns: 1fr; gap: 28px; }
-    .split.rev .text { order: 0; }
-    .stats { grid-template-columns: 1fr 1fr; }
-    .perf { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 700px) {
-    .gallery { grid-template-columns: 1fr; }
-    .card.ultra { padding: 24px; }
-  }
-  @media (max-width: 600px) {
-    .wrap { padding: 0 16px; }
-    .burger { display: grid; }
-    nav .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 16px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 16px; }
-    nav.open .links { display: flex; }
-    nav .links > a, .drop > button { padding: 12px 0; }
-    .drop .menu { position: static; display: flex; margin: 0 0 6px; padding: 0 0 0 14px; background: none; border: 0; box-shadow: none; }
-    .drop > button::after { display: none; }
-    nav .links a.gh { align-self: flex-start; margin-top: 8px; }
-    .grid, .steps { grid-template-columns: 1fr; }
-    .hero { padding-top: 64px; }
-    section { padding-top: 72px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    .btn, .card { transition: none; }
-  }
-</style>
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 
@@ -183,30 +25,22 @@
       <div class="drop">
         <button aria-haspopup="true" aria-expanded="false">Applis</button>
         <div class="menu">
-          <a href="#player">Kairo Player</a>
-          <a href="#files">Kairo Files</a>
-          <a href="#send">Send Files</a>
-          <a href="#cast">Kairo Cast</a>
-          <a href="#remote">Kairo Remote</a>
+          <a href="player.html">Kairo Player</a>
+          <a href="files.html">Kairo Files</a>
+          <a href="send.html">Send Files</a>
+          <a href="cast.html">Kairo Cast</a>
+          <a href="remote.html">Kairo Remote</a>
         </div>
       </div>
       <a href="#performance">Performance</a>
       <a href="#galerie">Captures</a>
       <a href="#installation">Installation</a>
-      <a href="#ultra-tv">Ultra TV</a>
+      <a href="ultra-tv.html">Ultra TV</a>
       <a class="gh" href="https://github.com/vantaflow/kairo">GitHub</a>
     </div>
   </div>
 </nav>
-<script>
-  (() => {
-    const nav = document.querySelector('nav'), burger = nav.querySelector('.burger'), drop = nav.querySelector('.drop'), dropBtn = drop.querySelector('button');
-    burger.addEventListener('click', () => burger.setAttribute('aria-expanded', nav.classList.toggle('open')));
-    dropBtn.addEventListener('click', () => dropBtn.setAttribute('aria-expanded', drop.classList.toggle('open')));
-    nav.querySelectorAll('.links a').forEach(a => a.addEventListener('click', () => { nav.classList.remove('open'); drop.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }));
-    document.addEventListener('click', e => { if (!drop.contains(e.target)) drop.classList.remove('open'); });
-  })();
-</script>
+<script src="assets/site.js"></script>
 
 <header class="hero">
   <div class="wrap">
@@ -269,6 +103,7 @@
         <li>Proposé et installé en un clic depuis Kairo, avec Ultra TV</li>
         <li><a href="https://github.com/vantaflow/kairo/releases/latest/download/kairo-player.apk">Télécharger Kairo Player</a></li>
       </ul>
+      <a class="more" href="player.html">En savoir plus →</a>
     </div>
   </div>
 </section>
@@ -288,6 +123,7 @@
         <li>« Envoyer au téléphone » avec Kairo Send Files</li>
         <li><a href="https://github.com/vantaflow/kairo/releases/latest/download/kairo-files.apk">Télécharger Kairo Files</a></li>
       </ul>
+      <a class="more" href="files.html">En savoir plus →</a>
     </div>
   </div>
 </section>
@@ -304,6 +140,7 @@
         <li>Dans l'autre sens : les fichiers proposés par la box se téléchargent ou se suppriment depuis la page</li>
         <li><a href="https://github.com/vantaflow/kairo/releases/latest/download/kairo-send.apk">Télécharger Kairo Send Files</a></li>
       </ul>
+      <a class="more" href="send.html">En savoir plus →</a>
     </div>
     <div class="frame"><img src="assets/send-tv.jpg" alt="Kairo Send Files : QR code et fichiers échangés" loading="lazy"></div>
   </div>
@@ -313,14 +150,16 @@
   <div class="wrap split rev">
     <div class="text">
       <div class="eyebrow">Kairo Cast</div>
-      <h2>L'écran du Mac sur la TV.</h2>
-      <p class="sub">Centre de contrôle › Recopie de l'écran › « Kairo » : la TV affiche le Mac, avec le son, sans limite de durée.</p>
+      <h2>L'écran du Mac ou du PC sur la TV.</h2>
+      <p class="sub">Sur Mac, Centre de contrôle › Recopie de l'écran › « Kairo ». Sur Windows, l'appli Kairo Cast › Recopier. La TV affiche l'écran, avec le son, sans limite de durée.</p>
       <ul class="checks">
         <li>Netteté 1080p, 1440p ou 4K ; affichage Étirer, Remplir ou Ajuster</li>
         <li>Démarre avec la box, toujours prête à recevoir</li>
         <li>Proposée dans l'assistant de Kairo, installée en un clic</li>
-        <li><a href="https://github.com/vantaflow/kairo-cast/releases/latest/download/kairo-cast.apk">Télécharger Kairo Cast</a> · <a href="https://github.com/vantaflow/kairo-cast">Code source</a></li>
+        <li>Windows 10/11 : encodage par la carte graphique, rien à installer</li>
+        <li><a href="https://github.com/vantaflow/kairo-cast/releases/latest/download/kairo-cast.apk">Kairo Cast pour la box</a> · <a href="https://github.com/vantaflow/kairo-cast/releases/latest/download/KairoCast.exe">Kairo Cast pour Windows</a> · <a href="https://github.com/vantaflow/kairo-cast">Code source</a></li>
       </ul>
+      <a class="more" href="cast.html">En savoir plus →</a>
     </div>
     <div class="frame"><img src="assets/kairo-cast.png" alt="Kairo Cast" loading="lazy"></div>
   </div>
@@ -353,6 +192,7 @@
         <li>Clavier : tapez une recherche ou un mot de passe depuis le téléphone</li>
         <li>Lancez une appli, envoyez des fichiers ou installez un APK</li>
       </ul>
+      <a class="more" href="remote.html">En savoir plus →</a>
     </div>
     <div class="frame"><img src="assets/phone-remote.jpg" alt="QR code de Kairo Remote dans les réglages" loading="lazy"></div>
   </div>
@@ -480,6 +320,7 @@
         <div class="cta left">
           <a class="btn primary" href="https://vantaflow.github.io/ultra-tv/">Découvrir Ultra TV</a>
           <a class="btn ghost" href="https://github.com/vantaflow/ultra-tv">Code sur GitHub</a>
+          <a class="btn ghost" href="ultra-tv.html">En savoir plus</a>
         </div>
       </div>
     </div>
