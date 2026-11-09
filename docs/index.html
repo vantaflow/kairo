@@ -42,9 +42,22 @@
   nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
   .brand img { width: 30px; height: 30px; border-radius: 8px; }
-  nav .links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
-  nav .links a { text-decoration: none; transition: color .2s; }
-  nav .links a:hover { color: var(--text); }
+  .brand { flex-shrink: 0; }
+  nav .links { display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--muted); white-space: nowrap; }
+  nav .links a, .drop > button { text-decoration: none; transition: color .2s; }
+  nav .links a:hover, .drop > button:hover, .drop:focus-within > button { color: var(--text); }
+  .drop { position: relative; }
+  .drop > button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .drop > button::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
+  .drop:hover > button::after, .drop.open > button::after { transform: translateY(1px) rotate(-135deg); }
+  .drop .menu { position: absolute; top: 100%; left: -14px; padding: 8px; margin-top: 10px; min-width: 190px; display: none; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+  .drop .menu::before { content: ""; position: absolute; inset: -12px 0 auto; height: 12px; }
+  .drop:hover .menu, .drop:focus-within .menu, .drop.open .menu { display: flex; }
+  .drop .menu a { padding: 9px 12px; border-radius: 8px; }
+  .drop .menu a:hover { background: var(--card); }
+  nav .links a.gh { padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); }
+  nav .links a.gh:hover { background: var(--card); }
+  .burger { all: unset; display: none; cursor: pointer; width: 40px; height: 40px; place-items: center; border-radius: 10px; color: var(--text); font-size: 22px; }
 
   /* Héros */
   .hero { position: relative; padding: 96px 0 72px; text-align: center; }
@@ -142,7 +155,13 @@
   }
   @media (max-width: 600px) {
     .wrap { padding: 0 16px; }
-    nav .links { display: none; }
+    .burger { display: grid; }
+    nav .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 16px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 16px; }
+    nav.open .links { display: flex; }
+    nav .links > a, .drop > button { padding: 12px 0; }
+    .drop .menu { position: static; display: flex; margin: 0 0 6px; padding: 0 0 0 14px; background: none; border: 0; box-shadow: none; }
+    .drop > button::after { display: none; }
+    nav .links a.gh { align-self: flex-start; margin-top: 8px; }
     .grid, .steps { grid-template-columns: 1fr; }
     .hero { padding-top: 64px; }
     section { padding-top: 72px; }
@@ -158,21 +177,36 @@
 <nav>
   <div class="wrap">
     <a class="brand" href="#"><img src="assets/icon.png" alt="">Kairo</a>
+    <button class="burger" aria-label="Menu" aria-expanded="false">☰</button>
     <div class="links">
       <a href="#fonctions">Fonctions</a>
-      <a href="#player">Kairo Player</a>
-      <a href="#files">Kairo Files</a>
-      <a href="#send">Send Files</a>
-      <a href="#cast">Kairo Cast</a>
-      <a href="#remote">Kairo Remote</a>
+      <div class="drop">
+        <button aria-haspopup="true" aria-expanded="false">Applis</button>
+        <div class="menu">
+          <a href="#player">Kairo Player</a>
+          <a href="#files">Kairo Files</a>
+          <a href="#send">Send Files</a>
+          <a href="#cast">Kairo Cast</a>
+          <a href="#remote">Kairo Remote</a>
+        </div>
+      </div>
       <a href="#performance">Performance</a>
       <a href="#galerie">Captures</a>
       <a href="#installation">Installation</a>
       <a href="#ultra-tv">Ultra TV</a>
-      <a href="https://github.com/vantaflow/kairo">GitHub</a>
+      <a class="gh" href="https://github.com/vantaflow/kairo">GitHub</a>
     </div>
   </div>
 </nav>
+<script>
+  (() => {
+    const nav = document.querySelector('nav'), burger = nav.querySelector('.burger'), drop = nav.querySelector('.drop'), dropBtn = drop.querySelector('button');
+    burger.addEventListener('click', () => burger.setAttribute('aria-expanded', nav.classList.toggle('open')));
+    dropBtn.addEventListener('click', () => dropBtn.setAttribute('aria-expanded', drop.classList.toggle('open')));
+    nav.querySelectorAll('.links a').forEach(a => a.addEventListener('click', () => { nav.classList.remove('open'); drop.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }));
+    document.addEventListener('click', e => { if (!drop.contains(e.target)) drop.classList.remove('open'); });
+  })();
+</script>
 
 <header class="hero">
   <div class="wrap">
