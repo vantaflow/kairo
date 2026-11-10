@@ -36,18 +36,53 @@ class KeyRemapService : AccessibilityService() {
         }
         // Minuteur de mise en veille : bandeau d'avertissement la dernière minute.
         scope.launch { container.sleepTimer.warning.collect(::showSleepWarning) }
+        // Allumage sans personne devant (télé qui s'allume seule) : bandeau puis remise en veille.
+        scope.launch { container.prefs.wakeGuard.collect { guardEnabled = it; if (!it) wakeGuard.stop() } }
+        scope.launch {
+            wakeGuard.warning.collect { s ->
+                showSleepWarning(s, s?.let { "Allumée sans touche pressée · veille dans $it s · appuyez sur une touche pour rester" })
+            }
+        }
+        registerReceiver(screenReceiver, android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        })
     }
+
+    @Volatile private var guardEnabled = true
+
+    private val wakeGuard = com.vantaflow.kairo.system.WakeGuard(scope, busy = ::busy, onSleep = { sleep() })
+
+    /** Quelque chose joue, ou un minuteur de veille est déjà réglé : on ne rendort pas. */
+    private fun busy(): Boolean {
+        val audio = getSystemService(android.media.AudioManager::class.java)
+        val container = (application as TvHomeApp).container
+        return audio.isMusicActive || container.sleepTimer.endsAt.value != null ||
+            foreground == "com.vantaflow.kairo.cast"
+    }
+
+    private val screenReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_ON -> if (guardEnabled) wakeGuard.screenOn()
+                Intent.ACTION_SCREEN_OFF -> wakeGuard.stop()
+            }
+        }
+    }
+
+    /** Activité venue d'ailleurs que la télécommande (télécommande sur téléphone) : la box reste allumée. */
+    fun userActive() = wakeGuard.stop()
 
     private var warningView: android.widget.TextView? = null
 
-    private fun showSleepWarning(seconds: Int?) {
+    private fun showSleepWarning(seconds: Int?, message: String? = null) {
         val wm = getSystemService(android.view.WindowManager::class.java)
         if (seconds == null) {
             warningView?.let { runCatching { wm.removeView(it) } }
             warningView = null
             return
         }
-        val text = "Mise en veille dans $seconds s · appuyez sur une touche pour continuer"
+        val text = message ?: "Mise en veille dans $seconds s · appuyez sur une touche pour continuer"
         warningView?.let { it.text = text; return }
         val density = resources.displayMetrics.density
         val view = android.widget.TextView(this).apply {
@@ -80,6 +115,13 @@ class KeyRemapService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val code = event.keyCode
         if (event.action == KeyEvent.ACTION_UP) return consumed.remove(code)
+        // Touche pressée après l'allumage : quelqu'un est là.
+        if (wakeGuard.warning.value != null) {
+            wakeGuard.stop()
+            consumed += code
+            return true
+        }
+        wakeGuard.stop()
         if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount > 0) return code in consumed
         // Avertissement du minuteur affiché : n'importe quelle touche prolonge.
         if (warningView != null) {
@@ -175,6 +217,8 @@ class KeyRemapService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenReceiver) }
+        wakeGuard.stop()
         if (instance === this) instance = null
         scope.cancel()
         super.onDestroy()

@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +71,9 @@ fun PowerSettings() {
     var cec by remember { mutableStateOf(readGlobal(context, "hdmi_control_enabled", 1)) }
     var volume by remember { mutableStateOf(readGlobal(context, "hdmi_control_volume_control_enabled", 1)) }
     var refused by remember { mutableStateOf(false) }
+    val prefs = remember { (context.applicationContext as com.vantaflow.kairo.TvHomeApp).container.prefs }
+    val guard by prefs.wakeGuard.collectAsState(initial = true)
+    val scope = rememberCoroutineScope()
 
     fun write(block: () -> Unit): Boolean {
         if (!allowed) return false.also { refused = true }
@@ -105,6 +111,10 @@ fun PowerSettings() {
                     }) { Text(timeoutLabel(ms)) }
                 }
             }
+        }
+        item {
+            SwitchRow("Rendormir si la télé s'allume seule", guard, { on -> scope.launch { prefs.setWakeGuard(on) } },
+                "Sans touche pressée dans les 30 secondes après l'allumage et si rien ne joue, la box se remet en veille et la télé s'éteint avec elle.")
         }
         item { SettingLabel("HDMI-CEC") }
         item {

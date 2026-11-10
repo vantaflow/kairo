@@ -77,6 +77,7 @@ class PhoneRemoteActions(private val context: Context) {
     )
 
     private fun key(name: String): HttpResponse {
+        KeyRemapService.instance?.userActive()
         val key = PhoneKey.parse(name) ?: return HttpResponse.text(400, "Touche inconnue")
         val audio = context.getSystemService(AudioManager::class.java)
         when {

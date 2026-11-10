@@ -178,6 +178,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val dreamClock = booleanPreferencesKey("dream_clock")
         val dreamQuote = booleanPreferencesKey("dream_quote")
         val phoneRemoteEnabled = booleanPreferencesKey("phone_remote_enabled")
+        val wakeGuard = booleanPreferencesKey("wake_guard")
         val phoneRemoteToken = stringPreferencesKey("phone_remote_token")
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
         val appUsage = stringPreferencesKey("app_usage")
@@ -216,6 +217,13 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
 
     suspend fun setPhoneRemoteEnabled(value: Boolean) {
         store.edit { it[Keys.phoneRemoteEnabled] = value }
+    }
+
+    /** Rendormir la box si elle s'allume sans touche pressée (télé qui s'allume seule) : activé par défaut. */
+    val wakeGuard: Flow<Boolean> = pref { it[Keys.wakeGuard] ?: true }
+
+    suspend fun setWakeGuard(value: Boolean) {
+        store.edit { it[Keys.wakeGuard] = value }
     }
 
     val phoneRemoteTokenFlow: Flow<String> = pref { it[Keys.phoneRemoteToken].orEmpty() }

@@ -83,6 +83,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 - Panneau à droite par-dessus l'accueil : les changements se voient en direct.
 - Réseau (Wi-Fi / Ethernet), raccourci HDMI-CEC et accès direct aux paramètres Android de la box.
 - **Alimentation et HDMI-CEC** (Réglages › Paramètres de la box), comme sur Google TV : mise en veille sans touche pressée (20 min à 24 h, la télé s'éteint avec la box), mise en veille pendant une vidéo (3 h à jamais), contrôle HDMI-CEC et contrôle du volume. Même autorisation ADB que le DNS privé.
+- **Rendormir si la télé s'allume seule** (activé par défaut) : certaines télés s'allument seules la nuit et réveillent la box par HDMI-CEC. Sans touche pressée dans les 30 s (bandeau d'avertissement à 15 s) et si rien ne joue, la box se remet en veille et la télé s'éteint avec elle. Nécessite le service Kairo (Accessibilité).
 - **DNS privé (DNS sur TLS) en un clic** (Réglages › Réseau) : Automatique, Cloudflare, Google, Quad9, AdGuard, AdGuard Famille, Cloudflare Famille, Mullvad, Mullvad anti-pub. Appliqué à toute la box (autorisation à donner une fois par ADB : `adb shell pm grant com.vantaflow.kairo android.permission.WRITE_SECURE_SETTINGS`).
 - Profils (dont un **profil enfant** verrouillé par code), sauvegarde et restauration, nettoyage mémoire, mise à jour depuis GitHub.
 
@@ -90,7 +91,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 | --- | --- |
 | ![Menu des réglages](docs/assets/settings.jpg) | ![Réglages du thème](docs/assets/settings-theme.jpg) |
 | **DNS privé (DNS sur TLS)** | |
-| ![DNS privé](docs/assets/dns.jpg) | |
+| ![DNS privé](docs/assets/dns.jpg) | ![Alimentation et HDMI-CEC](docs/assets/power.jpg) |
 
 **Et aussi**
 - **Favoris à déplacer directement sur l'accueil**, comme sur Google TV : appui long › Déplacer, puis ← →.
