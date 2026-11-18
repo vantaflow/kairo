@@ -1,5 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Français : langue par défaut. Chaque clé doit exister dans values-en, values-es et values-ar. -->
     <string name="key_remap_service_label">Kairo – touches de la télécommande</string>
     <string name="key_remap_description">Permet d\'ouvrir l\'appli de votre choix avec les touches YouTube, Netflix, Prime Video, Disney+ et les autres touches d\'applis de la télécommande.</string>
+    <string name="chevron_forward">›</string>
+    <string name="settings_title">Réglages</string>
+    <string name="settings_group_app">Kairo</string>
+    <string name="settings_group_box">Paramètres de la box</string>
+    <string name="section_setup">Assistant de configuration</string>
+    <string name="section_setup_desc">Ce qui est prêt et ce qu\'il reste à activer.</string>
+    <string name="section_favorites">Favoris</string>
+    <string name="section_favorites_desc">L\'ordre et le contenu de la rangée Favoris.</string>
+    <string name="section_wallpaper">Fond d\'écran</string>
+    <string name="section_wallpaper_desc">Images Pixabay, dégradés ou couleur unie.</string>
+    <string name="section_theme">Thème</string>
+    <string name="section_theme_desc">Couleurs, arrondi et zoom des tuiles.</string>
+    <string name="section_layout">Affichage de l\'accueil</string>
+    <string name="section_layout_desc">Ce qui apparaît sur l\'écran d\'accueil.</string>
+    <string name="section_dream">Écran de veille</string>
+    <string name="section_dream_desc">Photos du web, vos photos ou dégradés animés.</string>
+    <string name="section_weather">Météo</string>
+    <string name="section_weather_desc">Météo affichée sous l\'heure.</string>
+    <string name="section_reco">Recommandations</string>
+    <string name="section_reco_desc">Rangées proposées par vos applis.</string>
+    <string name="section_clock">Heure</string>
+    <string name="section_clock_desc">Format et synchronisation de l\'heure.</string>
+    <string name="section_language">Langue</string>
+    <string name="section_language_desc">Langue des menus de Kairo.</string>
+    <string name="section_remote">Touches de la télécommande</string>
+    <string name="section_remote_desc">YouTube, Netflix, Prime Video… : l\'appli de votre choix.</string>
+    <string name="section_adblock">Bloqueur de pubs</string>
+    <string name="section_adblock_desc">Pubs et pistage bloqués dans toutes les applis.</string>
+    <string name="section_phone">Télécommande sur téléphone</string>
+    <string name="section_phone_desc">Le téléphone devient télécommande, clavier et envoi de fichiers.</string>
+    <string name="section_profiles">Profils</string>
+    <string name="section_profiles_desc">Un accueil par personne, profil enfant protégé.</string>
+    <string name="section_backup">Sauvegarde</string>
+    <string name="section_backup_desc">Sauvegarder et restaurer vos réglages.</string>
+    <string name="section_update">Mise à jour</string>
+    <string name="section_update_desc">Installer la dernière version de Kairo.</string>
+    <string name="section_power">Alimentation et HDMI-CEC</string>
+    <string name="section_power_desc">Mise en veille automatique et pilotage de la télé.</string>
+    <string name="section_inputs">Entrées et HDMI</string>
+    <string name="section_inputs_desc">Entrées de la box et réglages de la sortie HDMI.</string>
+    <string name="section_network">Réseau (Wi-Fi, Ethernet)</string>
+    <string name="section_network_desc">Connexion actuelle et réseaux Wi-Fi.</string>
+    <string name="section_memory">Mémoire</string>
+    <string name="section_memory_desc">Mémoire libre et fermeture des applis en arrière-plan.</string>
+    <string name="section_android">Paramètres Android</string>
+    <string name="section_android_desc">Raccourcis vers les paramètres de la box.</string>
+    <string name="language_system">Langue de la box</string>
+    <string name="language_hint">S\'applique tout de suite à tout Kairo, écran de veille compris.</string>
 </resources>

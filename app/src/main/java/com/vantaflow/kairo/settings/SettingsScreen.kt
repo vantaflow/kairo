@@ -53,30 +53,34 @@ import com.vantaflow.kairo.ui.theme.SurfaceColor
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import kotlinx.coroutines.flow.Flow
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
-enum class Group(val title: String) { App("Kairo"), Box("Paramètres de la box") }
+enum class Group(@StringRes val title: Int) { App(R.string.settings_group_app), Box(R.string.settings_group_box) }
 
-enum class Section(val title: String, val group: Group, val icon: TvIcon, val description: String) {
-    Setup("Assistant de configuration", Group.App, TvIcon.Check, "Ce qui est prêt et ce qu'il reste à activer."),
-    Favorites("Favoris", Group.App, TvIcon.Favorites, "L'ordre et le contenu de la rangée Favoris."),
-    Wallpaper("Fond d'écran", Group.App, TvIcon.Wallpaper, "Images Pixabay, dégradés ou couleur unie."),
-    Theme("Thème", Group.App, TvIcon.Theme, "Couleurs, arrondi et zoom des tuiles."),
-    Layout("Affichage de l'accueil", Group.App, TvIcon.Layout, "Ce qui apparaît sur l'écran d'accueil."),
-    Dream("Écran de veille", Group.App, TvIcon.Moon, "Photos du web, vos photos ou dégradés animés."),
-    Weather("Météo", Group.App, TvIcon.Weather, "Météo affichée sous l'heure."),
-    Reco("Recommandations", Group.App, TvIcon.Reco, "Rangées proposées par vos applis."),
-    Clock("Heure", Group.App, TvIcon.Clock, "Format et synchronisation de l'heure."),
-    Remote("Touches de la télécommande", Group.App, TvIcon.Remote, "YouTube, Netflix, Prime Video… : l'appli de votre choix."),
-    AdBlock("Bloqueur de pubs", Group.App, TvIcon.Shield, "Pubs et pistage bloqués dans toutes les applis."),
-    Phone("Télécommande sur téléphone", Group.App, TvIcon.Phone, "Le téléphone devient télécommande, clavier et envoi de fichiers."),
-    Profiles("Profils", Group.App, TvIcon.Profiles, "Un accueil par personne, profil enfant protégé."),
-    Backup("Sauvegarde", Group.App, TvIcon.Backup, "Sauvegarder et restaurer vos réglages."),
-    Update("Mise à jour", Group.App, TvIcon.Update, "Installer la dernière version de Kairo."),
-    Power("Alimentation et HDMI-CEC", Group.Box, TvIcon.Timer, "Mise en veille automatique et pilotage de la télé."),
-    Inputs("Entrées et HDMI", Group.Box, TvIcon.Android, "Entrées de la box et réglages de la sortie HDMI."),
-    Network("Réseau (Wi-Fi, Ethernet)", Group.Box, TvIcon.Network, "Connexion actuelle et réseaux Wi-Fi."),
-    Memory("Mémoire", Group.Box, TvIcon.Memory, "Mémoire libre et fermeture des applis en arrière-plan."),
-    Android("Paramètres Android", Group.Box, TvIcon.Android, "Raccourcis vers les paramètres de la box."),
+enum class Section(@StringRes val title: Int, val group: Group, val icon: TvIcon, @StringRes val description: Int) {
+    Setup(R.string.section_setup, Group.App, TvIcon.Check, R.string.section_setup_desc),
+    Favorites(R.string.section_favorites, Group.App, TvIcon.Favorites, R.string.section_favorites_desc),
+    Wallpaper(R.string.section_wallpaper, Group.App, TvIcon.Wallpaper, R.string.section_wallpaper_desc),
+    Theme(R.string.section_theme, Group.App, TvIcon.Theme, R.string.section_theme_desc),
+    Layout(R.string.section_layout, Group.App, TvIcon.Layout, R.string.section_layout_desc),
+    Dream(R.string.section_dream, Group.App, TvIcon.Moon, R.string.section_dream_desc),
+    Weather(R.string.section_weather, Group.App, TvIcon.Weather, R.string.section_weather_desc),
+    Reco(R.string.section_reco, Group.App, TvIcon.Reco, R.string.section_reco_desc),
+    Clock(R.string.section_clock, Group.App, TvIcon.Clock, R.string.section_clock_desc),
+    Language(R.string.section_language, Group.App, TvIcon.Language, R.string.section_language_desc),
+    Remote(R.string.section_remote, Group.App, TvIcon.Remote, R.string.section_remote_desc),
+    AdBlock(R.string.section_adblock, Group.App, TvIcon.Shield, R.string.section_adblock_desc),
+    Phone(R.string.section_phone, Group.App, TvIcon.Phone, R.string.section_phone_desc),
+    Profiles(R.string.section_profiles, Group.App, TvIcon.Profiles, R.string.section_profiles_desc),
+    Backup(R.string.section_backup, Group.App, TvIcon.Backup, R.string.section_backup_desc),
+    Update(R.string.section_update, Group.App, TvIcon.Update, R.string.section_update_desc),
+    Power(R.string.section_power, Group.Box, TvIcon.Timer, R.string.section_power_desc),
+    Inputs(R.string.section_inputs, Group.Box, TvIcon.Android, R.string.section_inputs_desc),
+    Network(R.string.section_network, Group.Box, TvIcon.Network, R.string.section_network_desc),
+    Memory(R.string.section_memory, Group.Box, TvIcon.Memory, R.string.section_memory_desc),
+    Android(R.string.section_android, Group.Box, TvIcon.Android, R.string.section_android_desc),
 }
 
 
@@ -146,10 +150,10 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     TvIconImage(section.icon, OnBackground, size = 26.dp)
-                    Text(section.title, fontSize = 24.sp, color = OnBackground, maxLines = 1)
+                    Text(stringResource(section.title), fontSize = 24.sp, color = OnBackground, maxLines = 1)
                 }
                 Text(
-                    section.description,
+                    stringResource(section.description),
                     fontSize = 14.sp,
                     color = OnBackgroundMuted,
                     modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 4.dp, bottom = 12.dp),
@@ -228,13 +232,13 @@ private fun SettingsMenu(selected: Section, onOpen: (Section) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 TvIconImage(TvIcon.Settings, OnBackground, size = 26.dp)
-                Text("Réglages", fontSize = 24.sp, color = OnBackground)
+                Text(stringResource(R.string.settings_title), fontSize = 24.sp, color = OnBackground)
             }
         }
         Group.entries.forEach { group ->
             item(key = group.name) {
                 Text(
-                    group.title.uppercase(),
+                    stringResource(group.title).uppercase(),
                     fontSize = 12.sp,
                     letterSpacing = 1.sp,
                     color = OnBackgroundMuted,
@@ -245,9 +249,9 @@ private fun SettingsMenu(selected: Section, onOpen: (Section) -> Unit) {
                 ListItem(
                     selected = false,
                     onClick = { onOpen(s) },
-                    headlineContent = { Text(s.title, maxLines = 1) },
+                    headlineContent = { Text(stringResource(s.title), maxLines = 1) },
                     leadingContent = { TvIconImage(s.icon, LocalContentColor.current) },
-                    trailingContent = { Text("›", fontSize = 20.sp) },
+                    trailingContent = { Text(stringResource(R.string.chevron_forward), fontSize = 20.sp) },
                     modifier = if (s == selected) Modifier.focusRequester(initial) else Modifier,
                 )
             }
@@ -277,6 +281,7 @@ private fun SectionContent(
                 Section.Dream -> DreamSettings()
                 Section.Reco -> RecoSettings(vm, installedApps)
                 Section.Clock -> ClockSettings(vm)
+                Section.Language -> LanguageSettings()
                 Section.Remote -> RemoteSettings(vm, installedApps)
                 Section.Phone -> PhoneRemoteSettings()
                 Section.Profiles -> ProfileSettings()

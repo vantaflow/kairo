@@ -61,8 +61,8 @@ class AppContainer(val app: Application) {
         return java.util.Locale.getDefault().country.takeIf { it.length == 2 }?.uppercase() ?: com.vantaflow.kairo.catalog.DEFAULT_REGION
     }
 
-    /** Langue des titres : celle de la box (« fr-FR », « ar », « en-US »…). */
-    private fun catalogLanguage(): String = java.util.Locale.getDefault().toLanguageTag().ifBlank { "fr-FR" }
+    /** Langue des titres : celle de l'appli (Réglages › Langue, par défaut celle de la box : « fr-FR », « ar-MA »…). */
+    private fun catalogLanguage(): String = com.vantaflow.kairo.i18n.AppLocale.catalogLanguage()
     /** Nos applis (Kairo Player, Ultra TV) : installation et mises à jour depuis GitHub. */
     val ourApps = OurAppsStore(app)
 
@@ -162,6 +162,8 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
+        com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)
         container.watchPhoneRemote()
         container.startAutoClean()
@@ -169,6 +171,12 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         container.ensureAdBlock()
         com.vantaflow.kairo.media.NowPlaying.start(this)
         container.ourApps.checkUpdates()
+    }
+
+    /** Un changement de configuration de la box remet sa langue : on réapplique celle de Kairo. */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
     }
 
     /** Cache d'images plafonné : par défaut Coil prendrait 25 % du tas (64 Mo sur cette box). */
