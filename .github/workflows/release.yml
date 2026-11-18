@@ -78,7 +78,7 @@ jobs:
           SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           for f in out/*.apk; do
             INFO=$("$SIGNER" verify --print-certs "$f" 2>&1 || true)
-            CERT=$(printf '%s\n' "$INFO" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            CERT=$(printf '%s\n' "$INFO" | sed -n 's/^.*certificate SHA-256 digest: //p' | sort -u)
             [ "$CERT" = "$EXPECTED_CERT" ] || { echo "$f : mauvaise clé ($CERT)"; printf '%s\n' "$INFO" | head -20; exit 1; }
           done
       - name: Publier
