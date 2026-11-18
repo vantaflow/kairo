@@ -1,6 +1,7 @@
 package com.vantaflow.kairo.dream
 
 import java.time.LocalDate
+import java.util.Locale
 
 /** Une citation et son auteur (ou l'origine d'un proverbe). */
 data class Quote(val text: String, val author: String)
@@ -460,8 +461,33 @@ val Quotes: List<Quote> = listOf(
     Quote("Il faut savoir perdre une bataille pour gagner la guerre.", "Proverbe"),
 )
 
-/** Ordre mélangé une fois pour toutes : les auteurs et les origines alternent d'un jour à l'autre. */
-private val DailyOrder: List<Quote> by lazy { Quotes.distinctBy { it.text }.shuffled(java.util.Random(2026)) }
+/**
+ * Citations dans la langue donnée (code ISO 639, ex. « en »), repli sur le français. Les listes traduites
+ * ([QuotesEn], [QuotesEs], [QuotesAr]) sont alignées indice par indice sur [Quotes].
+ */
+fun quotesFor(language: String): List<Quote> = when (language) {
+    "en" -> QuotesEn
+    "es" -> QuotesEs
+    "ar" -> QuotesAr
+    else -> Quotes
+}
 
-/** Citation du jour : la même toute la journée, une autre le lendemain, sans répétition dans l'année. */
-fun quoteOfDay(date: LocalDate): Quote = DailyOrder[Math.floorMod(date.toEpochDay(), DailyOrder.size.toLong()).toInt()]
+/**
+ * Ordre mélangé une fois pour toutes (indices dans [Quotes], textes français distincts) : les auteurs et les
+ * origines alternent d'un jour à l'autre. Même permutation qu'avant la traduction, et la même dans toutes les langues.
+ */
+private val DailyOrder: List<Int> by lazy {
+    val seen = HashSet<String>()
+    Quotes.indices.filter { seen.add(Quotes[it].text) }.shuffled(java.util.Random(2026))
+}
+
+/** Indice dans [Quotes] (et dans chaque liste traduite) de la citation du jour. */
+internal fun quoteIndexOfDay(date: LocalDate): Int =
+    DailyOrder[Math.floorMod(date.toEpochDay(), DailyOrder.size.toLong()).toInt()]
+
+/**
+ * Citation du jour : la même toute la journée, une autre le lendemain, sans répétition dans l'année ;
+ * dans la langue de l'appli ([Locale.getDefault]), la même citation traduite.
+ */
+fun quoteOfDay(date: LocalDate, language: String = Locale.getDefault().language): Quote =
+    quotesFor(language)[quoteIndexOfDay(date)]
