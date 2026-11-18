@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.player
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color as AColor
 import android.graphics.pdf.PdfRenderer
@@ -46,6 +47,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
@@ -78,6 +80,11 @@ fun decodeText(bytes: ByteArray): String {
 
 /** Lecteur de documents : PDF page par page, textes défilants. Ouvert depuis Kairo Files ou toute appli. */
 class DocumentActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        BoxLocale.applyTo(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val uri = intent?.data ?: return finish()
@@ -95,7 +102,7 @@ class DocumentActivity : ComponentActivity() {
         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null
         }
-    }.getOrNull() ?: uri.lastPathSegment?.substringAfterLast('/') ?: "Document"
+    }.getOrNull() ?: uri.lastPathSegment?.substringAfterLast('/') ?: getString(R.string.document_untitled)
 
     @Composable
     private fun PdfView(uri: Uri, name: String) {
@@ -112,7 +119,7 @@ class DocumentActivity : ComponentActivity() {
             val r = withContext(Dispatchers.IO) {
                 runCatching { contentResolver.openFileDescriptor(uri, "r")?.let(::PdfRenderer) }.getOrNull()
             }
-            if (r == null) error = "PDF illisible (protégé par mot de passe ?)" else renderer = r
+            if (r == null) error = getString(R.string.pdf_unreadable) else renderer = r
             delay(50)
             runCatching { focus.requestFocus() }
         }
@@ -159,7 +166,7 @@ class DocumentActivity : ComponentActivity() {
             }
             if (count > 0) {
                 Text(
-                    "$name · page ${page + 1} / $count   ← →  pages · ↑ ↓  défiler · OK  ${if (zoom) "page entière" else "zoom"}",
+                    stringResource(R.string.pdf_hint, name, page + 1, count, stringResource(if (zoom) R.string.pdf_full_page else R.string.pdf_zoom)),
                     color = Color.White, fontSize = 14.sp,
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp)
                         .background(Color(0xCC000000), RoundedCornerShape(10.dp)).padding(horizontal = 16.dp, vertical = 8.dp),
@@ -192,7 +199,7 @@ class DocumentActivity : ComponentActivity() {
                     }
                 }.getOrNull()
             }
-            if (bytes == null) lines = listOf("Texte illisible") else {
+            if (bytes == null) lines = listOf(getString(R.string.text_unreadable)) else {
                 truncated = bytes.size > TEXT_MAX
                 lines = decodeText(if (truncated) bytes.copyOf(TEXT_MAX) else bytes).split('\n')
             }
@@ -214,11 +221,11 @@ class DocumentActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "$name   ↑ ↓  défiler · ← →  page · OK  taille du texte" + if (truncated) " · début du fichier (2 Mo)" else "",
+                stringResource(if (truncated) R.string.text_hint_truncated else R.string.text_hint, name),
                 color = Color(0xFF9AA3B2), fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp),
             )
             val list = lines
-            if (list == null) Text("Lecture…", color = Color.White, fontSize = 20.sp)
+            if (list == null) Text(stringResource(R.string.text_reading), color = Color.White, fontSize = 20.sp)
             else LazyColumn(state = state, modifier = Modifier.widthIn(max = 1100.dp).fillMaxWidth()) {
                 items(list) { line ->
                     Text(line.ifEmpty { " " }, color = Color(0xFFEDEFF3), fontSize = size.sp, lineHeight = (size * 1.45f).sp)

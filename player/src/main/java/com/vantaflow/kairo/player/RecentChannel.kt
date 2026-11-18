@@ -20,17 +20,21 @@ class RecentChannel(private val context: Context) {
 
     fun publish(videos: List<Media>) {
         val top = videos.sortedByDescending { it.dateAdded }.take(MAX)
-        val signature = top.joinToString("|") { it.uri.toString() }
+        // Nom de la rangée dans la langue de la box : republiée aussi quand la langue change.
+        val title = context.getString(R.string.row_recent_videos)
+        val signature = title + "|" + top.joinToString("|") { it.uri.toString() }
         if (signature == prefs.getString("signature", null) && channelId() != null) return
         runCatching {
-            val id = channelId() ?: helper.publishChannel(
-                PreviewChannel.Builder()
-                    .setDisplayName("Vidéos récentes")
-                    .setInternalProviderId("recent")
-                    .setLogo(BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher))
-                    .setAppLinkIntentUri(Uri.parse(Intent(context, MainActivity::class.java).toUri(Intent.URI_INTENT_SCHEME)))
-                    .build(),
-            ).also { prefs.edit().putLong("channel", it).apply() }
+            val channel = PreviewChannel.Builder()
+                .setDisplayName(title)
+                .setInternalProviderId("recent")
+                .setLogo(BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher))
+                .setAppLinkIntentUri(Uri.parse(Intent(context, MainActivity::class.java).toUri(Intent.URI_INTENT_SCHEME)))
+                .build()
+            val existing = channelId()
+            if (existing != null && prefs.getString("title", null) != title) helper.updatePreviewChannel(existing, channel)
+            val id = existing ?: helper.publishChannel(channel).also { prefs.edit().putLong("channel", it).apply() }
+            prefs.edit().putString("title", title).apply()
             context.contentResolver.delete(TvContractCompat.buildPreviewProgramsUriForChannel(id), null, null)
             top.forEachIndexed { i, m ->
                 helper.publishPreviewProgram(

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="loading">جارٍ التحميل…</string>
+    <string name="welcome_subtitle">فيديوهاتك وصورك وموسيقاك من الجهاز ووحدات USB.</string>
+    <string name="welcome_allow">السماح بالوصول إلى الملفات</string>
+    <plurals name="home_videos">
+        <item quantity="zero">%1$d فيديو</item>
+        <item quantity="one">فيديو واحد</item>
+        <item quantity="two">فيديوهان</item>
+        <item quantity="few">%1$d فيديوهات</item>
+        <item quantity="many">%1$d فيديو</item>
+        <item quantity="other">%1$d فيديو</item>
+    </plurals>
+    <plurals name="home_photos">
+        <item quantity="zero">%1$d صورة</item>
+        <item quantity="one">صورة واحدة</item>
+        <item quantity="two">صورتان</item>
+        <item quantity="few">%1$d صور</item>
+        <item quantity="many">%1$d صورة</item>
+        <item quantity="other">%1$d صورة</item>
+    </plurals>
+    <plurals name="home_tracks">
+        <item quantity="zero">%1$d مقطع</item>
+        <item quantity="one">مقطع واحد</item>
+        <item quantity="two">مقطعان</item>
+        <item quantity="few">%1$d مقاطع</item>
+        <item quantity="many">%1$d مقطعًا</item>
+        <item quantity="other">%1$d مقطع</item>
+    </plurals>
+    <string name="home_counts">%1$s · %2$s · %3$s</string>
+    <string name="home_empty">لم يُعثر على أي ملف. صِل ذاكرة USB أو أرسل ملفات من الهاتف (Kairo ‹ التحكم من الهاتف).</string>
+    <string name="row_resume">استئناف</string>
+    <string name="row_folders">المجلدات</string>
+    <string name="row_recent_videos">أحدث الفيديوهات</string>
+    <string name="row_recent_photos">أحدث الصور</string>
+    <string name="row_music">الموسيقى</string>
+    <string name="search_title">البحث عن «%1$s»</string>
+    <plurals name="search_results">
+        <item quantity="zero">%1$d نتيجة</item>
+        <item quantity="one">نتيجة واحدة</item>
+        <item quantity="two">نتيجتان</item>
+        <item quantity="few">%1$d نتائج</item>
+        <item quantity="many">%1$d نتيجة</item>
+        <item quantity="other">%1$d نتيجة</item>
+    </plurals>
+    <string name="folder_root">الجذر</string>
+    <string name="folder_location">%1$s ‹ %2$s</string>
+    <plurals name="folder_files">
+        <item quantity="zero">%1$d ملف</item>
+        <item quantity="one">ملف واحد</item>
+        <item quantity="two">ملفان</item>
+        <item quantity="few">%1$d ملفات</item>
+        <item quantity="many">%1$d ملفًا</item>
+        <item quantity="other">%1$d ملف</item>
+    </plurals>
+    <string name="folder_subtitle">%1$s · %2$s</string>
+    <string name="volume_internal">التخزين الداخلي</string>
+    <string name="volume_usb">ذاكرة USB</string>
+    <string name="photo_counter">%1$d / %2$d · عرض الشرائح</string>
+    <string name="photo_counter_hint">%1$d / %2$d · OK: عرض الشرائح</string>
+    <string name="duration_hours">%1$d س %2$02d د</string>
+    <string name="duration_minutes">%1$d د</string>
+    <string name="player_error">تعذّر التشغيل: %1$s</string>
+    <string name="player_resume_at">الاستئناف عند %1$s</string>
+    <string name="player_untitled">فيديو</string>
+    <string name="document_untitled">مستند</string>
+    <string name="pdf_unreadable">تعذّرت قراءة ملف PDF (محمي بكلمة مرور؟)</string>
+    <string name="pdf_hint">"%1$s · صفحة %2$d / %3$d   ← →  الصفحات · ↑ ↓  التمرير · OK  %4$s"</string>
+    <string name="pdf_zoom">تكبير</string>
+    <string name="pdf_full_page">الصفحة كاملة</string>
+    <string name="text_hint">"%1$s   ↑ ↓  التمرير · ← →  صفحة · OK  حجم النص"</string>
+    <string name="text_hint_truncated">"%1$s   ↑ ↓  التمرير · ← →  صفحة · OK  حجم النص · بداية الملف (2 ميغابايت)"</string>
+    <string name="text_unreadable">تعذّرت قراءة النص</string>
+    <string name="text_reading">جارٍ التحميل…</string>
+</resources>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="loading">Cargando…</string>
+    <string name="welcome_subtitle">Tus vídeos, fotos y música de la box y de las memorias USB.</string>
+    <string name="welcome_allow">Permitir acceso a los archivos</string>
+    <plurals name="home_videos">
+        <item quantity="one">%1$d vídeo</item>
+        <item quantity="many">%1$d vídeos</item>
+        <item quantity="other">%1$d vídeos</item>
+    </plurals>
+    <plurals name="home_photos">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="many">%1$d fotos</item>
+        <item quantity="other">%1$d fotos</item>
+    </plurals>
+    <plurals name="home_tracks">
+        <item quantity="one">%1$d canción</item>
+        <item quantity="many">%1$d canciones</item>
+        <item quantity="other">%1$d canciones</item>
+    </plurals>
+    <string name="home_counts">%1$s · %2$s · %3$s</string>
+    <string name="home_empty">No se han encontrado archivos. Conecta una memoria USB o envía archivos desde el móvil (Kairo › Mando en el móvil).</string>
+    <string name="row_resume">Reanudar</string>
+    <string name="row_folders">Carpetas</string>
+    <string name="row_recent_videos">Vídeos recientes</string>
+    <string name="row_recent_photos">Fotos recientes</string>
+    <string name="row_music">Música</string>
+    <string name="search_title">Búsqueda «%1$s»</string>
+    <plurals name="search_results">
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="many">%1$d resultados</item>
+        <item quantity="other">%1$d resultados</item>
+    </plurals>
+    <string name="folder_root">Raíz</string>
+    <string name="folder_location">%1$s › %2$s</string>
+    <plurals name="folder_files">
+        <item quantity="one">%1$d archivo</item>
+        <item quantity="many">%1$d archivos</item>
+        <item quantity="other">%1$d archivos</item>
+    </plurals>
+    <string name="folder_subtitle">%1$s · %2$s</string>
+    <string name="volume_internal">Almacenamiento interno</string>
+    <string name="volume_usb">Memoria USB</string>
+    <string name="photo_counter">%1$d / %2$d · presentación</string>
+    <string name="photo_counter_hint">%1$d / %2$d · OK: presentación</string>
+    <string name="duration_hours">%1$d h %2$02d</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="player_error">No se puede reproducir: %1$s</string>
+    <string name="player_resume_at">Reanudando en %1$s</string>
+    <string name="player_untitled">Vídeo</string>
+    <string name="document_untitled">Documento</string>
+    <string name="pdf_unreadable">PDF ilegible (¿protegido con contraseña?)</string>
+    <string name="pdf_hint">"%1$s · página %2$d / %3$d   ← →  páginas · ↑ ↓  desplazar · OK  %4$s"</string>
+    <string name="pdf_zoom">zoom</string>
+    <string name="pdf_full_page">página completa</string>
+    <string name="text_hint">"%1$s   ↑ ↓  desplazar · ← →  página · OK  tamaño del texto"</string>
+    <string name="text_hint_truncated">"%1$s   ↑ ↓  desplazar · ← →  página · OK  tamaño del texto · inicio del archivo (2 MB)"</string>
+    <string name="text_unreadable">Texto ilegible</string>
+    <string name="text_reading">Cargando…</string>
+</resources>
