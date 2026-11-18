@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.apps
 
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,18 +48,18 @@ fun AppsScreen(
     LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
     Column(Modifier.fillMaxSize().background(Background).padding(start = 72.dp, end = 72.dp, top = 40.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Applications", fontSize = 32.sp, color = OnBackground)
+            Text(stringResource(R.string.home_apps), fontSize = 32.sp, color = OnBackground)
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
-                Text("Afficher les applis masquées (${hidden.size})", color = OnBackgroundMuted)
+                Text(stringResource(R.string.apps_show_hidden, hidden.size), color = OnBackgroundMuted)
                 if (hidden.isEmpty()) {
-                    Text("Aucune : appui long sur une appli › Masquer", fontSize = 13.sp, color = OnBackgroundMuted.copy(alpha = 0.7f))
+                    Text(stringResource(R.string.apps_hidden_none), fontSize = 13.sp, color = OnBackgroundMuted.copy(alpha = 0.7f))
                 }
             }
             Spacer(Modifier.width(12.dp))
             Switch(checked = showHidden, onCheckedChange = onShowHiddenChange)
             Spacer(Modifier.width(24.dp))
-            onOpenPlayStore?.let { Button(onClick = it) { Text("Obtenir des applis (Play Store)") } }
+            onOpenPlayStore?.let { Button(onClick = it) { Text(stringResource(R.string.apps_get_more)) } }
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
@@ -77,7 +79,7 @@ fun AppsScreen(
                         modifier = if (app == apps.first()) Modifier.focusRequester(first) else Modifier,
                     )
                     Text(
-                        if (isHidden) "Masquée · ${app.label}" else app.label,
+                        if (isHidden) stringResource(R.string.apps_hidden_label, app.label) else app.label,
                         color = if (isHidden) OnBackgroundMuted.copy(alpha = 0.6f) else OnBackgroundMuted,
                         maxLines = 1,
                         modifier = Modifier.padding(top = 8.dp),

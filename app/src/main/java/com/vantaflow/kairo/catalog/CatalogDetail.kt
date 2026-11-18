@@ -1,5 +1,9 @@
 package com.vantaflow.kairo.catalog
 
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import com.vantaflow.kairo.R
 import androidx.compose.ui.zIndex
 import android.app.SearchManager
 import android.content.Context
@@ -63,6 +67,7 @@ fun CatalogDetail(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     var where by remember(item) { mutableStateOf<List<Pair<Provider, String>>?>(null) }
     var overview by remember(item) { mutableStateOf(item.overview) }
     LaunchedEffect(item) {
@@ -90,18 +95,23 @@ fun CatalogDetail(
         )
         // Attribution exigée par les conditions de TMDB.
         Text(
-            "Données TMDB · non approuvé par TMDB",
+            stringResource(R.string.catalog_tmdb_notice),
             fontSize = 13.sp, color = OnBackgroundMuted,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 28.dp).zIndex(1f),
         )
         Box(
             Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(0.25f to Color(0xFF0E1014), 0.62f to Color(0xFF0E1014).copy(alpha = 0.55f), 1f to Color.Transparent),
+                // Voile opaque côté texte (à droite en arabe), transparent côté image.
+                Brush.horizontalGradient(
+                    0.25f to Color(0xFF0E1014), 0.62f to Color(0xFF0E1014).copy(alpha = 0.55f), 1f to Color.Transparent,
+                    startX = if (rtl) Float.POSITIVE_INFINITY else 0f,
+                    endX = if (rtl) 0f else Float.POSITIVE_INFINITY,
+                ),
             ),
         )
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color(0xFF0E1014))))
         Column(Modifier.align(Alignment.CenterStart).padding(start = 72.dp).width(760.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(if (item.type == MediaType.Movie) "Film" else "Série", fontSize = 18.sp, color = OnBackgroundMuted)
+            Text(stringResource(if (item.type == MediaType.Movie) R.string.catalog_movie else R.string.catalog_show), fontSize = 18.sp, color = OnBackgroundMuted)
             Text(item.title, fontSize = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
                 listOfNotNull(item.year, item.rating.takeIf { it > 0 }?.let { "★ %.1f".format(it) }).joinToString("  ·  "),
@@ -110,9 +120,9 @@ fun CatalogDetail(
             if (overview.isNotBlank()) Text(overview, fontSize = 19.sp, color = OnBackground, maxLines = 6, overflow = TextOverflow.Ellipsis, lineHeight = 27.sp)
             Text(
                 when {
-                    where == null -> "Recherche des applis où le regarder…"
-                    where!!.isEmpty() -> "Pas disponible dans vos applis (${countryName(repository.region())})."
-                    else -> "Disponible sur : " + where!!.joinToString(", ") { it.first.name }
+                    where == null -> stringResource(R.string.catalog_where_loading)
+                    where!!.isEmpty() -> stringResource(R.string.catalog_where_none, countryName(repository.region()))
+                    else -> stringResource(R.string.catalog_where_list, where!!.joinToString(", ") { it.first.name })
                 },
                 fontSize = 16.sp, color = OnBackgroundMuted,
             )
@@ -124,7 +134,7 @@ fun CatalogDetail(
                     }
                 }
                 PlayerButton(
-                    if (inMyList) "✓  Ma liste" else "＋  Ma liste",
+                    (if (inMyList) "✓  " else "＋  ") + stringResource(R.string.home_my_list),
                     if (where.isNullOrEmpty()) Modifier.focusRequester(first) else Modifier,
                     big = where.isNullOrEmpty(),
                     onClick = onToggleMyList,

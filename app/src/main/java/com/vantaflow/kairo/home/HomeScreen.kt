@@ -1,6 +1,11 @@
 package com.vantaflow.kairo.home
 
 import androidx.compose.ui.graphics.Color
+import androidx.annotation.StringRes
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.LayoutDirection
+import com.vantaflow.kairo.R
 import com.vantaflow.kairo.reco.Channel
 import com.vantaflow.kairo.apps.InstallState
 import com.vantaflow.kairo.apps.OurApp
@@ -132,6 +137,8 @@ fun HomeScreen(
     // Contenu sélectionné : lu seulement par le fond « héros », pour ne pas recomposer tout l'accueil.
     val heroProgram = remember { mutableStateOf<Program?>(null) }
     val layout = LocalHomeLayout.current
+    // En arabe la rangée est en miroir : ← déplace le favori vers la fin de la liste.
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     Box(Modifier.fillMaxSize()) {
         HeroBackground(heroProgram, appLabels, layout.heroTransition) {
@@ -222,7 +229,7 @@ fun HomeScreen(
                     Column(Modifier.alignRowOnFocus()) {
                         if (layout.showFavoritesLabel || movingFavorite != null) {
                             Text(
-                                if (movingFavorite != null) "Favoris · ← → pour déplacer, OK pour terminer" else "Favoris",
+                                stringResource(if (movingFavorite != null) R.string.home_favorites_moving else R.string.home_favorites),
                                 fontSize = 20.sp,
                                 color = OnBackground,
                                 modifier = Modifier.padding(start = 72.dp, bottom = 12.dp),
@@ -230,8 +237,7 @@ fun HomeScreen(
                         }
                         if (state.favorites.isEmpty()) {
                             Text(
-                                "Aucun favori pour l'instant : appui long sur une appli › Ajouter aux favoris" +
-                                    " (profil enfant : un parent les ajoute dans Réglages › Favoris).",
+                                stringResource(R.string.home_favorites_empty),
                                 fontSize = 16.sp,
                                 color = OnBackground.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(start = 72.dp, end = 72.dp, top = 8.dp),
@@ -260,11 +266,12 @@ fun HomeScreen(
                                                     heroProgram.value = null
                                                 }
                                             }
-                                            .then(if (moving) Modifier.moveKeys(app.packageName, onMoveFavorite, onMoveDone) else Modifier),
+                                            .then(if (moving) Modifier.moveKeys(app.packageName, rtl, onMoveFavorite, onMoveDone) else Modifier),
                                     )
                                     if (moving) {
-                                        Text("‹", fontSize = 34.sp, color = OnBackground, modifier = Modifier.align(Alignment.CenterStart).offset(x = (-16).dp))
-                                        Text("›", fontSize = 34.sp, color = OnBackground, modifier = Modifier.align(Alignment.CenterEnd).offset(x = 16.dp))
+                                        // Chevrons tournés vers l'extérieur (côté début / côté fin, inversés en arabe).
+                                        Text(stringResource(R.string.home_chevron_back), fontSize = 34.sp, color = OnBackground, modifier = Modifier.align(Alignment.CenterStart).offset(x = (-16).dp))
+                                        Text(stringResource(R.string.chevron_forward), fontSize = 34.sp, color = OnBackground, modifier = Modifier.align(Alignment.CenterEnd).offset(x = 16.dp))
                                     }
                                 }
                             }
@@ -277,7 +284,7 @@ fun HomeScreen(
                 if (forYou && state.watchNext.isNotEmpty()) {
                     key("watch-next") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            RecoRow("À suivre", state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
+                            RecoRow(stringResource(R.string.home_watch_next), state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
                                 heroProgram.value = it
                             }
                         }
@@ -286,7 +293,7 @@ fun HomeScreen(
                 if (tab != HomeTab.Apps && myList.isNotEmpty()) {
                     key("my-list") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            RecoRow("Ma liste", myList, appLabels, onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
+                            RecoRow(stringResource(R.string.home_my_list), myList, appLabels, onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
                         }
                     }
                 }
@@ -308,16 +315,16 @@ fun HomeScreen(
                 }
                 val appSlots = if (!showApps) emptyList() else buildList<Pair<String, @Composable () -> Unit>> {
                     if (state.liveChannels.isNotEmpty()) add("live-tv" to @Composable {
-                        LiveTvRow("Chaînes TV", state.liveChannels, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        LiveTvRow(stringResource(R.string.home_live_tv), state.liveChannels, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
                     if (state.tvInputs.isNotEmpty()) add("tv-inputs" to @Composable {
-                        LiveTvRow("Entrées", state.tvInputs, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        LiveTvRow(stringResource(R.string.home_inputs), state.tvInputs, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
                     if (recentApps.isNotEmpty()) add("recent-apps" to @Composable {
-                        AppsRow("Récentes", recentApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        AppsRow(stringResource(R.string.home_recent), recentApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
                     if (otherApps.isNotEmpty()) add("all-apps" to @Composable {
-                        AppsRow("Toutes les applis", otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                        AppsRow(stringResource(R.string.home_all_apps), otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
                     if (tools.isNotEmpty()) add("tools" to @Composable {
                         com.vantaflow.kairo.tools.ToolsRow(tools, toolSubtitles, onOpenTool, Modifier.alignRowOnFocus()) { heroProgram.value = null }
@@ -388,7 +395,9 @@ fun HomeScreen(
 }
 
 /** Onglets de l'accueil, comme Google TV. */
-enum class HomeTab(val label: String) { ForYou("Pour vous"), Movies("Films"), Shows("Séries"), Apps("Applis") }
+enum class HomeTab(@StringRes val label: Int) {
+    ForYou(R.string.home_tab_for_you), Movies(R.string.home_tab_movies), Shows(R.string.home_tab_shows), Apps(R.string.home_tab_apps),
+}
 
 /** Rangée d'onglets : l'onglet qui reçoit le focus s'affiche aussitôt (comme Google TV). */
 @Composable
@@ -412,7 +421,7 @@ private fun HomeTabs(current: HomeTab, onTab: (HomeTab) -> Unit, requesters: Map
                 ),
                 scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
-                Text(t.label, fontSize = 19.sp, modifier = Modifier.padding(horizontal = 22.dp, vertical = 9.dp))
+                Text(stringResource(t.label), fontSize = 19.sp, modifier = Modifier.padding(horizontal = 22.dp, vertical = 9.dp))
             }
         }
     }
@@ -481,12 +490,16 @@ private const val SCROLL_MS = 350
 /** Défilement doux (départ franc, arrivée en douceur), proche de Google TV. */
 private fun scrollAnimation(ms: Int): AnimationSpec<Float> = tween(ms, easing = FastOutSlowInEasing)
 
-/** Touches du mode déplacement : ← → déplacent le favori, OK / Entrée / Retour terminent. */
-private fun Modifier.moveKeys(pkg: String, onMove: (String, Int) -> Unit, onDone: () -> Unit) =
+/**
+ * Touches du mode déplacement : ← → déplacent le favori, OK / Entrée / Retour terminent.
+ * De droite à gauche ([rtl]), la rangée est en miroir : le sens est inversé pour que la tuile suive la flèche.
+ */
+private fun Modifier.moveKeys(pkg: String, rtl: Boolean, onMove: (String, Int) -> Unit, onDone: () -> Unit) =
     onPreviewKeyEvent { e ->
+        val step = if (rtl) -1 else 1
         when (e.key.nativeKeyCode) {
-            NativeKeyEvent.KEYCODE_DPAD_LEFT -> { if (e.type == KeyEventType.KeyDown) onMove(pkg, -1); true }
-            NativeKeyEvent.KEYCODE_DPAD_RIGHT -> { if (e.type == KeyEventType.KeyDown) onMove(pkg, +1); true }
+            NativeKeyEvent.KEYCODE_DPAD_LEFT -> { if (e.type == KeyEventType.KeyDown) onMove(pkg, -step); true }
+            NativeKeyEvent.KEYCODE_DPAD_RIGHT -> { if (e.type == KeyEventType.KeyDown) onMove(pkg, step); true }
             NativeKeyEvent.KEYCODE_DPAD_CENTER, NativeKeyEvent.KEYCODE_ENTER, NativeKeyEvent.KEYCODE_NUMPAD_ENTER,
             NativeKeyEvent.KEYCODE_BACK -> { if (e.type == KeyEventType.KeyUp) onDone(); true }
             // Haut / bas bloqués : on reste sur le favori tant qu'on le déplace.

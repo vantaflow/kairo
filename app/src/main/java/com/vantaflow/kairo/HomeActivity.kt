@@ -602,10 +602,10 @@ class HomeActivity : ComponentActivity() {
         val home by homeViewModel.state.collectAsStateWithLifecycle()
         return remember(radio, sleepEnd, home.timeText, home.weatherText) {
             mapOf(
-                Tool.Radio to (radio.station?.takeIf { radio.active }?.let { "♪ ${it.name}" } ?: "Radios en direct"),
-                Tool.Weather to (home.weatherText ?: "Prévisions sur 7 jours"),
-                Tool.Sleep to (container.sleepTimer.remainingMinutes()?.let { "Veille dans ${formatMinutes(it)}" } ?: "Éteindre plus tard"),
-                Tool.Cleaner to "${formatMb(MemoryCleaner(this).state().availableBytes)} de mémoire libre",
+                Tool.Radio to (radio.station?.takeIf { radio.active }?.let { "♪ ${it.name}" } ?: getString(R.string.home_tool_radio)),
+                Tool.Weather to (home.weatherText ?: getString(R.string.home_tool_weather)),
+                Tool.Sleep to (container.sleepTimer.remainingMinutes()?.let { getString(R.string.home_tool_sleep_in, formatMinutes(it)) } ?: getString(R.string.home_tool_sleep)),
+                Tool.Cleaner to getString(R.string.home_tool_cleaner, formatMb(MemoryCleaner(this).state().availableBytes)),
             )
         }
     }

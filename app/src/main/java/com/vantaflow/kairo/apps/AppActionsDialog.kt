@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.apps
 
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -63,14 +65,14 @@ fun AppActionsDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(app.label, fontSize = 22.sp, color = Color.White, modifier = Modifier.padding(bottom = 8.dp))
-            Action(if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris", Modifier.focusRequester(first)) {
+            Action(stringResource(if (isFavorite) R.string.apps_remove_favorite else R.string.apps_add_favorite), Modifier.focusRequester(first)) {
                 onToggleFavorite(); onDismiss()
             }
-            if (isFavorite && onMove != null) Action("Déplacer") { onMove(); onDismiss() }
-            Action(if (isHidden) "Afficher" else "Masquer") { onToggleHidden(); onDismiss() }
-            Action("Infos de l'appli") { onAppInfo(); onDismiss() }
-            Action("Voir dans le Play Store") { onPlayStore(); onDismiss() }
-            Action("Désinstaller") { onUninstall(); onDismiss() }
+            if (isFavorite && onMove != null) Action(stringResource(R.string.apps_move)) { onMove(); onDismiss() }
+            Action(stringResource(if (isHidden) R.string.apps_show else R.string.apps_hide)) { onToggleHidden(); onDismiss() }
+            Action(stringResource(R.string.apps_info)) { onAppInfo(); onDismiss() }
+            Action(stringResource(R.string.apps_play_store)) { onPlayStore(); onDismiss() }
+            Action(stringResource(R.string.apps_uninstall)) { onUninstall(); onDismiss() }
         }
     }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }

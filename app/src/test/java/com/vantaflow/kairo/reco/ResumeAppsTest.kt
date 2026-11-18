@@ -1,11 +1,17 @@
 package com.vantaflow.kairo.reco
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.vantaflow.kairo.home.interleave
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
 class ResumeAppsTest {
     private val hour = 3_600_000L
     private val now = 100L * 24 * hour
@@ -41,12 +47,22 @@ class ResumeAppsTest {
     }
 
     @Test
+    @Config(qualifiers = "fr")
     fun `temps écoulé lisible`() {
-        assertEquals("à l'instant", formatAgo(30_000))
-        assertEquals("il y a 12 min", formatAgo(12 * 60_000L))
-        assertEquals("il y a 3 h", formatAgo(3 * hour))
-        assertEquals("hier", formatAgo(30 * hour))
-        assertEquals("il y a 4 j", formatAgo(4 * 24 * hour))
+        val res = ApplicationProvider.getApplicationContext<Context>().resources
+        assertEquals("à l'instant", formatAgo(res, 30_000))
+        assertEquals("il y a 12 min", formatAgo(res, 12 * 60_000L))
+        assertEquals("il y a 3 h", formatAgo(res, 3 * hour))
+        assertEquals("hier", formatAgo(res, 30 * hour))
+        assertEquals("il y a 4 j", formatAgo(res, 4 * 24 * hour))
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun `temps écoulé dans la langue de l'appli`() {
+        val res = ApplicationProvider.getApplicationContext<Context>().resources
+        assertEquals("1 h ago", formatAgo(res, hour))
+        assertEquals("yesterday", formatAgo(res, 30 * hour))
     }
 
     @Test
