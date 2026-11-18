@@ -1,5 +1,10 @@
 package com.vantaflow.kairo.media
 
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
+import com.vantaflow.kairo.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -76,11 +81,14 @@ fun MediaMiniPlayer(onDismiss: () -> Unit) {
                     )
                 }
             }
+            // Commandes média jamais en miroir (⏮ à gauche, ⏭ à droite), même en arabe.
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 PlayerButton("⏮") { NowPlaying.previous() }
-                PlayerButton(if (media.playing) "❚❚  Pause" else "▶  Lecture", Modifier.focusRequester(play), big = true) { NowPlaying.togglePlay() }
+                PlayerButton(if (media.playing) "❚❚  " + stringResource(R.string.media_pause) else "▶  " + stringResource(R.string.media_play), Modifier.focusRequester(play), big = true) { NowPlaying.togglePlay() }
                 PlayerButton("⏭") { NowPlaying.next() }
-                PlayerButton("Ouvrir ${media.appLabel}".take(24)) { onDismiss(); NowPlaying.open(context) }
+                PlayerButton(stringResource(R.string.media_open, media.appLabel).take(24)) { onDismiss(); NowPlaying.open(context) }
+            }
             }
         }
     }

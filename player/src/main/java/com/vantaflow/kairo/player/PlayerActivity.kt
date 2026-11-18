@@ -1,6 +1,7 @@
 package com.vantaflow.kairo.player
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
 import android.view.KeyEvent
+import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.core.content.IntentCompat
@@ -38,6 +40,11 @@ class PlayerActivity : Activity() {
         }
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        BoxLocale.applyTo(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -54,6 +61,8 @@ class PlayerActivity : Activity() {
             setShowNextButton(true)
             setShowPreviousButton(true)
             controllerShowTimeoutMs = 3500
+            // Barre de progression et commandes de lecture de gauche à droite, même en arabe (← recule, → avance).
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
         }
         setContentView(view)
         player.addListener(object : Player.Listener {
@@ -73,7 +82,7 @@ class PlayerActivity : Activity() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                Toast.makeText(this@PlayerActivity, "Lecture impossible : ${error.errorCodeName}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@PlayerActivity, getString(R.string.player_error, error.errorCodeName), Toast.LENGTH_LONG).show()
             }
         })
         open(intent)
@@ -98,7 +107,7 @@ class PlayerActivity : Activity() {
         player.prepare()
         player.playWhenReady = true
         if (resume.get(uri)?.let(::shouldResume) == true) {
-            Toast.makeText(this, "Reprise à ${formatDuration(resume.get(uri)!!.positionMs, music = true)}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.player_resume_at, formatDuration(resume.get(uri)!!.positionMs, music = true)), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -121,7 +130,7 @@ class PlayerActivity : Activity() {
         if (publish) {
             val progress = Progress(position, duration, System.currentTimeMillis())
             // Hors du fil principal : la vignette est générée au premier passage.
-            Thread { watchNext.publish(uri, titles[uri] ?: "Vidéo", progress) }.start()
+            Thread { watchNext.publish(uri, titles[uri] ?: getString(R.string.player_untitled), progress) }.start()
         }
     }
 

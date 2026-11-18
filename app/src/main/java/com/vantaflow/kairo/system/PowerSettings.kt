@@ -16,6 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
+import com.vantaflow.kairo.tools.formatMinutes
+import java.util.Locale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,12 +45,9 @@ val WatchingChoices = listOf(3 * HOUR, 4 * HOUR, 6 * HOUR, 8 * HOUR, -1L)
 /** Délai par défaut d'Android TV quand rien n'est réglé. */
 private const val DEFAULT_TIMEOUT = 3 * HOUR
 
-/** « 20 min », « 1 h », « Jamais ». */
-fun timeoutLabel(ms: Long): String = when {
-    ms <= 0 -> "Jamais"
-    ms < HOUR -> "${ms / MINUTE} min"
-    else -> "${ms / HOUR} h"
-}
+/** « 20 min », « 1 h », [never] (« Jamais ») dans la langue de l'appli. */
+fun timeoutLabel(ms: Long, never: String, locale: Locale = Locale.getDefault()): String =
+    if (ms <= 0) never else formatMinutes((ms / MINUTE).toInt(), locale)
 
 private fun canWriteSystem(context: Context): Boolean =
     context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
@@ -83,8 +84,8 @@ fun PowerSettings() {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Column {
-                SettingLabel("Mise en veille en cas d'inactivité")
-                SettingHint("Sans touche pressée, l'écran de veille s'affiche puis la box s'éteint, et la télé avec elle.")
+                SettingLabel(stringResource(R.string.power_idle_title))
+                SettingHint(stringResource(R.string.power_idle_hint))
             }
         }
         item {
@@ -92,14 +93,14 @@ fun PowerSettings() {
                 IdleChoices.forEach { ms ->
                     ChoiceChip(idle == ms, {
                         if (write { Settings.Secure.putLong(context.contentResolver, "sleep_timeout", ms) }) idle = ms
-                    }) { Text(timeoutLabel(ms)) }
+                    }) { Text(timeoutLabel(ms, stringResource(R.string.duration_never))) }
                 }
             }
         }
         item {
             Column {
-                SettingLabel("Mise en veille pendant une vidéo")
-                SettingHint("Pendant un film sans toucher la télécommande, Android demande si vous regardez encore, puis s'éteint.")
+                SettingLabel(stringResource(R.string.power_watching_title))
+                SettingHint(stringResource(R.string.power_watching_hint))
             }
         }
         item {
@@ -108,39 +109,39 @@ fun PowerSettings() {
                     val selected = if (ms <= 0) watching <= 0 else watching == ms
                     ChoiceChip(selected, {
                         if (write { Settings.Secure.putLong(context.contentResolver, "attentive_timeout", ms) }) watching = ms
-                    }) { Text(timeoutLabel(ms)) }
+                    }) { Text(timeoutLabel(ms, stringResource(R.string.duration_never))) }
                 }
             }
         }
         item {
-            SwitchRow("Rendormir si la télé s'allume seule", guard, { on -> scope.launch { prefs.setWakeGuard(on) } },
-                "Sans touche pressée dans les 30 secondes après l'allumage et si rien ne joue, la box se remet en veille et la télé s'éteint avec elle.")
+            SwitchRow(stringResource(R.string.power_wake_guard), guard, { on -> scope.launch { prefs.setWakeGuard(on) } },
+                stringResource(R.string.power_wake_guard_hint))
         }
         item { SettingLabel("HDMI-CEC") }
         item {
-            SwitchRow("Contrôle HDMI-CEC", cec, { on ->
+            SwitchRow(stringResource(R.string.power_cec), cec, { on ->
                 if (write { Settings.Global.putInt(context.contentResolver, "hdmi_control_enabled", if (on) 1 else 0) }) cec = on
-            }, "Allume et éteint la télé avec la box, et la box avec la télé.")
+            }, stringResource(R.string.power_cec_hint))
         }
         item {
-            SwitchRow("Contrôle du volume", volume, { on ->
+            SwitchRow(stringResource(R.string.power_volume), volume, { on ->
                 if (write { Settings.Global.putInt(context.contentResolver, "hdmi_control_volume_control_enabled", if (on) 1 else 0) }) volume = on
-            }, "La télécommande de la box règle le volume de la télé.")
+            }, stringResource(R.string.power_volume_hint))
         }
         item {
             ListItem(
                 selected = false,
                 onClick = {
                     context.openSettings(
-                        SettingsShortcut("", listOf("android.settings.HDMI_CEC_SETTINGS", "com.android.tv.settings.HDMI_CEC_SETTINGS", Settings.ACTION_SETTINGS)),
+                        SettingsShortcut(0, listOf("android.settings.HDMI_CEC_SETTINGS", "com.android.tv.settings.HDMI_CEC_SETTINGS", Settings.ACTION_SETTINGS)),
                     )
                 },
-                headlineContent = { Text("Tous les réglages HDMI-CEC d'Android") },
+                headlineContent = { Text(stringResource(R.string.power_cec_all)) },
             )
         }
         if (refused) {
             item { Column {
-                SettingHint(if (allowed) "La box a refusé le changement." else "Autorisation à donner une seule fois depuis un ordinateur :")
+                SettingHint(stringResource(if (allowed) R.string.system_change_refused else R.string.system_permission_adb))
                 if (!allowed) Text(PRIVATE_DNS_ADB, color = OnBackground, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
             } }
         }

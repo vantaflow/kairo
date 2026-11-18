@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.catalog
 
+import com.vantaflow.kairo.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -45,6 +46,8 @@ class CatalogRepository(
     /** Pays de la box (code ISO : « MA », « FR »…) et langue : les deux changent le catalogue. */
     val region: () -> String = { DEFAULT_REGION },
     private val language: () -> String = { "fr-FR" },
+    /** Textes affichés (titres des rangées) : ressource → texte dans la langue de l'appli. */
+    private val text: (resId: Int, args: Array<out Any>) -> String,
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     /** Plateformes du pays reconnues parmi les applis de la box (relues avec le catalogue). */
@@ -104,25 +107,26 @@ class CatalogRepository(
         // ce pays (toutes plateformes confondues si aucune n'est reconnue).
         val all = perProvider.flatMap { it.first.tmdbIds }.distinct().joinToString("|")
         val mine = if (all.isEmpty()) "" else "with_watch_providers=$all&watch_region=$country&$included&"
-        val suffix = when (perProvider.size) {
-            0 -> ""
-            1 -> " sur ${perProvider.first().first.name}"
-            else -> " sur vos applis"
+        // Titre d'une rangée : seul, « sur Netflix » (une plateforme) ou « sur vos applis » (plusieurs).
+        fun title(plain: Int, onOne: Int, onMine: Int) = when (perProvider.size) {
+            0 -> text(plain, emptyArray())
+            1 -> text(onOne, arrayOf(perProvider.first().first.name))
+            else -> text(onMine, emptyArray())
         }
         val movies = list("discover/movie?${mine}sort_by=popularity.desc", MediaType.Movie) ?: return null
         val shows = list("discover/tv?${mine}sort_by=popularity.desc", MediaType.Tv).orEmpty()
         val mixed = movies.zip(shows).flatMap { (m, s) -> listOf(m, s) } + movies.drop(shows.size) + shows.drop(movies.size)
-        val rows = mutableListOf(CatalogRow("trending", "Tendances$suffix", null, mixed.take(ROW_ITEMS)))
-        rows += CatalogRow("movies", "Films tendance$suffix", MediaType.Movie, movies.take(ROW_ITEMS))
-        if (shows.isNotEmpty()) rows += CatalogRow("shows", "Séries tendance$suffix", MediaType.Tv, shows.take(ROW_ITEMS))
+        val rows = mutableListOf(CatalogRow("trending", title(R.string.catalog_trending, R.string.catalog_trending_on, R.string.catalog_trending_mine), null, mixed.take(ROW_ITEMS)))
+        rows += CatalogRow("movies", title(R.string.catalog_movies_trending, R.string.catalog_movies_trending_on, R.string.catalog_movies_trending_mine), MediaType.Movie, movies.take(ROW_ITEMS))
+        if (shows.isNotEmpty()) rows += CatalogRow("shows", title(R.string.catalog_shows_trending, R.string.catalog_shows_trending_on, R.string.catalog_shows_trending_mine), MediaType.Tv, shows.take(ROW_ITEMS))
         // Une rangée par plateforme, seulement s'il y en a plusieurs (sinon elle répète les tendances).
         if (perProvider.size > 1) perProvider.forEach { (p, m, t) ->
-            if (m.isNotEmpty()) rows += CatalogRow("movies-${p.tmdbIds.first()}", "Films sur ${p.name}", MediaType.Movie, m.take(ROW_ITEMS))
-            if (t.isNotEmpty()) rows += CatalogRow("shows-${p.tmdbIds.first()}", "Séries sur ${p.name}", MediaType.Tv, t.take(ROW_ITEMS))
+            if (m.isNotEmpty()) rows += CatalogRow("movies-${p.tmdbIds.first()}", text(R.string.catalog_movies_on, arrayOf(p.name)), MediaType.Movie, m.take(ROW_ITEMS))
+            if (t.isNotEmpty()) rows += CatalogRow("shows-${p.tmdbIds.first()}", text(R.string.catalog_shows_on, arrayOf(p.name)), MediaType.Tv, t.take(ROW_ITEMS))
         }
         val top = "sort_by=vote_average.desc&vote_count.gte=1000"
-        list("discover/movie?$mine$top", MediaType.Movie)?.takeIf { it.isNotEmpty() }?.let { rows += CatalogRow("top-movies", "Films les mieux notés$suffix", MediaType.Movie, it.take(ROW_ITEMS)) }
-        list("discover/tv?$mine$top", MediaType.Tv)?.takeIf { it.isNotEmpty() }?.let { rows += CatalogRow("top-shows", "Séries les mieux notées$suffix", MediaType.Tv, it.take(ROW_ITEMS)) }
+        list("discover/movie?$mine$top", MediaType.Movie)?.takeIf { it.isNotEmpty() }?.let { rows += CatalogRow("top-movies", title(R.string.catalog_top_movies, R.string.catalog_top_movies_on, R.string.catalog_top_movies_mine), MediaType.Movie, it.take(ROW_ITEMS)) }
+        list("discover/tv?$mine$top", MediaType.Tv)?.takeIf { it.isNotEmpty() }?.let { rows += CatalogRow("top-shows", title(R.string.catalog_top_shows, R.string.catalog_top_shows_on, R.string.catalog_top_shows_mine), MediaType.Tv, it.take(ROW_ITEMS)) }
         return rows
     }
 }

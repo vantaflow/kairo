@@ -14,6 +14,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,7 +56,7 @@ fun AdBlockSettings() {
             tick++
         }
     }
-    val fmt = remember { NumberFormat.getIntegerInstance(Locale.FRENCH) }
+    val fmt = remember { NumberFormat.getIntegerInstance(Locale.getDefault()) }
 
     val strictDns = remember { privateDnsHost(context) }
 
@@ -61,20 +64,19 @@ fun AdBlockSettings() {
         // DNS privé strict : il remplace tout autre DNS, le bloqueur de Kairo ne peut pas tourner.
         if (strictDns != null) item {
             Text(
-                if (isAdBlockingDns(strictDns)) "✓ Les pubs sont déjà bloquées par le DNS privé de la box ($strictDns), sans rien qui tourne en arrière-plan. Le bloqueur de Kairo n'est pas nécessaire."
-                else "Le DNS privé de la box ($strictDns) remplace tout autre DNS : le bloqueur de Kairo ne peut pas fonctionner. Pour bloquer les pubs, mettez dns.adguard-dns.com dans Paramètres Android › Réseau › DNS privé.",
+                stringResource(if (isAdBlockingDns(strictDns)) R.string.adblock_strict_ok else R.string.adblock_strict_conflict, strictDns),
                 color = OnBackground, fontSize = 18.sp,
             )
         }
         // Toujours un élément sélectionnable : sinon le focus retombe sur l'accueil derrière.
         if (strictDns != null) item {
-            com.vantaflow.kairo.settings.SmallButton("Paramètres réseau d'Android", {
+            com.vantaflow.kairo.settings.SmallButton(stringResource(R.string.adblock_network_settings), {
                 com.vantaflow.kairo.settings.openSafely(context, android.content.Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))
             })
         }
         if (strictDns == null) item {
             SwitchRow(
-                "Bloquer les pubs", enabled,
+                stringResource(R.string.adblock_switch), enabled,
                 { on ->
                     if (!on) scope.launch {
                         prefs.setAdBlockEnabled(false)
@@ -87,33 +89,32 @@ fun AdBlockSettings() {
                         }
                     }
                 },
-                "Pubs et pistage bloqués dans toutes les applis et sites, par un filtre DNS (AdGuard DNS).",
+                stringResource(R.string.adblock_switch_hint),
             )
         }
         if (enabled && strictDns == null) {
             item {
                 tick.let { }
                 Text(
-                    if (running) "${fmt.format(AdBlock.blocked.get())} pubs et traqueurs bloqués depuis l'allumage (sur ${fmt.format(AdBlock.queries.get())} requêtes)."
-                    else "Démarrage…",
+                    if (running) {
+                        val blocked = AdBlock.blocked.get()
+                        pluralStringResource(R.plurals.adblock_counter, blocked, fmt.format(blocked), fmt.format(AdBlock.queries.get()))
+                    } else stringResource(R.string.adblock_starting),
                     color = OnBackground, fontSize = 18.sp,
                 )
             }
             item {
-                SettingLabel("Filtre")
+                SettingLabel(stringResource(R.string.adblock_filter))
                 ChoiceRow {
                     AdFilter.entries.forEach { f ->
-                        ChoiceChip(filter == f.name, { scope.launch { prefs.setAdBlockFilter(f.name) } }) { Text(f.label) }
+                        ChoiceChip(filter == f.name, { scope.launch { prefs.setAdBlockFilter(f.name) } }) { Text(stringResource(f.label)) }
                     }
                 }
             }
         }
         item {
             Text(
-                "Profil enfant : le filtre famille (contenus adultes bloqués aussi) s'applique automatiquement.\n" +
-                    "Les pubs dans les vidéos YouTube viennent des mêmes serveurs que les vidéos : aucun filtre DNS ne peut les retirer. " +
-                    "Utilisez SmartTube pour YouTube sans pub.\n" +
-                    "Android n'accepte qu'un VPN à la fois. Si une appli ne fonctionne plus, désactivez le bloqueur.",
+                stringResource(R.string.adblock_footer),
                 color = OnBackgroundMuted, fontSize = 15.sp,
             )
         }

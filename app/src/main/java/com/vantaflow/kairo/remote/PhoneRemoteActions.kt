@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.remote
 
+import com.vantaflow.kairo.R
 import android.accessibilityservice.AccessibilityService
 import android.app.PendingIntent
 import android.content.ContentValues
@@ -68,7 +69,7 @@ class PhoneRemoteActions(private val context: Context) {
         "GET /api/icon" -> icon(request.query["p"].orEmpty())
         "POST /api/launch" -> launch(request.bodyText())
         "POST /api/upload" -> upload(request.query["name"].orEmpty(), request.body, request.length)
-        else -> HttpResponse.text(404, "Introuvable")
+        else -> HttpResponse.text(404, str(R.string.phoneremote_not_found))
     }
 
     private fun page() = HttpResponse(
@@ -78,7 +79,7 @@ class PhoneRemoteActions(private val context: Context) {
 
     private fun key(name: String): HttpResponse {
         KeyRemapService.instance?.userActive()
-        val key = PhoneKey.parse(name) ?: return HttpResponse.text(400, "Touche inconnue")
+        val key = PhoneKey.parse(name) ?: return HttpResponse.text(400, str(R.string.phoneremote_unknown_key))
         val audio = context.getSystemService(AudioManager::class.java)
         when {
             key == PhoneKey.VolumeUp -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
@@ -92,9 +93,9 @@ class PhoneRemoteActions(private val context: Context) {
             else -> {
                 // Navigation dans toutes les applis : actions globales du service d'accessibilité (Android 13+).
                 val service = KeyRemapService.instance
-                    ?: return HttpResponse.text(409, "Activez « Kairo » dans Accessibilité sur la box pour la navigation.")
+                    ?: return HttpResponse.text(409, str(R.string.phoneremote_enable_accessibility))
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && key.global!! >= AccessibilityService.GLOBAL_ACTION_DPAD_UP) {
-                    return HttpResponse.text(409, "Navigation possible à partir d'Android 13.")
+                    return HttpResponse.text(409, str(R.string.phoneremote_needs_android13))
                 }
                 main.post { service.performGlobalAction(key.global!!) }
             }
@@ -104,7 +105,7 @@ class PhoneRemoteActions(private val context: Context) {
 
     /** Dans le champ de saisie actif de l'appli ouverte ; sinon, recherche dans Kairo. */
     private fun text(value: String): HttpResponse {
-        if (value.isBlank()) return HttpResponse.text(400, "Texte vide")
+        if (value.isBlank()) return HttpResponse.text(400, str(R.string.phoneremote_empty_text))
         if (KeyRemapService.instance?.typeText(value) == true) return HttpResponse.json("{\"ok\":true,\"where\":\"field\"}")
         val search = Intent(context, HomeActivity::class.java)
             .putExtra("tvhome.open", "Search")
@@ -124,14 +125,14 @@ class PhoneRemoteActions(private val context: Context) {
     }
 
     private fun icon(pkg: String): HttpResponse {
-        val drawable = container.appRepository.icon(pkg) ?: return HttpResponse.text(404, "Pas d'icône")
+        val drawable = container.appRepository.icon(pkg) ?: return HttpResponse.text(404, str(R.string.phoneremote_no_icon))
         val out = ByteArrayOutputStream()
         drawable.toBitmap(96, 96).compress(Bitmap.CompressFormat.PNG, 100, out)
         return HttpResponse(200, "image/png", out.toByteArray())
     }
 
     private fun launch(pkg: String): HttpResponse {
-        val intent = container.appRepository.launchIntent(pkg.trim()) ?: return HttpResponse.text(404, "Appli introuvable")
+        val intent = container.appRepository.launchIntent(pkg.trim()) ?: return HttpResponse.text(404, str(R.string.phoneremote_app_not_found))
         context.startSafely(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
         runBlocking { container.prefs.recordLaunch(pkg.trim()) }
         return HttpResponse.json("{\"ok\":true}")
@@ -140,7 +141,7 @@ class PhoneRemoteActions(private val context: Context) {
     /** APK : installation (Android demande confirmation sur la box). Autre fichier : Téléchargements/Kairo. */
     private fun upload(rawName: String, body: InputStream, length: Long): HttpResponse {
         val name = rawName.substringAfterLast('/').substringAfterLast('\\').ifBlank { "fichier" }.take(120)
-        if (length <= 0) return HttpResponse.text(400, "Fichier vide")
+        if (length <= 0) return HttpResponse.text(400, str(R.string.phoneremote_empty_file))
         return if (name.endsWith(".apk", ignoreCase = true)) installApk(name, body, length) else saveFile(name, body, length)
     }
 
@@ -153,13 +154,13 @@ class PhoneRemoteActions(private val context: Context) {
             }
             if (copied != length) {
                 session.abandon()
-                return HttpResponse.text(400, "Transfert interrompu")
+                return HttpResponse.text(400, str(R.string.phoneremote_transfer_interrupted))
             }
             val intent = Intent(context, UpdateReceiver::class.java)
             val pending = PendingIntent.getBroadcast(context, sessionId, intent, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             session.commit(pending.intentSender)
         }
-        toast("Installation de $name : confirmez sur la télé.")
+        toast(str(R.string.phoneremote_apk_confirm, name))
         return HttpResponse.json("{\"ok\":true,\"kind\":\"apk\"}")
     }
 
@@ -171,20 +172,20 @@ class PhoneRemoteActions(private val context: Context) {
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: return HttpResponse.text(500, "Impossible d'écrire dans Téléchargements")
+            ?: return HttpResponse.text(500, str(R.string.phoneremote_write_failed))
         val copied = resolver.openOutputStream(uri)?.use { copy(body, it, length) } ?: 0L
         if (copied != length) {
             resolver.delete(uri, null, null)
-            return HttpResponse.text(400, "Transfert interrompu")
+            return HttpResponse.text(400, str(R.string.phoneremote_transfer_interrupted))
         }
         resolver.update(uri, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)
         // Vidéo ou musique : lecture directe dans Kairo Player s'il est installé.
         val mime = java.net.URLConnection.guessContentTypeFromName(name).orEmpty()
         if ((mime.startsWith("video/") || mime.startsWith("audio/")) && openInPlayer(uri, mime)) {
-            toast("$name : lecture dans Kairo Player")
+            toast(str(R.string.phoneremote_playing_in_player, name))
             return HttpResponse.json("{\"ok\":true,\"kind\":\"play\"}")
         }
-        toast("Fichier reçu : $name (Téléchargements › Kairo)")
+        toast(str(R.string.phoneremote_file_received, name))
         return HttpResponse.json("{\"ok\":true,\"kind\":\"file\"}")
     }
 
@@ -205,6 +206,9 @@ class PhoneRemoteActions(private val context: Context) {
         }
         return total
     }
+
+    /** Texte lu sur le téléphone ou la télé, dans la langue de l'appli. */
+    private fun str(id: Int, vararg args: Any): String = context.getString(id, *args)
 
     private fun toast(message: String) = main.post { Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
 }

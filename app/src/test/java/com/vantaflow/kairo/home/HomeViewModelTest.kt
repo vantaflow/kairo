@@ -107,8 +107,14 @@ class HomeViewModelTest {
     } }
 
     @Test
-    fun dateFormattedInFrench() {
+    fun dateFormattedInFrench() = withLocale(java.util.Locale.FRENCH) {
+        // JVM pur : motif français de repli, jours et mois dans la langue de l'appli.
         assertEquals("Mercredi 28 octobre", formatDate(nowMs, zone))
+    }
+
+    @Test
+    fun dateFollowsAppLanguage() = withLocale(java.util.Locale("es")) {
+        assertEquals("Miércoles 28 octubre", formatDate(nowMs, zone))
     }
 
     @Test
@@ -117,8 +123,14 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun timeFormatted12h() {
+    fun timeFormatted12h() = withLocale(java.util.Locale.US) {
         assertEquals("8:45 PM", formatTime(nowMs, zone, use24h = false))
+    }
+
+    private fun withLocale(locale: java.util.Locale, block: () -> Unit) {
+        val before = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(locale)
+        try { block() } finally { java.util.Locale.setDefault(before) }
     }
 
     @Test
@@ -169,7 +181,8 @@ class HomeViewModelTest {
         val prefs = prefs()
         prefs.setWeatherCity("Tunis")
         var asked = ""
-        weather = { city, _ -> asked = city; com.vantaflow.kairo.weather.Weather(22.4, 0, "Tunis") }
+        // Libellé du ciel déjà traduit par l'appli (voir Weather.label).
+        weather = { city, _ -> asked = city; com.vantaflow.kairo.weather.Weather(22.4, 0, "Tunis", label = "Ensoleillé") }
         val state = vm(prefs).state.first { it.weatherText != null }
         assertEquals("22° · Ensoleillé", state.weatherText)
         assertEquals("Tunis", asked)

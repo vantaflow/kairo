@@ -25,7 +25,8 @@ data class Media(
 /** Dossier contenant des médias : ce qu'on parcourt dans Kairo Player. */
 data class Folder(val volume: String, val path: String, val items: List<Media>) {
     val key get() = "$volume:$path"
-    val name: String get() = path.trimEnd('/').substringAfterLast('/').ifBlank { "Racine" }
+    /** Nom du dossier ; vide pour la racine d'un volume (affichée « Racine »). */
+    val name: String get() = path.trimEnd('/').substringAfterLast('/')
     val cover: Media? get() = items.firstOrNull { it.kind != Kind.Music } ?: items.firstOrNull()
 }
 
@@ -70,10 +71,10 @@ class MediaLibrary(private val context: Context) {
 
     /** Nom lisible du volume : « Stockage interne » ou le nom de la clé USB. */
     fun volumeLabel(volume: String): String {
-        if (volume == MediaStore.VOLUME_EXTERNAL_PRIMARY) return "Stockage interne"
+        if (volume == MediaStore.VOLUME_EXTERNAL_PRIMARY) return context.getString(R.string.volume_internal)
         val sm = context.getSystemService(StorageManager::class.java)
         return sm?.storageVolumes?.firstOrNull { it.mediaStoreVolumeName == volume }?.getDescription(context)
-            ?: "Clé USB"
+            ?: context.getString(R.string.volume_usb)
     }
 
     private fun query(volume: String, collection: Uri, kind: Kind): List<Media> {
@@ -114,13 +115,16 @@ class MediaLibrary(private val context: Context) {
     }
 }
 
-/** « 1 h 32 », « 45 min », « 3:20 » pour la musique. */
-fun formatDuration(ms: Long, music: Boolean = false): String {
+/**
+ * « 1 h 32 », « 45 min », « 3:20 » pour la musique. [hours] (heures, minutes) et [minutes] sont les
+ * formats de la langue courante (`duration_hours`, `duration_minutes`) ; en français par défaut.
+ */
+fun formatDuration(ms: Long, music: Boolean = false, hours: String = "%1\$d h %2\$02d", minutes: String = "%1\$d min"): String {
     val s = ms / 1000
     return when {
         music -> "%d:%02d".format(s / 60, s % 60)
-        s >= 3600 -> "${s / 3600} h ${"%02d".format((s % 3600) / 60)}"
-        else -> "${maxOf(1, s / 60)} min"
+        s >= 3600 -> hours.format(s / 3600, (s % 3600) / 60)
+        else -> minutes.format(maxOf(1, s / 60))
     }
 }
 

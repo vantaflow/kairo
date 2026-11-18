@@ -52,12 +52,23 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 /** Champ texte utilisable à la télécommande (le clavier Android s'ouvre au clic). */
 @Composable
 fun TvTextField(value: String, onChange: (String) -> Unit, width: Int = 360, secret: Boolean = false) {
     TvInput(value, onChange, Modifier.width(width.dp), secret = secret, fontSize = 16.sp)
 }
+
+/**
+ * Nom affiché d'un profil : le profil par défaut garde « Principal » dans les préférences
+ * (valeur enregistrée, inchangée) mais s'affiche dans la langue de l'appli.
+ */
+@Composable
+fun profileDisplayName(profile: Profile): String =
+    if (profile.id == DEFAULT_PROFILE_ID && profile.name == DefaultProfile.name) stringResource(R.string.settings_profile_default_name)
+    else profile.name
 
 @Composable
 private fun container() = (LocalContext.current.applicationContext as TvHomeApp).container
@@ -75,7 +86,7 @@ fun ProfileSettings() {
 
     // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
-        item { Text("Profil actif : ${current.name}", color = OnBackground, fontSize = 20.sp) }
+        item { Text(stringResource(R.string.settings_profile_active, profileDisplayName(current)), color = OnBackground, fontSize = 20.sp) }
         items(profiles, key = { it.id }) { p ->
             Row(
                 Modifier.fillMaxWidth(),
@@ -83,21 +94,21 @@ fun ProfileSettings() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    p.name + if (p.kids) " (enfant)" else "",
+                    profileDisplayName(p).let { if (p.kids) stringResource(R.string.settings_profile_kids_suffix, it) else it },
                     color = OnBackground,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                SmallButton("Utiliser", { scope.launch { c.prefs.switchProfile(p.id) } }, enabled = p.id != current.id)
+                SmallButton(stringResource(R.string.settings_profile_use), { scope.launch { c.prefs.switchProfile(p.id) } }, enabled = p.id != current.id)
                 if (p.id != DEFAULT_PROFILE_ID) {
-                    SmallButton("Supprimer", { scope.launch { c.prefs.removeProfile(p.id) } })
+                    SmallButton(stringResource(R.string.settings_profile_delete), { scope.launch { c.prefs.removeProfile(p.id) } })
                 }
             }
         }
-        item { SettingLabel("Nouveau profil") }
-        item { TvInput(name, { name = it }, Modifier.fillMaxWidth(), placeholder = "Nom du profil (OK pour saisir)") }
-        item { SwitchRow("Profil enfant", kids, { kids = it }, "Ne voit que ses favoris ; réglages protégés par le PIN.") }
+        item { SettingLabel(stringResource(R.string.settings_profile_new)) }
+        item { TvInput(name, { name = it }, Modifier.fillMaxWidth(), placeholder = stringResource(R.string.settings_profile_name_hint)) }
+        item { SwitchRow(stringResource(R.string.settings_profile_kids), kids, { kids = it }, stringResource(R.string.settings_profile_kids_desc)) }
         item {
             Row(
                 Modifier.fillMaxWidth(),
@@ -109,12 +120,12 @@ fun ProfileSettings() {
                     { pin = it.filter(Char::isDigit).take(6) },
                     Modifier.weight(1f),
                     secret = true,
-                    placeholder = if (kids) "PIN, 4 à 6 chiffres" else "PIN (facultatif)",
+                    placeholder = stringResource(if (kids) R.string.settings_profile_pin_required else R.string.settings_profile_pin_optional),
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword,
                 )
                 // Un nom est requis ; un profil enfant exige un PIN d'au moins 4 chiffres.
                 SmallButton(
-                    "Créer",
+                    stringResource(R.string.settings_profile_create),
                     {
                         // Valeurs lues avant de vider le formulaire (la coroutine s'exécute après).
                         val newName = name.trim()
@@ -129,8 +140,7 @@ fun ProfileSettings() {
         }
         item {
             Text(
-                "Chaque profil a ses favoris, son fond et ses applis masquées. Un profil enfant ne voit que ses favoris ; " +
-                    "les réglages demandent son PIN.",
+                stringResource(R.string.settings_profile_footer),
                 color = OnBackgroundMuted,
             )
         }
@@ -147,31 +157,32 @@ fun BackupSettings() {
     val file = remember { File(context.getExternalFilesDir(null) ?: context.filesDir, "tvhome-backup.json") }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Sauvegarder favoris, thème, touches, profils… dans un fichier.", color = OnBackground)
+        Text(stringResource(R.string.settings_backup_intro), color = OnBackground)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = {
                 scope.launch {
                     message = withContext(Dispatchers.IO) {
                         // Fichier déposé par ADB (autre propriétaire) : on le remplace au lieu de l'écraser.
-                        runCatching { file.delete(); file.writeText(c.prefs.exportJson()); "Sauvegarde enregistrée." }.getOrElse { "Échec : ${it.message}" }
+                        runCatching { file.delete(); file.writeText(c.prefs.exportJson()); context.getString(R.string.settings_backup_saved) }
+                            .getOrElse { context.getString(R.string.settings_backup_failed, it.message.orEmpty()) }
                     }
                 }
-            }) { Text("Sauvegarder") }
+            }) { Text(stringResource(R.string.settings_backup_save)) }
             OutlinedButton(onClick = {
                 scope.launch {
                     message = withContext(Dispatchers.IO) {
                         val json = runCatching { file.readText() }.getOrNull()
                         when {
-                            json == null -> "Aucune sauvegarde trouvée."
-                            c.prefs.importJson(json) -> "Réglages restaurés."
-                            else -> "Fichier de sauvegarde invalide."
+                            json == null -> context.getString(R.string.settings_backup_none)
+                            c.prefs.importJson(json) -> context.getString(R.string.settings_backup_restored)
+                            else -> context.getString(R.string.settings_backup_invalid)
                         }
                     }
                 }
-            }) { Text("Restaurer") }
+            }) { Text(stringResource(R.string.settings_backup_restore)) }
         }
         message?.let { Text(it, color = OnBackgroundMuted) }
-        Text("Fichier sur la box :", color = OnBackgroundMuted)
+        Text(stringResource(R.string.settings_backup_file), color = OnBackgroundMuted)
         Text(
             "${file.absolutePath}\nadb pull ${file.absolutePath}\nadb push tvhome-backup.json ${file.absolutePath}",
             fontFamily = FontFamily.Monospace,
@@ -193,32 +204,32 @@ fun UpdateSettings() {
     val updater = remember { Updater(context) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Version installée : ${BuildConfig.VERSION_NAME}", color = OnBackground, fontSize = 20.sp)
+        Text(stringResource(R.string.settings_update_installed, BuildConfig.VERSION_NAME), color = OnBackground, fontSize = 20.sp)
         Button(onClick = {
             scope.launch {
-                message = "Recherche…"
+                message = context.getString(R.string.settings_update_searching)
                 val latest = withContext(Dispatchers.IO) { updater.latest(token) }
                 release = latest?.takeIf { isNewer(it.tag, BuildConfig.VERSION_NAME) }
                 message = when {
-                    latest == null -> "Impossible de joindre GitHub (vérifiez le réseau)."
-                    release == null -> "Kairo est à jour (${latest.tag})."
-                    else -> "Nouvelle version ${latest.tag} disponible."
+                    latest == null -> context.getString(R.string.settings_update_unreachable)
+                    release == null -> context.getString(R.string.settings_update_up_to_date, latest.tag)
+                    else -> context.getString(R.string.settings_update_available, latest.tag)
                 }
             }
-        }) { Text("Rechercher une mise à jour") }
+        }) { Text(stringResource(R.string.settings_update_check)) }
         message?.let { Text(it, color = OnBackgroundMuted) }
         release?.let { r ->
             if (r.notes.isNotBlank()) Text(r.notes, color = OnBackgroundMuted)
             Button(onClick = {
                 scope.launch {
-                    message = "Téléchargement…"
+                    message = context.getString(R.string.settings_update_downloading)
                     val ok = withContext(Dispatchers.IO) { runCatching { updater.install(r, token) }.getOrDefault(false) }
-                    message = if (ok) "Confirmez l'installation dans la fenêtre d'Android." else "Échec du téléchargement."
+                    message = context.getString(if (ok) R.string.settings_update_confirm else R.string.settings_update_download_failed)
                 }
-            }) { Text("Installer ${r.tag}") }
+            }) { Text(stringResource(R.string.settings_update_install_tag, r.tag)) }
         }
         Text(
-            "Les versions sont publiées sur github.com/vantaflow/kairo. Sur une autre box, installez Kairo avec le code Downloader 5568887.",
+            stringResource(R.string.settings_update_footer),
             color = OnBackgroundMuted,
         )
         OurAppsSection()
@@ -232,7 +243,7 @@ private fun OurAppsSection() {
     val states by store.states.collectAsStateWithLifecycle()
     var remote by remember { mutableStateOf<Map<String, RemoteApk?>>(emptyMap()) }
     LaunchedEffect(Unit) { remote = OurApps.associate { it.id to store.latest(it) } }
-    Text("Nos applications", color = OnBackground, fontSize = 20.sp, modifier = Modifier.padding(top = 8.dp))
+    Text(stringResource(R.string.settings_ourapps_title), color = OnBackground, fontSize = 20.sp, modifier = Modifier.padding(top = 8.dp))
     OurApps.forEach { app ->
         val installed = store.installedVersion(app)
         val r = remote[app.id]
@@ -241,21 +252,22 @@ private fun OurAppsSection() {
                 Text(app.name, color = OnBackground)
                 Text(
                     when {
-                        installed == null -> "Non installée" + (r?.let { " · ${it.version} disponible" } ?: "")
-                        store.hasUpdate(app, r) -> "Version $installed · ${r!!.version} disponible"
-                        else -> "Version $installed · à jour"
+                        installed == null -> r?.let { stringResource(R.string.settings_ourapps_not_installed_available, it.version) }
+                            ?: stringResource(R.string.settings_ourapps_not_installed)
+                        store.hasUpdate(app, r) -> stringResource(R.string.settings_ourapps_update_available, installed, r!!.version)
+                        else -> stringResource(R.string.settings_ourapps_up_to_date, installed)
                     },
                     color = OnBackgroundMuted,
                     fontSize = 14.sp,
                 )
                 states[app.id]?.takeIf { it != InstallState.Idle }?.let { Text(installLabel(it), color = OnBackgroundMuted, fontSize = 14.sp) }
                 if (installed != null) store.missingOverlayCommand(app)?.let {
-                    Text("Autorisation à donner une fois par ADB : $it", color = OnBackgroundMuted, fontSize = 14.sp)
+                    Text(stringResource(R.string.settings_ourapps_adb, it), color = OnBackgroundMuted, fontSize = 14.sp)
                 }
             }
             when {
-                installed == null -> SmallButton("Installer", { store.install(app) })
-                store.hasUpdate(app, r) -> SmallButton("Mettre à jour", { store.install(app) })
+                installed == null -> SmallButton(stringResource(R.string.settings_ourapps_install), { store.install(app) })
+                store.hasUpdate(app, r) -> SmallButton(stringResource(R.string.settings_ourapps_update), { store.install(app) })
             }
         }
     }
@@ -273,7 +285,7 @@ fun MemorySettings(installedApps: List<AppInfo>) {
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
-            "Mémoire libre : ${formatMb(state.availableBytes)} sur ${formatMb(state.totalBytes)}",
+            stringResource(R.string.settings_memory_free, formatMb(state.availableBytes), formatMb(state.totalBytes)),
             color = OnBackground,
             fontSize = 20.sp,
         )
@@ -284,11 +296,11 @@ fun MemorySettings(installedApps: List<AppInfo>) {
                 kotlinx.coroutines.delay(1_500)
                 state = cleaner.state()
                 val freed = (state.availableBytes - before).coerceAtLeast(0)
-                message = "$count applis fermées, ${formatMb(freed)} libérés."
+                message = context.resources.getQuantityString(R.plurals.settings_memory_cleaned, count, count, formatMb(freed))
             }
-        }) { Text("Libérer la mémoire") }
+        }) { Text(stringResource(R.string.settings_memory_free_up)) }
         message?.let { Text(it, color = OnBackgroundMuted) }
-        Text("Ferme les applis en arrière-plan ; elles redémarrent normalement à la prochaine ouverture.", color = OnBackgroundMuted)
+        Text(stringResource(R.string.settings_memory_footer), color = OnBackgroundMuted)
         AutoCleanSettings()
     }
 }
@@ -303,11 +315,11 @@ fun AutoCleanSettings() {
     val idle by prefs.idleCloseMin.collectAsStateWithLifecycle(30)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SwitchRow(
-            "Nettoyage automatique", on, { v -> scope.launch { prefs.setAutoClean(v) } },
-            "Mémoire basse (moins de 25 % libre) : les applis en arrière-plan sont fermées, sauf la dernière utilisée.",
+            stringResource(R.string.settings_autoclean), on, { v -> scope.launch { prefs.setAutoClean(v) } },
+            stringResource(R.string.settings_autoclean_desc),
         )
         if (on) {
-            SettingLabel("Fermer une appli inutilisée depuis")
+            SettingLabel(stringResource(R.string.settings_autoclean_idle))
             ChoiceRow {
                 com.vantaflow.kairo.system.IdleCloseChoices.forEach { (min, label) ->
                     ChoiceChip(idle == min, { scope.launch { prefs.setIdleCloseMin(min) } }) { Text(label) }

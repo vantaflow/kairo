@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.reco
 
+import com.vantaflow.kairo.R
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.Cursor
@@ -33,11 +34,14 @@ fun interface EpgQuery {
 class TvProviderEpgSource(
     private val query: EpgQuery,
     private val permissionGranted: () -> Boolean = { true },
+    /** Nom d'une chaîne qui n'en publie pas, d'après son numéro (« Chaîne 5 »). */
+    private val unnamedChannel: (number: String) -> String = { "Chaîne $it".trim() },
 ) : EpgSource {
     constructor(context: Context) : this(
         EpgQuery { uri, projection -> context.contentResolver.query(uri, projection, null, null, null) },
         // Sans ces permissions, le TvProvider ne lève rien : il ne renvoie que nos propres lignes.
         { EPG_PERMISSIONS.all { context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED } },
+        { context.getString(R.string.reco_channel_number, it).trim() },
     )
 
     @Volatile private var accessible = false
@@ -76,7 +80,7 @@ class TvProviderEpgSource(
                 key = "channel-$id",
                 packageName = pkg,
                 number = number,
-                name = c.string("display_name")?.takeIf { it.isNotBlank() } ?: "Chaîne ${number.orEmpty()}".trim(),
+                name = c.string("display_name")?.takeIf { it.isNotBlank() } ?: unnamedChannel(number.orEmpty()),
                 uri = TvContractCompat.buildChannelUri(id).toString(),
                 logoUri = TvContractCompat.buildChannelLogoUri(id).toString(),
             )

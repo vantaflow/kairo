@@ -17,8 +17,15 @@ import java.io.InputStream
 /** Un élément d'une archive (pour « Voir le contenu »). */
 data class ArchiveItem(val name: String, val size: Long, val directory: Boolean)
 
-/** Archive illisible : le message est montré tel quel. */
-class ArchiveException(message: String) : IOException(message)
+/** Archive illisible : la raison est montrée dans la langue de la box (le message reste en français, pour les journaux). */
+class ArchiveException(val reason: Reason) : IOException(reason.message) {
+    enum class Reason(val message: String) {
+        Rar5("RAR 5 non pris en charge : utilisez « Ouvrir avec… »"),
+        Password("Archive protégée par mot de passe"),
+        UnreadableRar("Archive RAR illisible"),
+        UnknownFormat("Format d'archive inconnu"),
+    }
+}
 
 private enum class Format { Zip, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, Gz, Bz2, Xz }
 
@@ -63,8 +70,8 @@ fun safeTarget(destDir: File, entryName: String): File? {
 }
 
 private fun rarError(e: Throwable): Nothing = when (e) {
-    is UnsupportedRarV5Exception -> throw ArchiveException("RAR 5 non pris en charge : utilisez « Ouvrir avec… »")
-    else -> throw ArchiveException(if (e.message?.contains("encrypt", true) == true) "Archive protégée par mot de passe" else "Archive RAR illisible")
+    is UnsupportedRarV5Exception -> throw ArchiveException(ArchiveException.Reason.Rar5)
+    else -> throw ArchiveException(if (e.message?.contains("encrypt", true) == true) ArchiveException.Reason.Password else ArchiveException.Reason.UnreadableRar)
 }
 
 /** Contenu de l'archive (sans rien extraire). */
@@ -84,7 +91,7 @@ fun listArchive(file: File): List<ArchiveItem> = when (formatOf(file.name)) {
         generateSequence { tar.nextEntry }.map { ArchiveItem(it.name, it.size, it.isDirectory) }.toList()
     }
     Format.Gz, Format.Bz2, Format.Xz -> listOf(ArchiveItem(archiveBaseName(file.name), -1, false))
-    null -> throw ArchiveException("Format d'archive inconnu")
+    null -> throw ArchiveException(ArchiveException.Reason.UnknownFormat)
 }
 
 private fun tarStream(file: File): TarArchiveInputStream {
@@ -106,7 +113,7 @@ fun archiveSize(file: File): Long = runCatching { listArchive(file).sumOf { it.s
  * [onBytes] reçoit les octets écrits ; [cancelled] est consulté entre deux blocs.
  */
 fun extractArchive(file: File, destDir: File, onBytes: (Long) -> Unit, cancelled: () -> Boolean) {
-    if (!destDir.isDirectory && !destDir.mkdirs()) throw IOException("Impossible de créer ${destDir.name}")
+    if (!destDir.isDirectory && !destDir.mkdirs()) throw CreateDirException(destDir.name)
     fun write(target: File, input: InputStream) {
         target.parentFile?.mkdirs()
         target.outputStream().use { out ->
@@ -136,7 +143,7 @@ fun extractArchive(file: File, destDir: File, onBytes: (Long) -> Unit, cancelled
         }
         Format.Rar -> try {
             Archive(file).use { rar ->
-                if (rar.isEncrypted) throw ArchiveException("Archive protégée par mot de passe")
+                if (rar.isEncrypted) throw ArchiveException(ArchiveException.Reason.Password)
                 rar.fileHeaders.forEach { h ->
                     val name = h.fileName.replace('\\', '/')
                     val target = safeTarget(destDir, name) ?: return@forEach
@@ -166,7 +173,7 @@ fun extractArchive(file: File, destDir: File, onBytes: (Long) -> Unit, cancelled
             }
             input.use { write(File(destDir, freeName(destDir, archiveBaseName(file.name))), it) }
         }
-        null -> throw ArchiveException("Format d'archive inconnu")
+        null -> throw ArchiveException(ArchiveException.Reason.UnknownFormat)
     }
 }
 

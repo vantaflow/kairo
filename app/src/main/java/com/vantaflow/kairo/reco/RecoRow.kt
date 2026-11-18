@@ -331,7 +331,9 @@ fun HeroBackground(
         else progress.animateTo(1f, tween(heroMs, easing = FastOutSlowInEasing))
         previous = null
     }
-    val slidePx = with(LocalDensity.current) { 80.dp.toPx() }
+    // Glissement depuis le bord extérieur de l'image (à gauche en arabe, où l'image est en miroir).
+    val slideSign = if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) -1f else 1f
+    val slidePx = with(LocalDensity.current) { 80.dp.toPx() } * slideSign
     // Part du fond d'écran encore visible (1 = pas de héros) : caché sous un héros, il n'est plus
     // dessiné du tout. Une seule couche plein écran par image au lieu de deux : la box tient 60 i/s.
     fun wallpaperAlpha(): Float {
@@ -398,7 +400,13 @@ private fun HeroLayer(program: Program, onLoaded: () -> Unit = {}, animate: Grap
                     compositingStrategy = CompositingStrategy.Offscreen
                 }
                 .drawWithCache {
-                    val left = Brush.horizontalGradient(0f to Scrim, 0.5f to Scrim.copy(alpha = 0.35f), 0.8f to Color.Transparent)
+                    // Bord côté texte fondu vers le fond (bord droit de l'image en arabe, où elle est à gauche).
+                    val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+                    val left = Brush.horizontalGradient(
+                        0f to Scrim, 0.5f to Scrim.copy(alpha = 0.35f), 0.8f to Color.Transparent,
+                        startX = if (rtl) Float.POSITIVE_INFINITY else 0f,
+                        endX = if (rtl) 0f else Float.POSITIVE_INFINITY,
+                    )
                     val bottom = Brush.verticalGradient(0.45f to Color.Transparent, 1f to Scrim)
                     // Haut assombri : l'heure et les boutons restent lisibles.
                     val top = Brush.verticalGradient(0f to Scrim.copy(alpha = 0.75f), 0.3f to Color.Transparent)

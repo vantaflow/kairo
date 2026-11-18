@@ -35,6 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
+import com.vantaflow.kairo.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,11 +50,11 @@ import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.OnBackground
 
 /** Outils de Kairo, chacun avec sa couleur. */
-enum class Tool(val label: String, val icon: TvIcon, val colors: List<Color>) {
-    Radio("Radio", TvIcon.Radio, listOf(Color(0xFF6A2C91), Color(0xFFD4477A))),
-    Weather("Météo", TvIcon.Weather, listOf(Color(0xFF1565A8), Color(0xFF4FA3D8))),
-    Sleep("Minuteur", TvIcon.Timer, listOf(Color(0xFF1F2A5C), Color(0xFF5B4FB0))),
-    Cleaner("Nettoyeur", TvIcon.Clean, listOf(Color(0xFF0F6B5A), Color(0xFF34B38A))),
+enum class Tool(@StringRes val label: Int, val icon: TvIcon, val colors: List<Color>) {
+    Radio(R.string.tool_radio, TvIcon.Radio, listOf(Color(0xFF6A2C91), Color(0xFFD4477A))),
+    Weather(R.string.tool_weather, TvIcon.Weather, listOf(Color(0xFF1565A8), Color(0xFF4FA3D8))),
+    Sleep(R.string.tool_sleep, TvIcon.Timer, listOf(Color(0xFF1F2A5C), Color(0xFF5B4FB0))),
+    Cleaner(R.string.tool_cleaner, TvIcon.Clean, listOf(Color(0xFF0F6B5A), Color(0xFF34B38A))),
 }
 
 /** Rangée « Outils » : [subtitles] = état de chaque outil (radio en cours, temps restant…). */
@@ -66,7 +69,7 @@ fun ToolsRow(
     val layout = LocalHomeLayout.current
     Column(modifier) {
         if (layout.showRowTitles) {
-            Text("Outils", fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
+            Text(stringResource(R.string.tools_row_title), fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
         }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
@@ -85,7 +88,7 @@ fun ToolsRow(
                     ) {
                         TvIconImage(tool.icon, Color.White, size = 30.dp)
                         Column {
-                            Text(tool.label, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
+                            Text(stringResource(tool.label), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
                             subtitles[tool]?.let {
                                 Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
@@ -134,7 +137,7 @@ fun ToolsMenu(tools: List<Tool>, subtitles: Map<Tool, String>, onOpen: (Tool) ->
                             TvIconImage(tool.icon, Color.White, size = 28.dp)
                         }
                         Column(Modifier.padding(start = 14.dp)) {
-                            Text(tool.label, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                            Text(stringResource(tool.label), fontSize = 20.sp, fontWeight = FontWeight.Medium)
                             subtitles[tool]?.let { Text(it, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = LocalContentColor.current.copy(alpha = 0.75f)) }
                         }
                     }

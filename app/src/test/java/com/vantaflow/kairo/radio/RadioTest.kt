@@ -48,9 +48,13 @@ class RadioTest {
 
     @Test
     fun userCountryComesFirst() {
-        assertEquals("MA", radioCountriesFor("MA").first().first)
-        assertEquals(RadioCountries.size, radioCountriesFor("FR").size)
-        assertEquals("SN" to "Sénégal", radioCountriesFor("SN").first())
+        val fr = java.util.Locale.FRENCH
+        assertEquals("MA", radioCountriesFor("MA", "Monde", fr).first().first)
+        assertEquals(RadioCountries.size, radioCountriesFor("FR", "Monde", fr).size)
+        assertEquals("SN" to "Sénégal", radioCountriesFor("SN", "Monde", fr).first())
+        assertEquals("" to "Monde", radioCountriesFor("MA", "Monde", fr).last())
+        // Noms des pays dans la langue de l'appli.
+        assertEquals("MA" to "Morocco", radioCountriesFor("MA", "World", java.util.Locale.ENGLISH).first())
     }
 
     @Test

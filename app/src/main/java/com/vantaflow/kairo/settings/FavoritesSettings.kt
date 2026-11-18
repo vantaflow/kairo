@@ -21,6 +21,10 @@ import androidx.tv.material3.Text
 import com.vantaflow.kairo.apps.AppInfo
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 
 /** Favoris : une ligne compacte par appli, avec déplacement et retrait. */
 @Composable
@@ -28,12 +32,18 @@ fun FavoritesSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
     val favorites by vm.favorites.collectAsStateWithLifecycle()
     val labels = installedApps.associate { it.packageName to it.label }
     if (favorites.isEmpty()) {
-        SettingHint("Aucun favori. Ajoutez-en depuis Applications (appui long ou touche Menu sur une appli).")
+        SettingHint(stringResource(R.string.settings_favorites_empty))
         return
     }
+    // Droite à gauche : la rangée Favoris de l'accueil est en miroir (1er favori à droite), donc
+    // « précédent » se déplace vers la droite. Les flèches suivent le sens visuel ; l'ordre des
+    // boutons (précédent puis suivant) est lui-même inversé par la Row.
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val prevArrow = if (rtl) "→" else "←"
+    val nextArrow = if (rtl) "←" else "→"
     // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
-        item { SettingHint("L'ordre ici est celui de la rangée Favoris de l'accueil.") }
+        item { SettingHint(stringResource(R.string.settings_favorites_order_hint)) }
         itemsIndexed(favorites, key = { _, pkg -> pkg }) { index, pkg ->
             Row(
                 Modifier
@@ -52,9 +62,9 @@ fun FavoritesSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                SmallButton("←", { vm.moveFavoriteBy(pkg, -1) }, enabled = index > 0)
-                SmallButton("→", { vm.moveFavoriteBy(pkg, +1) }, enabled = index < favorites.lastIndex)
-                SmallButton("Retirer", { vm.removeFavorite(pkg) })
+                SmallButton(prevArrow, { vm.moveFavoriteBy(pkg, -1) }, enabled = index > 0)
+                SmallButton(nextArrow, { vm.moveFavoriteBy(pkg, +1) }, enabled = index < favorites.lastIndex)
+                SmallButton(stringResource(R.string.settings_remove), { vm.removeFavorite(pkg) })
             }
         }
     }

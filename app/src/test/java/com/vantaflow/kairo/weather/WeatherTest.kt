@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.weather
 
+import com.vantaflow.kairo.R
 import com.vantaflow.kairo.net.HttpGet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -54,8 +55,10 @@ class WeatherTest {
             url = it
             """{"results":[{"name":"Casablanca","latitude":33.58,"longitude":-7.61},{"name":"Autre","latitude":0,"longitude":0}]}"""
         })
-        assertEquals(Place("Casablanca", 33.58, -7.61), repo.geocode("Casa blanca"))
+        assertEquals(Place("Casablanca", 33.58, -7.61), repo.geocode("Casa blanca", language = "fr"))
         assertTrue(url, url.contains("name=Casa+blanca") && url.contains("language=fr"))
+        repo.geocode("Madrid", language = "es")
+        assertTrue(url, url.contains("language=es"))
     }
 
     @Test
@@ -69,18 +72,29 @@ class WeatherTest {
 
     @Test
     fun wmoCodesMapped() {
-        assertEquals("Ensoleillé", weatherLabel(0))
-        assertEquals("Partiellement nuageux", weatherLabel(2))
-        assertEquals("Brouillard", weatherLabel(45))
-        assertEquals("Pluie", weatherLabel(63))
-        assertEquals("Neige", weatherLabel(73))
-        assertEquals("Orage", weatherLabel(95))
-        assertEquals("", weatherLabel(1234))
+        assertEquals(R.string.weather_code_clear, weatherLabelRes(0))
+        assertEquals(R.string.weather_code_partly_cloudy, weatherLabelRes(2))
+        assertEquals(R.string.weather_code_fog, weatherLabelRes(45))
+        assertEquals(R.string.weather_code_rain, weatherLabelRes(63))
+        assertEquals(R.string.weather_code_snow, weatherLabelRes(73))
+        assertEquals(R.string.weather_code_thunderstorm, weatherLabelRes(95))
+        assertNull(weatherLabelRes(1234))
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        assertEquals(context.getString(R.string.weather_code_partly_cloudy), weatherLabel(context, 2))
+        assertEquals("", weatherLabel(context, 1234))
+    }
+
+    @Test
+    fun windAndUvInAppLanguage() {
+        assertEquals("NO", windDirection(315))
+        assertEquals("NW", windDirection(315, listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")))
+        assertEquals("", windDirection(-1))
+        assertEquals(R.string.weather_uv_moderate, uvLabelRes(4.0))
     }
 
     @Test
     fun formatsHeaderText() {
-        assertEquals("22° · Partiellement nuageux", Weather(22.4, 2, "Tunis").headerText())
+        assertEquals("22° · Partiellement nuageux", Weather(22.4, 2, "Tunis", "Partiellement nuageux").headerText())
         assertEquals("-3°", Weather(-2.6, 1234, "X").headerText())
     }
 }

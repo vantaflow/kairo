@@ -1,6 +1,7 @@
 package com.vantaflow.kairo.player
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.ContentObserver
@@ -66,6 +67,8 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -115,6 +118,11 @@ class MainActivity : ComponentActivity() {
 
     /** Recherche reçue de Kairo (ACTION_SEARCH). */
     private var searchQuery by mutableStateOf<String?>(null)
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        BoxLocale.applyTo(this)
+    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -178,7 +186,7 @@ class MainActivity : ComponentActivity() {
             val all = media
             when {
                 !granted -> Welcome(onAllow = { permission.launch(PERMISSIONS) })
-                all == null -> Text("Chargement…", color = TextMuted, modifier = Modifier.align(Alignment.Center))
+                all == null -> Text(stringResource(R.string.loading), color = TextMuted, modifier = Modifier.align(Alignment.Center))
                 else -> Crossfade(screen, animationSpec = tween(300), label = "écran") { s ->
                     when (s) {
                         Screen.Home -> HomeScreen(all, onFolder = { screen = Screen.InFolder(it) }, onOpen = { item, list -> open(item, list) { screen = it } })
@@ -187,7 +195,7 @@ class MainActivity : ComponentActivity() {
                         is Screen.Results -> {
                             val q = plainText(s.query)
                             val found = all.filter { plainText(it.name).contains(q) || plainText(it.folder).contains(q) }
-                            FolderScreen(Folder("", "Recherche « ${s.query} »", found), onOpen = { item, list -> open(item, list) { screen = it } }, search = true)
+                            FolderScreen(Folder("", stringResource(R.string.search_title, s.query), found), onOpen = { item, list -> open(item, list) { screen = it } }, search = true)
                         }
                     }
                 }
@@ -209,11 +217,11 @@ class MainActivity : ComponentActivity() {
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { repeat(10) { withFrameNanos { }; runCatching { focus.requestFocus() } } }
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text("Kairo Player", fontSize = 44.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
+            Text(stringResource(R.string.app_name), fontSize = 44.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
             Spacer(Modifier.height(10.dp))
-            Text("Vos vidéos, photos et musiques de la box et des clés USB.", fontSize = 20.sp, color = TextMuted)
+            Text(stringResource(R.string.welcome_subtitle), fontSize = 20.sp, color = TextMuted)
             Spacer(Modifier.height(32.dp))
-            Button(onClick = onAllow, modifier = Modifier.focusRequester(focus)) { Text("Autoriser l'accès aux fichiers") }
+            Button(onClick = onAllow, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.welcome_allow)) }
         }
     }
 
@@ -231,15 +239,26 @@ class MainActivity : ComponentActivity() {
         LazyColumn(contentPadding = PaddingValues(top = 36.dp, bottom = 60.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
             item {
                 Row(Modifier.padding(horizontal = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Kairo Player", fontSize = 34.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
+                    Text(stringResource(R.string.app_name), fontSize = 34.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
                     Spacer(Modifier.width(16.dp))
-                    Text("${all.count { it.kind == Kind.Video }} vidéos · ${all.count { it.kind == Kind.Photo }} photos · ${all.count { it.kind == Kind.Music }} morceaux", color = TextMuted)
+                    val videoCount = all.count { it.kind == Kind.Video }
+                    val photoCount = all.count { it.kind == Kind.Photo }
+                    val musicCount = all.count { it.kind == Kind.Music }
+                    Text(
+                        stringResource(
+                            R.string.home_counts,
+                            pluralStringResource(R.plurals.home_videos, videoCount, videoCount),
+                            pluralStringResource(R.plurals.home_photos, photoCount, photoCount),
+                            pluralStringResource(R.plurals.home_tracks, musicCount, musicCount),
+                        ),
+                        color = TextMuted,
+                    )
                 }
             }
             if (all.isEmpty()) {
                 item {
                     Text(
-                        "Aucun fichier trouvé. Branchez une clé USB ou envoyez des fichiers depuis le téléphone (Kairo › Télécommande sur téléphone).",
+                        stringResource(R.string.home_empty),
                         color = TextMuted, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 56.dp),
                     )
                 }
@@ -248,12 +267,12 @@ class MainActivity : ComponentActivity() {
             fun claim(): Modifier = if (!firstUsed) { firstUsed = true; Modifier.focusRequester(first) } else Modifier
             if (resumeItems.isNotEmpty()) {
                 val m = claim()
-                item(key = "resume") { MediaRow("Reprendre", resumeItems, m) { onOpen(it, resumeItems) } }
+                item(key = "resume") { MediaRow(stringResource(R.string.row_resume), resumeItems, m) { onOpen(it, resumeItems) } }
             }
             if (folders.isNotEmpty()) {
                 val m = claim()
                 item(key = "folders") {
-                    Section("Dossiers") {
+                    Section(stringResource(R.string.row_folders)) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 56.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                             items(folders, key = { it.key }) { f ->
                                 FolderCard(f, if (f == folders.first()) m else Modifier) { onFolder(f) }
@@ -264,15 +283,15 @@ class MainActivity : ComponentActivity() {
             }
             if (videos.isNotEmpty()) {
                 val m = claim()
-                item(key = "videos") { MediaRow("Vidéos récentes", videos, m) { onOpen(it, videos) } }
+                item(key = "videos") { MediaRow(stringResource(R.string.row_recent_videos), videos, m) { onOpen(it, videos) } }
             }
             if (photos.isNotEmpty()) {
                 val m = claim()
-                item(key = "photos") { MediaRow("Photos récentes", photos, m) { onOpen(it, photos) } }
+                item(key = "photos") { MediaRow(stringResource(R.string.row_recent_photos), photos, m) { onOpen(it, photos) } }
             }
             if (music.isNotEmpty()) {
                 val m = claim()
-                item(key = "music") { MediaRow("Musique", music, m) { onOpen(it, music) } }
+                item(key = "music") { MediaRow(stringResource(R.string.row_music), music, m) { onOpen(it, music) } }
             }
         }
     }
@@ -301,8 +320,18 @@ class MainActivity : ComponentActivity() {
         val first = remember { FocusRequester() }
         LaunchedEffect(folder.key) { repeat(15) { withFrameNanos { }; runCatching { first.requestFocus() } } }
         Column(Modifier.fillMaxSize().padding(top = 36.dp)) {
-            Text(if (search) folder.path else folder.name, fontSize = 32.sp, fontWeight = FontWeight.SemiBold, color = TextMain, modifier = Modifier.padding(start = 56.dp))
-            Text(if (search) "${folder.items.size} résultats" else "${library.volumeLabel(folder.volume)} › ${folder.path.trimEnd('/')} · ${folder.items.size} fichiers", color = TextMuted, modifier = Modifier.padding(start = 56.dp, top = 4.dp, bottom = 16.dp))
+            Text(if (search) folder.path else folderName(folder), fontSize = 32.sp, fontWeight = FontWeight.SemiBold, color = TextMain, modifier = Modifier.padding(start = 56.dp))
+            val count = folder.items.size
+            val subtitle = if (search) {
+                pluralStringResource(R.plurals.search_results, count, count)
+            } else {
+                stringResource(
+                    R.string.folder_subtitle,
+                    stringResource(R.string.folder_location, library.volumeLabel(folder.volume), folder.path.trimEnd('/')),
+                    pluralStringResource(R.plurals.folder_files, count, count),
+                )
+            }
+            Text(subtitle, color = TextMuted, modifier = Modifier.padding(start = 56.dp, top = 4.dp, bottom = 16.dp))
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 8.dp, bottom = 48.dp),
@@ -324,7 +353,7 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.75f))))
                 Text("${folder.items.size}", color = Color.White, fontSize = 14.sp, modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 2.dp))
             }
-            Text(folder.name, color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(folderName(folder), color = TextMain, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(library.volumeLabel(folder.volume), color = TextMuted, fontSize = 13.sp, maxLines = 1)
         }
     }
@@ -336,7 +365,7 @@ class MainActivity : ComponentActivity() {
                 Thumb(m)
                 if (m.kind != Kind.Photo && m.durationMs > 0) {
                     Text(
-                        formatDuration(m.durationMs, music = m.kind == Kind.Music), color = Color.White, fontSize = 13.sp,
+                        durationText(m.durationMs, music = m.kind == Kind.Music), color = Color.White, fontSize = 13.sp,
                         modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 }
@@ -416,7 +445,7 @@ class MainActivity : ComponentActivity() {
                 AsyncImage(model = m.uri, contentDescription = m.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
             }
             Text(
-                "${index + 1} / ${photos.size}" + if (slideshow) " · diaporama" else " · OK : diaporama",
+                stringResource(if (slideshow) R.string.photo_counter else R.string.photo_counter_hint, index + 1, photos.size),
                 color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(20.dp).background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 4.dp),
             )
@@ -433,6 +462,15 @@ class MainActivity : ComponentActivity() {
         private val thumbCache = LruCache<String, ImageBitmap>(40)
     }
 }
+
+/** Nom du dossier ; « Racine » pour la racine d'un volume. */
+@Composable
+private fun folderName(folder: Folder): String = folder.name.ifBlank { stringResource(R.string.folder_root) }
+
+/** Durée dans la langue de la box (« 1 h 05 », « 45 min », « 3:20 » pour la musique). */
+@Composable
+private fun durationText(ms: Long, music: Boolean): String =
+    formatDuration(ms, music, stringResource(R.string.duration_hours), stringResource(R.string.duration_minutes))
 
 /** Sans accents ni majuscules, pour la recherche. */
 private fun plainText(s: String) = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "").lowercase()

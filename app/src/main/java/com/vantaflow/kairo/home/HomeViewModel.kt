@@ -71,15 +71,33 @@ fun weatherRetryDelayMs(success: Boolean): Long = if (success) WEATHER_REFRESH_M
 fun weatherIsStale(lastSuccessMs: Long, nowMs: Long): Boolean = nowMs - lastSuccessMs > WEATHER_MAX_AGE_MS
 
 private val TimeFormat24 = DateTimeFormatter.ofPattern("HH:mm")
-private val TimeFormat12 = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
-private val DateFormat = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH)
+
+/** Formateurs de la langue de l'appli (Locale.getDefault()), refaits seulement quand elle change. */
+private class LocaleFormats(val locale: Locale) {
+    // AM/PM dans la langue de l'appli (« PM », « p. m. », « م »…).
+    val time12: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", locale)
+    // « Mercredi 28 octobre », « Wednesday, October 28 »… : motif adapté à la langue
+    // (motif français en test JVM pur, où les méthodes android.* lèvent une exception).
+    val date: DateTimeFormatter = DateTimeFormatter.ofPattern(
+        runCatching { android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM") }.getOrNull() ?: "EEEE d MMMM",
+        locale,
+    )
+}
+
+@Volatile private var formats: LocaleFormats? = null
+
+private fun formats(): LocaleFormats {
+    val locale = Locale.getDefault()
+    return formats?.takeIf { it.locale == locale } ?: LocaleFormats(locale).also { formats = it }
+}
 
 fun formatTime(epochMs: Long, zone: ZoneId, use24h: Boolean = true): String =
-    (if (use24h) TimeFormat24 else TimeFormat12).format(Instant.ofEpochMilli(epochMs).atZone(zone))
+    (if (use24h) TimeFormat24 else formats().time12).format(Instant.ofEpochMilli(epochMs).atZone(zone))
 
-fun formatDate(epochMs: Long, zone: ZoneId): String =
-    DateFormat.format(Instant.ofEpochMilli(epochMs).atZone(zone))
-        .replaceFirstChar { it.titlecase(Locale.FRENCH) }
+fun formatDate(epochMs: Long, zone: ZoneId): String {
+    val f = formats()
+    return f.date.format(Instant.ofEpochMilli(epochMs).atZone(zone)).replaceFirstChar { it.titlecase(f.locale) }
+}
 
 /** Émet tout de suite puis à chaque changement de minute. */
 fun minuteTicks(now: () -> Long = System::currentTimeMillis): Flow<Unit> = flow {

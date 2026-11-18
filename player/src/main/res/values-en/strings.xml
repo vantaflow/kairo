@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="loading">Loading…</string>
+    <string name="welcome_subtitle">Your videos, photos and music from the box and USB drives.</string>
+    <string name="welcome_allow">Allow access to files</string>
+    <plurals name="home_videos">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+    <plurals name="home_photos">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <plurals name="home_tracks">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+    <string name="home_counts">%1$s · %2$s · %3$s</string>
+    <string name="home_empty">No files found. Plug in a USB drive or send files from your phone (Kairo › Phone remote).</string>
+    <string name="row_resume">Resume</string>
+    <string name="row_folders">Folders</string>
+    <string name="row_recent_videos">Recent videos</string>
+    <string name="row_recent_photos">Recent photos</string>
+    <string name="row_music">Music</string>
+    <string name="search_title">Search “%1$s”</string>
+    <plurals name="search_results">
+        <item quantity="one">%1$d result</item>
+        <item quantity="other">%1$d results</item>
+    </plurals>
+    <string name="folder_root">Root</string>
+    <string name="folder_location">%1$s › %2$s</string>
+    <plurals name="folder_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="folder_subtitle">%1$s · %2$s</string>
+    <string name="volume_internal">Internal storage</string>
+    <string name="volume_usb">USB drive</string>
+    <string name="photo_counter">%1$d / %2$d · slideshow</string>
+    <string name="photo_counter_hint">%1$d / %2$d · OK: slideshow</string>
+    <string name="duration_hours">%1$d h %2$02d</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="player_error">Can\'t play: %1$s</string>
+    <string name="player_resume_at">Resuming at %1$s</string>
+    <string name="player_untitled">Video</string>
+    <string name="document_untitled">Document</string>
+    <string name="pdf_unreadable">Can\'t read this PDF (password protected?)</string>
+    <string name="pdf_hint">"%1$s · page %2$d / %3$d   ← →  pages · ↑ ↓  scroll · OK  %4$s"</string>
+    <string name="pdf_zoom">zoom</string>
+    <string name="pdf_full_page">full page</string>
+    <string name="text_hint">"%1$s   ↑ ↓  scroll · ← →  page · OK  text size"</string>
+    <string name="text_hint_truncated">"%1$s   ↑ ↓  scroll · ← →  page · OK  text size · start of the file (2 MB)"</string>
+    <string name="text_unreadable">Can\'t read this text</string>
+    <string name="text_reading">Loading…</string>
+</resources>

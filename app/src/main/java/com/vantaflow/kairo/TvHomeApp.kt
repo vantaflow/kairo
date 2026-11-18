@@ -44,6 +44,8 @@ class AppContainer(val app: Application) {
         java.io.File(app.filesDir, "catalog.json"),
         region = ::catalogRegion,
         language = ::catalogLanguage,
+        // Titres des rangées dans la langue de l'appli (la langue fait partie de la clé du cache).
+        text = { id, args -> app.getString(id, *args) },
     )
 
     /**
@@ -61,8 +63,8 @@ class AppContainer(val app: Application) {
         return java.util.Locale.getDefault().country.takeIf { it.length == 2 }?.uppercase() ?: com.vantaflow.kairo.catalog.DEFAULT_REGION
     }
 
-    /** Langue des titres : celle de la box (« fr-FR », « ar », « en-US »…). */
-    private fun catalogLanguage(): String = java.util.Locale.getDefault().toLanguageTag().ifBlank { "fr-FR" }
+    /** Langue des titres : celle de l'appli (Réglages › Langue, par défaut celle de la box : « fr-FR », « ar-MA »…). */
+    private fun catalogLanguage(): String = com.vantaflow.kairo.i18n.AppLocale.catalogLanguage()
     /** Nos applis (Kairo Player, Ultra TV) : installation et mises à jour depuis GitHub. */
     val ourApps = OurAppsStore(app)
 
@@ -71,7 +73,9 @@ class AppContainer(val app: Application) {
 
     /** Météo pour une ville (vide = position par IP) ; la position est gardée en mémoire. */
     val weather: suspend (String, Boolean) -> Weather? = { city, fahrenheit ->
+        // Libellé du ciel dans la langue de l'appli (l'en-tête n'a pas de Context).
         placeFor(city)?.let { weatherRepo.current(it, fahrenheit) }
+            ?.let { w -> w.copy(label = com.vantaflow.kairo.weather.weatherLabel(app, w.code)) }
     }
 
     /** Prévisions sur 7 jours (écran Météo). */
@@ -126,7 +130,7 @@ class AppContainer(val app: Application) {
 
     /** Télécommande sur téléphone : démarrée ou arrêtée selon le réglage. */
     @Volatile private var phoneToken = ""
-    val phoneRemote = PhoneRemoteServer({ phoneToken }, PhoneRemoteActions(app)::route)
+    val phoneRemote = PhoneRemoteServer({ phoneToken }, PhoneRemoteActions(app)::route, { app.getString(R.string.phoneremote_forbidden) })
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun watchPhoneRemote() {
@@ -162,6 +166,8 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
+        com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)
         container.watchPhoneRemote()
         container.startAutoClean()
@@ -169,6 +175,12 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         container.ensureAdBlock()
         com.vantaflow.kairo.media.NowPlaying.start(this)
         container.ourApps.checkUpdates()
+    }
+
+    /** Un changement de configuration de la box remet sa langue : on réapplique celle de Kairo. */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
     }
 
     /** Cache d'images plafonné : par défaut Coil prendrait 25 % du tas (64 Mo sur cette box). */

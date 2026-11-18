@@ -7,14 +7,25 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /** Durées proposées, en minutes. */
 val SleepDurations = listOf(15, 30, 45, 60, 90, 120)
 
-fun formatMinutes(min: Int): String = when {
-    min < 60 -> "$min min"
-    min % 60 == 0 -> "${min / 60} h"
-    else -> "${min / 60} h ${"%02d".format(min % 60)}"
+/** Unités courtes (minute, heure) dans la langue de [locale]. */
+private fun shortTimeUnits(locale: Locale): Pair<String, String> = when (locale.language) {
+    "ar" -> "د" to "س"
+    else -> "min" to "h"
+}
+
+/** « 45 min », « 2 h », « 1 h 30 » dans la langue de l'appli (chiffres 0-9). */
+fun formatMinutes(min: Int, locale: Locale = Locale.getDefault()): String {
+    val (m, h) = shortTimeUnits(locale)
+    return when {
+        min < 60 -> "$min $m"
+        min % 60 == 0 -> "${min / 60} $h"
+        else -> "${min / 60} $h ${"%02d".format(Locale.ROOT, min % 60)}"
+    }
 }
 
 /** Secondes d'avertissement avant la mise en veille. */

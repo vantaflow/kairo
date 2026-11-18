@@ -28,7 +28,7 @@
   .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
   .ok { color:var(--ok); } .err { color:var(--err); }
   a.dl { color:var(--accent); text-decoration:none; font-weight:600; white-space:nowrap; }
-  button.del { background:none; border:0; color:var(--err); font:600 15px system-ui,sans-serif; cursor:pointer; padding:4px 0 4px 8px; }
+  button.del { background:none; border:0; color:var(--err); font:600 15px system-ui,sans-serif; cursor:pointer; padding:4px 0; padding-inline-start:8px; }
   .empty { color:var(--muted); }
   .actions { display:flex; justify-content:flex-end; margin-top:10px; }
 </style>
@@ -36,39 +36,53 @@
 <body>
 <main>
   <h1>Kairo Send Files</h1>
-  <p class="sub">Envoyez des fichiers à la TV, ou récupérez ceux que la box vous propose.</p>
+  <p class="sub" data-t="web_subtitle">Envoyez des fichiers à la TV, ou récupérez ceux que la box vous propose.</p>
 
   <section class="card">
-    <h2>Envoyer à la TV</h2>
+    <h2 data-t="web_send_title">Envoyer à la TV</h2>
     <label class="drop" id="drop">
-      <b>Choisir des fichiers</b>
-      <span class="meta">ou glissez-les ici · vidéos, photos, APK, documents…</span>
+      <b data-t="web_pick">Choisir des fichiers</b>
+      <span class="meta" data-t="web_pick_hint">ou glissez-les ici · vidéos, photos, APK, documents…</span>
       <input type="file" id="pick" multiple hidden>
     </label>
     <div id="queue"></div>
   </section>
 
   <section class="card">
-    <h2>Envoyer un texte ou un lien</h2>
-    <textarea id="text" placeholder="Un lien s'ouvre directement sur la TV"></textarea>
-    <div class="actions"><button class="btn" id="sendText">Envoyer</button></div>
+    <h2 data-t="web_text_title">Envoyer un texte ou un lien</h2>
+    <textarea id="text" placeholder="Un lien s'ouvre directement sur la TV" data-t-placeholder="web_text_placeholder"></textarea>
+    <div class="actions"><button class="btn" id="sendText" data-t="web_send">Envoyer</button></div>
     <div id="textState" class="meta"></div>
   </section>
 
   <section class="card">
-    <h2>Sur la box</h2>
-    <div id="files"><p class="empty">Chargement…</p></div>
+    <h2 data-t="web_box_title">Sur la box</h2>
+    <div id="files"><p class="empty" data-t="web_loading">Chargement…</p></div>
   </section>
 </main>
+<!-- Textes dans la langue de la page (celle du navigateur, sinon de la box), insérés par le serveur. -->
+<script id="i18n" type="application/json">/*I18N*/{}</script>
 <script>
 (() => {
   const key = new URLSearchParams(location.search).get('k') || '';
   const q = (s) => document.querySelector(s);
+  // Textes de res/values*/strings.xml (web_…, size_…) dans la langue de la page.
+  let T = {};
+  try { T = JSON.parse(q('#i18n').textContent.replace('/*I18N*/', '')); } catch (e) { /* page sans traduction */ }
+  const t = (k, ...args) => (T[k] || k)
+    .replace(/%(\d+)\$[sd]/g, (m, n) => String(args[n - 1]))
+    .replace(/%%/g, '%');
+  document.querySelectorAll('[data-t]').forEach((el) => { if (T[el.dataset.t]) el.textContent = t(el.dataset.t); });
+  document.querySelectorAll('[data-t-placeholder]').forEach((el) => { if (T[el.dataset.tPlaceholder]) el.placeholder = t(el.dataset.tPlaceholder); });
+  // Nombres et dates dans la langue de la page (chiffres 0-9 en arabe).
+  const lang = document.documentElement.lang || 'fr';
+  const loc = lang === 'ar' ? 'ar-u-nu-latn' : lang;
+  const num = (v, digits) => v.toLocaleString(loc, { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false });
   const size = (b) => {
-    if (b < 1024) return b + ' o';
-    const u = ['Ko', 'Mo', 'Go', 'To']; let v = b / 1024, i = 0;
+    if (b < 1024) return t('size_bytes', String(b));
+    const u = ['size_kb', 'size_mb', 'size_gb', 'size_tb']; let v = b / 1024, i = 0;
     while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-    return (v >= 100 ? v.toFixed(0) : v.toFixed(1)).replace('.', ',') + ' ' + u[i];
+    return t(u[i], num(v, v >= 100 ? 0 : 1));
   };
   const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -79,7 +93,7 @@
     for (const f of list) {
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = '<div class="name"><div>' + esc(f.name) + '</div><div class="meta">' + size(f.size) + ' · en attente</div><div class="bar"><i></i></div></div>';
+      row.innerHTML = '<div class="name"><div>' + esc(f.name) + '</div><div class="meta">' + esc(t('web_waiting', size(f.size))) + '</div><div class="bar"><i></i></div></div>';
       q('#queue').prepend(row);
       queue.push({ f, row });
     }
@@ -100,15 +114,16 @@
       const pct = Math.round(e.loaded * 100 / e.total);
       const speed = e.loaded / Math.max(1, (Date.now() - t0) / 1000);
       bar.style.width = pct + '%';
-      meta.textContent = size(f.size) + ' · ' + pct + ' % · ' + size(speed) + '/s';
+      meta.textContent = t('web_progress', size(f.size), num(pct, 0), size(speed));
     };
     xhr.onload = () => {
       const ok = xhr.status === 200;
       bar.style.width = ok ? '100%' : bar.style.width;
-      meta.innerHTML = size(f.size) + ' · ' + (ok ? '<span class="ok">envoyé sur la TV</span>' : '<span class="err">échec : ' + esc(xhr.responseText || ('erreur ' + xhr.status)) + '</span>');
+      meta.innerHTML = esc(size(f.size)) + ' · ' + (ok ? '<span class="ok">' + esc(t('web_sent')) + '</span>'
+        : '<span class="err">' + esc(t('web_failed', xhr.responseText || t('web_error_status', xhr.status))) + '</span>');
       done();
     };
-    xhr.onerror = () => { meta.innerHTML = size(f.size) + ' · <span class="err">connexion perdue (même Wi-Fi que la box ?)</span>'; done(); };
+    xhr.onerror = () => { meta.innerHTML = esc(size(f.size)) + ' · <span class="err">' + esc(t('web_connection_lost_wifi')) + '</span>'; done(); };
     xhr.send(f);
     function done() { busy = false; loadFiles(); next(); }
   }
@@ -125,10 +140,10 @@
     q('#sendText').disabled = true;
     try {
       const r = await fetch('/text?k=' + encodeURIComponent(key), { method: 'POST', body: text });
-      q('#textState').innerHTML = r.ok ? '<span class="ok">Affiché sur la TV</span>' : '<span class="err">Échec</span>';
+      q('#textState').innerHTML = r.ok ? '<span class="ok">' + esc(t('web_shown_on_tv')) + '</span>' : '<span class="err">' + esc(t('web_failure')) + '</span>';
       if (r.ok) q('#text').value = '';
     } catch (e) {
-      q('#textState').innerHTML = '<span class="err">Connexion perdue</span>';
+      q('#textState').innerHTML = '<span class="err">' + esc(t('web_connection_lost')) + '</span>';
     }
     q('#sendText').disabled = false;
   });
@@ -136,24 +151,24 @@
   async function loadFiles() {
     try {
       const r = await fetch('/api/files?k=' + encodeURIComponent(key));
-      if (r.status === 403) { q('#files').innerHTML = '<p class="err">Scannez le QR code affiché sur la TV.</p>'; return; }
+      if (r.status === 403) { q('#files').innerHTML = '<p class="err">' + esc(t('web_scan_qr')) + '</p>'; return; }
       const list = await r.json();
       q('#files').innerHTML = list.length ? list.map((f) =>
-        '<div class="row"><div class="name"><div>' + esc(f.name) + '</div><div class="meta">' + size(f.size) + ' · ' +
-        new Date(f.added).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) + '</div></div>' +
-        '<a class="dl" href="/dl/' + f.id + '?k=' + encodeURIComponent(key) + '" download>Télécharger</a>' +
-        '<button class="del" data-id="' + f.id + '" data-name="' + esc(f.name) + '">Supprimer</button></div>').join('')
-        : '<p class="empty">Aucun fichier pour l\'instant. Sur la TV, Kairo Files › Envoyer au téléphone.</p>';
+        '<div class="row"><div class="name"><div>' + esc(f.name) + '</div><div class="meta">' + esc(size(f.size)) + ' · ' +
+        esc(new Date(f.added).toLocaleString(loc, { dateStyle: 'short', timeStyle: 'short' })) + '</div></div>' +
+        '<a class="dl" href="/dl/' + f.id + '?k=' + encodeURIComponent(key) + '" download>' + esc(t('web_download')) + '</a>' +
+        '<button class="del" data-id="' + f.id + '" data-name="' + esc(f.name) + '">' + esc(t('web_delete')) + '</button></div>').join('')
+        : '<p class="empty">' + esc(t('web_no_files')) + '</p>';
     } catch (e) { /* box en veille : on réessaie */ }
   }
   q('#files').addEventListener('click', async (e) => {
     const b = e.target.closest('button.del');
-    if (!b || !confirm('Supprimer « ' + b.dataset.name + ' » de la box ?')) return;
+    if (!b || !confirm(t('web_delete_confirm', b.dataset.name))) return;
     b.disabled = true;
     try {
       const r = await fetch('/api/files/' + b.dataset.id + '?k=' + encodeURIComponent(key), { method: 'DELETE' });
-      if (!r.ok) alert('Suppression impossible');
-    } catch (err) { alert('Connexion perdue'); }
+      if (!r.ok) alert(t('web_delete_failed'));
+    } catch (err) { alert(t('web_connection_lost')); }
     loadFiles();
   });
 

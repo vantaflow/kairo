@@ -22,6 +22,11 @@ class TvHomeDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry: SavedStateRegistry get() = savedState.savedStateRegistry
 
+    /** Langue choisie dans Kairo (Réglages › Langue). */
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.vantaflow.kairo.i18n.AppLocale.wrap(newBase))
+    }
+
     override fun onCreate() {
         super.onCreate()
         savedState.performRestore(null)

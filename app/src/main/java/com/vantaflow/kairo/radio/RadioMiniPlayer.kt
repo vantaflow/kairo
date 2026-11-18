@@ -28,6 +28,8 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,15 +70,15 @@ fun RadioMiniPlayer(onOpenPlayer: () -> Unit, onDismiss: () -> Unit) {
                     Text(station.name, fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Box(Modifier.height(30.dp), contentAlignment = Alignment.CenterStart) {
                         if (now.status == RadioStatus.Playing) Equalizer()
-                        else Text("Connexion…", fontSize = 16.sp, color = OnBackgroundMuted)
+                        else Text(stringResource(R.string.radio_connecting), fontSize = 16.sp, color = OnBackgroundMuted)
                     }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 PlayerButton("⏮") { Radio.skip(context, -1) }
-                PlayerButton("■  Arrêter", Modifier.focusRequester(stop), big = true) { Radio.stop(context) }
+                PlayerButton(stringResource(R.string.radio_stop_big), Modifier.focusRequester(stop), big = true) { Radio.stop(context) }
                 PlayerButton("⏭") { Radio.skip(context, +1) }
-                PlayerButton("Lecteur", onClick = onOpenPlayer)
+                PlayerButton(stringResource(R.string.radio_mini_player), onClick = onOpenPlayer)
             }
         }
     }

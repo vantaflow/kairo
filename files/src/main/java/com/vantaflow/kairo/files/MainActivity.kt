@@ -54,6 +54,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +75,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 
 private val Bg = Color(0xFF0F1115)
 private val Panel = Color(0xFF181B22)
@@ -88,8 +90,8 @@ private const val SEND_PACKAGE = "com.vantaflow.kairo.send"
 private const val PLAYER_PACKAGE = "com.vantaflow.kairo.player"
 private const val PKG = "com.vantaflow.kairo.files"
 
-/** Un emplacement de la colonne de gauche : la box, une clé USB, un dossier courant. */
-data class Place(val label: String, val detail: String, val dir: File, val icon: String)
+/** Un emplacement de la colonne de gauche : la box, une clé USB, un dossier courant ([shortcut]). */
+data class Place(val label: String, val detail: String, val dir: File, val icon: String, val shortcut: Boolean = false)
 
 /** Fichiers copiés ou coupés, en attente de « Coller ici ». */
 data class Clip(val files: List<File>, val cut: Boolean)
@@ -103,6 +105,11 @@ data class Ask(val title: String, val initial: String, val action: String, val o
 class MainActivity : ComponentActivity() {
     private var granted by mutableStateOf(false)
     private var resumes by mutableIntStateOf(0)
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        BoxLocale.applyTo(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,26 +128,50 @@ fun places(context: Context): List<Place> {
     val sm = context.getSystemService(StorageManager::class.java)
     val volumes = sm?.storageVolumes.orEmpty().mapNotNull { v ->
         val dir = v.directory ?: return@mapNotNull null
-        val free = formatSize(dir.freeSpace)
-        val total = formatSize(dir.totalSpace)
-        if (v.isPrimary) Place("Stockage de la box", "$free libres sur $total", dir, "📺")
-        else Place(v.getDescription(context) ?: "Clé USB", "$free libres sur $total", dir, "💾")
+        val detail = context.getString(R.string.place_free, context.sizeText(dir.freeSpace), context.sizeText(dir.totalSpace))
+        if (v.isPrimary) Place(context.getString(R.string.place_box), detail, dir, "📺")
+        else Place(v.getDescription(context) ?: context.getString(R.string.place_usb), detail, dir, "💾")
     }
     val root = Environment.getExternalStorageDirectory()
     val shortcuts = listOf(
-        Triple("Téléchargements", Environment.DIRECTORY_DOWNLOADS, "📥"),
-        Triple("Films", Environment.DIRECTORY_MOVIES, "🎬"),
-        Triple("Musique", Environment.DIRECTORY_MUSIC, "🎵"),
-        Triple("Images", Environment.DIRECTORY_PICTURES, "🖼"),
+        Triple(R.string.place_downloads, Environment.DIRECTORY_DOWNLOADS, "📥"),
+        Triple(R.string.place_movies, Environment.DIRECTORY_MOVIES, "🎬"),
+        Triple(R.string.place_music, Environment.DIRECTORY_MUSIC, "🎵"),
+        Triple(R.string.place_pictures, Environment.DIRECTORY_PICTURES, "🖼"),
     ).mapNotNull { (label, name, icon) ->
-        File(root, name).takeIf { it.isDirectory }?.let { Place(label, "Dossier de la box", it, icon) }
+        File(root, name).takeIf { it.isDirectory }?.let {
+            Place(context.getString(label), context.getString(R.string.place_box_folder), it, icon, shortcut = true)
+        }
     }
     return volumes + shortcuts
 }
 
+/** Taille dans la langue de la box (o, Ko, Mo… en français ; B, KB, MB… en anglais). */
+fun Context.sizeText(bytes: Long): String = formatSize(
+    bytes,
+    listOf(R.string.size_bytes, R.string.size_kb, R.string.size_mb, R.string.size_gb, R.string.size_tb).map(::getString),
+    Locale.getDefault(),
+)
+
+/** Raison d'un échec d'archive, dans la langue de la box. */
+fun Context.archiveError(e: ArchiveException): String = getString(
+    when (e.reason) {
+        ArchiveException.Reason.Rar5 -> R.string.archive_rar5
+        ArchiveException.Reason.Password -> R.string.archive_password
+        ArchiveException.Reason.UnreadableRar -> R.string.archive_rar_unreadable
+        ArchiveException.Reason.UnknownFormat -> R.string.archive_unknown_format
+    },
+)
+
+private fun sortLabel(sort: SortBy): Int = when (sort) {
+    SortBy.Name -> R.string.sort_name
+    SortBy.Date -> R.string.sort_date
+    SortBy.Size -> R.string.sort_size
+}
+
 /** Ouvre un fichier dans l'appli qui sait le lire (lecteur, visionneuse, installateur d'APK). */
 fun openFile(context: Context, file: File, chooser: Boolean): String? {
-    val uri = runCatching { FileProvider.getUriForFile(context, AUTHORITY, file) }.getOrElse { return "Fichier inaccessible" }
+    val uri = runCatching { FileProvider.getUriForFile(context, AUTHORITY, file) }.getOrElse { return context.getString(R.string.file_inaccessible) }
     val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mimeOf(file.name))
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
     // Vidéos, musiques, PDF et textes : directement dans Kairo Player s'il est installé.
@@ -149,17 +180,17 @@ fun openFile(context: Context, file: File, chooser: Boolean): String? {
         if (runCatching { context.startActivity(inPlayer) }.isSuccess) return null
     }
     return try {
-        context.startActivity(if (chooser) Intent.createChooser(view, "Ouvrir avec").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) else view)
+        context.startActivity(if (chooser) Intent.createChooser(view, context.getString(R.string.open_with)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) else view)
         null
     } catch (e: ActivityNotFoundException) {
-        "Aucune appli ne sait ouvrir ce fichier"
+        context.getString(R.string.no_app_to_open)
     }
 }
 
 /** Envoie des fichiers à Kairo Send Files, qui les propose au téléphone. */
 fun sendToPhone(context: Context, files: List<File>): String? {
     val uris = ArrayList(files.filter { it.isFile }.map { FileProvider.getUriForFile(context, AUTHORITY, it) })
-    if (uris.isEmpty()) return "Choisissez un fichier (pas un dossier)"
+    if (uris.isEmpty()) return context.getString(R.string.choose_a_file)
     val intent = Intent(if (uris.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE)
         .setPackage(SEND_PACKAGE).setType("*/*")
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -168,7 +199,7 @@ fun sendToPhone(context: Context, files: List<File>): String? {
         context.startActivity(intent)
         null
     } catch (e: ActivityNotFoundException) {
-        "Installez Kairo Send Files pour envoyer au téléphone"
+        context.getString(R.string.install_send)
     }
 }
 
@@ -188,20 +219,20 @@ private fun PermissionScreen() {
         Modifier.fillMaxSize().padding(80.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Kairo Files", fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
+        Text(stringResource(R.string.app_name), fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
         Spacer(Modifier.height(12.dp))
         Text(
-            "Pour parcourir la box et les clés USB, autorisez l'accès à tous les fichiers.",
+            stringResource(R.string.permission_text),
             fontSize = 20.sp, color = TextMuted,
         )
         Spacer(Modifier.height(28.dp))
-        Pill("Autoriser", Modifier.focusRequester(focus)) {
+        Pill(stringResource(R.string.permission_allow), Modifier.focusRequester(focus)) {
             val app = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$PKG"))
             val all = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
             runCatching { context.startActivity(app) }.recoverCatching { context.startActivity(all) }
         }
         Spacer(Modifier.height(28.dp))
-        Text("Si la box refuse, depuis un ordinateur :", fontSize = 15.sp, color = TextMuted)
+        Text(stringResource(R.string.permission_adb), fontSize = 15.sp, color = TextMuted)
         Text(
             "adb shell appops set $PKG MANAGE_EXTERNAL_STORAGE allow",
             fontSize = 15.sp, color = TextMain, fontFamily = FontFamily.Monospace,
@@ -261,7 +292,7 @@ private fun Browser(resumes: Int) {
         current = dir
     }
 
-    val root = placeList.firstOrNull { p -> current?.absolutePath?.let { it == p.dir.absolutePath || it.startsWith(p.dir.absolutePath + "/") } == true && !p.detail.startsWith("Dossier") }
+    val root = placeList.firstOrNull { p -> current?.absolutePath?.let { it == p.dir.absolutePath || it.startsWith(p.dir.absolutePath + "/") } == true && !p.shortcut }
     val atRoot = current == null || root == null || current?.absolutePath == root.dir.absolutePath
 
     fun runJob(label: String, total: Long, job: suspend ((Long) -> Unit, () -> Boolean) -> Unit) {
@@ -280,9 +311,11 @@ private fun Browser(resumes: Int) {
             progress = null
             message = when {
                 result.isSuccess -> null
-                result.exceptionOrNull() is InterruptedException -> "Annulé"
-                result.exceptionOrNull() is ArchiveException -> result.exceptionOrNull()?.message
-                else -> "Échec : ${result.exceptionOrNull()?.message ?: "erreur"}"
+                result.exceptionOrNull() is InterruptedException -> context.getString(R.string.cancelled)
+                result.exceptionOrNull() is ArchiveException -> context.archiveError(result.exceptionOrNull() as ArchiveException)
+                result.exceptionOrNull() is CreateDirException ->
+                    context.getString(R.string.cannot_create, (result.exceptionOrNull() as CreateDirException).dirName)
+                else -> context.getString(R.string.failed, result.exceptionOrNull()?.message ?: context.getString(R.string.error_generic))
             }
             reload++
         }
@@ -292,17 +325,17 @@ private fun Browser(resumes: Int) {
         val c = clip ?: return
         val dest = current ?: return
         if (c.files.any { isInside(dest, it) }) {
-            message = "Impossible de coller un dossier dans lui-même"
+            message = context.getString(R.string.paste_into_itself)
             return
         }
         scope.launch {
             val total = withContext(Dispatchers.IO) { c.files.sumOf { totalSize(it) } }
             if (!c.cut && dest.usableSpace < total) {
-                message = "Pas assez de place : ${formatSize(total)} nécessaires, ${formatSize(dest.usableSpace)} libres"
+                message = context.getString(R.string.not_enough_space, context.sizeText(total), context.sizeText(dest.usableSpace))
                 return@launch
             }
             focusName = c.files.firstOrNull()?.name
-            runJob(if (c.cut) "Déplacement" else "Copie", total) { onBytes, cancelled ->
+            runJob(context.getString(if (c.cut) R.string.job_move else R.string.job_copy), total) { onBytes, cancelled ->
                 c.files.forEach { f -> if (c.cut) moveInto(f, dest, onBytes, cancelled) else copyInto(f, dest, onBytes, cancelled) }
             }
             if (c.cut) clip = null
@@ -322,42 +355,43 @@ private fun Browser(resumes: Int) {
             Modifier.width(300.dp).fillMaxHeight().background(Panel).padding(vertical = 32.dp, horizontal = 18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Kairo Files", fontSize = 26.sp, fontWeight = FontWeight.SemiBold, color = TextMain, modifier = Modifier.padding(start = 10.dp, bottom = 14.dp))
+            Text(stringResource(R.string.app_name), fontSize = 26.sp, fontWeight = FontWeight.SemiBold, color = TextMain, modifier = Modifier.padding(start = 10.dp, bottom = 14.dp))
             placeList.forEach { p ->
-                val selected = current?.absolutePath?.startsWith(p.dir.absolutePath) == true && (p == root || p.detail.startsWith("Dossier") && current?.absolutePath == p.dir.absolutePath)
+                val selected = current?.absolutePath?.startsWith(p.dir.absolutePath) == true && (p == root || p.shortcut && current?.absolutePath == p.dir.absolutePath)
                 Row2(p.icon, p.label, p.detail, selected = selected, onClick = { go(p.dir) })
             }
         }
         // Dossier courant
         Column(Modifier.weight(1f).fillMaxHeight().padding(start = 36.dp, end = 48.dp, top = 32.dp)) {
-            val path = current?.let { dir -> root?.let { r -> r.label + dir.absolutePath.removePrefix(r.dir.absolutePath).replace("/", " › ") } ?: dir.absolutePath } ?: ""
+            val separator = stringResource(R.string.path_separator)
+            val path = current?.let { dir -> root?.let { r -> r.label + dir.absolutePath.removePrefix(r.dir.absolutePath).replace("/", separator) } ?: dir.absolutePath } ?: ""
             Text(path, fontSize = 18.sp, color = TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 clip?.let { c ->
-                    Pill(if (c.cut) "Déplacer ici (${c.files.size})" else "Coller ici (${c.files.size})", accent = true) { paste() }
-                    Pill("Vider") { clip = null }
+                    Pill(stringResource(if (c.cut) R.string.move_here else R.string.paste_here, c.files.size), accent = true) { paste() }
+                    Pill(stringResource(R.string.clear_clipboard)) { clip = null }
                 }
-                Pill("Nouveau dossier") {
+                Pill(stringResource(R.string.new_folder)) {
                     val dir = current ?: return@Pill
-                    ask = Ask("Nouveau dossier", "", "Créer") { name ->
+                    ask = Ask(context.getString(R.string.new_folder), "", context.getString(R.string.create)) { name ->
                         val target = File(dir, name.trim())
                         when {
-                            !validName(name) -> message = "Nom invalide"
-                            target.exists() -> message = "« ${name.trim()} » existe déjà"
-                            !target.mkdir() -> message = "Création impossible ici"
+                            !validName(name) -> message = context.getString(R.string.invalid_name)
+                            target.exists() -> message = context.getString(R.string.already_exists, name.trim())
+                            !target.mkdir() -> message = context.getString(R.string.create_failed)
                             else -> { focusName = target.name; reload++ }
                         }
                     }
                 }
-                Pill("Tri : ${sort.label}") { sort = SortBy.entries[(sort.ordinal + 1) % SortBy.entries.size] }
-                Pill(if (showHidden) "Masquer les cachés" else "Voir les cachés") { showHidden = !showHidden }
+                Pill(stringResource(R.string.sort_by, stringResource(sortLabel(sort)))) { sort = SortBy.entries[(sort.ordinal + 1) % SortBy.entries.size] }
+                Pill(stringResource(if (showHidden) R.string.hidden_hide else R.string.hidden_show)) { showHidden = !showHidden }
             }
             Spacer(Modifier.height(18.dp))
             val list = entries
             when {
-                list == null -> Text("Lecture…", color = TextMuted, fontSize = 18.sp)
-                list.isEmpty() -> Text("Dossier vide", color = TextMuted, fontSize = 18.sp)
+                list == null -> Text(stringResource(R.string.reading), color = TextMuted, fontSize = 18.sp)
+                list.isEmpty() -> Text(stringResource(R.string.folder_empty), color = TextMuted, fontSize = 18.sp)
                 else -> EntryList(
                     list, focusName, refocus,
                     onFocused = { focusName = it.name },
@@ -378,42 +412,45 @@ private fun Browser(resumes: Int) {
     // Actions sur un élément (appui long ou touche Menu)
     menuFor?.let { e ->
         val file = File(e.path)
+        val deleteLabel = stringResource(R.string.delete)
         val actions = buildList<Pair<String, () -> Unit>> {
-            add("Ouvrir" to { if (e.directory) go(file) else openFile(context, file, false)?.let { message = it } })
-            if (isArchive(e.name)) add("Extraire…" to { archiveFor = e })
-            if (!e.directory) add("Ouvrir avec…" to { openFile(context, file, true)?.let { message = it } })
-            if (!e.directory) add("Envoyer au téléphone (Kairo Send Files)" to { sendToPhone(context, listOf(file))?.let { message = it } })
-            add("Copier" to { clip = Clip(listOf(file), cut = false); message = "Choisissez le dossier, puis « Coller ici »" })
-            add("Couper" to { clip = Clip(listOf(file), cut = true); message = "Choisissez le dossier, puis « Déplacer ici »" })
-            add("Renommer" to {
-                ask = Ask("Renommer", e.name, "Renommer") { name ->
+            add(context.getString(R.string.open) to { if (e.directory) go(file) else openFile(context, file, false)?.let { message = it } })
+            if (isArchive(e.name)) add(context.getString(R.string.extract_menu) to { archiveFor = e })
+            if (!e.directory) add(context.getString(R.string.open_with_menu) to { openFile(context, file, true)?.let { message = it } })
+            if (!e.directory) add(context.getString(R.string.send_to_phone) to { sendToPhone(context, listOf(file))?.let { message = it } })
+            add(context.getString(R.string.copy) to { clip = Clip(listOf(file), cut = false); message = context.getString(R.string.copy_hint) })
+            add(context.getString(R.string.cut) to { clip = Clip(listOf(file), cut = true); message = context.getString(R.string.cut_hint) })
+            add(context.getString(R.string.rename) to {
+                ask = Ask(context.getString(R.string.rename), e.name, context.getString(R.string.rename)) { name ->
                     val target = File(file.parentFile, name.trim())
                     when {
-                        !validName(name) -> message = "Nom invalide"
+                        !validName(name) -> message = context.getString(R.string.invalid_name)
                         name.trim() == e.name -> Unit
-                        target.exists() -> message = "« ${name.trim()} » existe déjà"
-                        !file.renameTo(target) -> message = "Renommage impossible"
+                        target.exists() -> message = context.getString(R.string.already_exists, name.trim())
+                        !file.renameTo(target) -> message = context.getString(R.string.rename_failed)
                         else -> { focusName = target.name; reload++ }
                     }
                 }
             })
-            add("Supprimer" to { confirmDelete = e })
-            add("Propriétés" to {
+            add(deleteLabel to { confirmDelete = e })
+            add(context.getString(R.string.properties) to {
                 scope.launch {
                     val size = withContext(Dispatchers.IO) { totalSize(file) }
                     val date = DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.SHORT).format(Date(e.modified))
                     info = e to buildString {
                         appendLine(e.path)
-                        appendLine("Taille : ${formatSize(size)}")
-                        e.children?.let { appendLine("Contenu : $it élément${if (it > 1) "s" else ""}") }
-                        append("Modifié le $date")
+                        appendLine(context.getString(R.string.properties_size, context.sizeText(size)))
+                        e.children?.let {
+                            appendLine(context.getString(R.string.properties_content, context.resources.getQuantityString(R.plurals.folder_items, it, it)))
+                        }
+                        append(context.getString(R.string.properties_modified, date))
                     }
                 }
             })
         }
         Dialog(e.name, onDismiss = { menuFor = null }) {
             actions.forEachIndexed { i, (label, run) ->
-                MenuButton(label, first = i == 0, danger = label == "Supprimer") {
+                MenuButton(label, first = i == 0, danger = label == deleteLabel) {
                     menuFor = null
                     run()
                 }
@@ -427,10 +464,10 @@ private fun Browser(resumes: Int) {
         scope.launch {
             val total = withContext(Dispatchers.IO) { archiveSize(file) }
             if (total > 0 && into.parentFile?.usableSpace?.let { it < total } == true) {
-                message = "Pas assez de place : ${formatSize(total)} nécessaires"
+                message = context.getString(R.string.not_enough_space_short, context.sizeText(total))
                 return@launch
             }
-            runJob("Extraction", total) { onBytes, cancelled -> extractArchive(file, into, onBytes, cancelled) }
+            runJob(context.getString(R.string.job_extract), total) { onBytes, cancelled -> extractArchive(file, into, onBytes, cancelled) }
         }
     }
 
@@ -439,49 +476,51 @@ private fun Browser(resumes: Int) {
         val dir = file.parentFile ?: return@let
         val folder = archiveBaseName(e.name)
         Dialog(e.name, onDismiss = { archiveFor = null }) {
-            MenuButton("Extraire dans « $folder »", first = true) {
+            MenuButton(stringResource(R.string.extract_into, folder), first = true) {
                 archiveFor = null
                 extract(e, File(dir, freeName(dir, folder)))
             }
-            MenuButton("Extraire ici") { archiveFor = null; extract(e, dir) }
-            MenuButton("Voir le contenu") {
+            MenuButton(stringResource(R.string.extract_here)) { archiveFor = null; extract(e, dir) }
+            MenuButton(stringResource(R.string.archive_show_content)) {
                 archiveFor = null
                 scope.launch {
                     val items = withContext(Dispatchers.IO) { runCatching { listArchive(file) } }
-                    items.onSuccess { archiveContent = e to it }.onFailure { message = it.message ?: "Archive illisible" }
+                    items.onSuccess { archiveContent = e to it }.onFailure { message = (it as? ArchiveException)?.let(context::archiveError) ?: context.getString(R.string.archive_unreadable) }
                 }
             }
-            MenuButton("Ouvrir avec…") { archiveFor = null; openFile(context, file, true)?.let { message = it } }
+            MenuButton(stringResource(R.string.open_with_menu)) { archiveFor = null; openFile(context, file, true)?.let { message = it } }
         }
     }
 
     archiveContent?.let { (e, items) ->
-        Dialog("${e.name} · ${items.count { !it.directory }} fichier${if (items.count { !it.directory } > 1) "s" else ""}", onDismiss = { archiveContent = null }) {
+        val fileCount = items.count { !it.directory }
+        Dialog(context.resources.getQuantityString(R.plurals.archive_files, fileCount, e.name, fileCount), onDismiss = { archiveContent = null }) {
             LazyColumn(Modifier.height(320.dp)) {
                 itemsIndexed(items.filterNot { it.directory }.take(500)) { i, item ->
                     MenuButton(
-                        item.name + if (item.size >= 0) "  ·  ${formatSize(item.size)}" else "",
+                        item.name + if (item.size >= 0) "  ·  ${context.sizeText(item.size)}" else "",
                         first = i == 0,
                     ) {}
                 }
             }
             Spacer(Modifier.height(10.dp))
-            MenuButton("Extraire…") { archiveContent = null; archiveFor = e }
+            MenuButton(stringResource(R.string.extract_menu)) { archiveContent = null; archiveFor = e }
         }
     }
 
     confirmDelete?.let { e ->
-        Dialog("Supprimer « ${e.name} » ?", onDismiss = { confirmDelete = null }) {
+        Dialog(stringResource(R.string.delete_confirm, e.name), onDismiss = { confirmDelete = null }) {
             Text(
-                if (e.directory) "Le dossier et tout son contenu seront supprimés définitivement." else "Le fichier sera supprimé définitivement.",
+                stringResource(if (e.directory) R.string.delete_folder_warning else R.string.delete_file_warning),
                 color = TextMuted, fontSize = 16.sp, modifier = Modifier.padding(bottom = 12.dp),
             )
-            MenuButton("Annuler", first = true) { confirmDelete = null }
-            MenuButton("Supprimer", danger = true) {
+            MenuButton(stringResource(R.string.cancel), first = true) { confirmDelete = null }
+            MenuButton(stringResource(R.string.delete), danger = true) {
                 confirmDelete = null
                 val file = File(e.path)
-                runJob("Suppression", 0) { _, _ ->
-                    if (!file.deleteRecursively()) throw java.io.IOException("suppression impossible")
+                val failed = context.getString(R.string.delete_failed)
+                runJob(context.getString(R.string.job_delete), 0) { _, _ ->
+                    if (!file.deleteRecursively()) throw java.io.IOException(failed)
                 }
                 clip = clip?.let { c -> c.copy(files = c.files.filterNot { it == file }).takeIf { it.files.isNotEmpty() } }
             }
@@ -491,7 +530,7 @@ private fun Browser(resumes: Int) {
     info?.let { (e, text) ->
         Dialog(e.name, onDismiss = { info = null }) {
             Text(text, color = TextMain, fontSize = 16.sp, lineHeight = 24.sp, modifier = Modifier.padding(bottom = 12.dp))
-            MenuButton("Fermer", first = true) { info = null }
+            MenuButton(stringResource(R.string.close), first = true) { info = null }
         }
     }
 
@@ -503,7 +542,8 @@ private fun Browser(resumes: Int) {
         Dialog(p.label, onDismiss = { cancel = true }) {
             val fraction = if (p.total > 0) (p.done.toFloat() / p.total).coerceIn(0f, 1f) else 0f
             Text(
-                if (p.total > 0) "${formatSize(p.done)} sur ${formatSize(p.total)} · ${(fraction * 100).toInt()} %" else "En cours…",
+                if (p.total > 0) stringResource(R.string.job_progress, context.sizeText(p.done), context.sizeText(p.total), (fraction * 100).toInt())
+                else stringResource(R.string.job_running),
                 color = TextMain, fontSize = 17.sp,
             )
             Spacer(Modifier.height(12.dp))
@@ -511,7 +551,7 @@ private fun Browser(resumes: Int) {
                 Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Accent, RoundedCornerShape(4.dp)))
             }
             Spacer(Modifier.height(16.dp))
-            MenuButton("Annuler", first = true) { cancel = true }
+            MenuButton(stringResource(R.string.cancel), first = true) { cancel = true }
         }
     }
 
@@ -534,6 +574,7 @@ private fun EntryList(
     onOpen: (Entry) -> Unit,
     onMenu: (Entry) -> Unit,
 ) {
+    val context = LocalContext.current
     val state = rememberLazyListState()
     val requester = remember { FocusRequester() }
     val target = list.indexOfFirst { it.name == focusName }.takeIf { it >= 0 } ?: 0
@@ -549,8 +590,9 @@ private fun EntryList(
     LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 48.dp)) {
         itemsIndexed(list, key = { _, e -> e.path }) { i, e ->
             val detail = when {
-                e.directory -> e.children?.let { "$it élément${if (it > 1) "s" else ""}" } ?: "Dossier"
-                else -> formatSize(e.size)
+                e.directory -> e.children?.let { context.resources.getQuantityString(R.plurals.folder_items, it, it) }
+                    ?: stringResource(R.string.folder)
+                else -> context.sizeText(e.size)
             }
             Row2(
                 e.kind.icon, e.name, detail,
@@ -697,6 +739,6 @@ private fun AskDialog(a: Ask, onDismiss: () -> Unit) {
         )
         Spacer(Modifier.height(12.dp))
         MenuButton(a.action) { submit() }
-        MenuButton("Annuler") { onDismiss() }
+        MenuButton(stringResource(R.string.cancel)) { onDismiss() }
     }
 }

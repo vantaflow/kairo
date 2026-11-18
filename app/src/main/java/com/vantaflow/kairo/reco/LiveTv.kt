@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.reco
 
+import com.vantaflow.kairo.R
 import android.content.Context
 import android.media.tv.TvContract
 import android.media.tv.TvInputInfo
@@ -39,7 +40,7 @@ fun passthroughInputs(context: Context): List<LiveChannel> {
                 packageName = input.serviceInfo.packageName,
                 number = null,
                 name = input.loadCustomLabel(context)?.toString()?.takeIf { it.isNotBlank() }
-                    ?: input.loadLabel(context).toString().ifBlank { inputTypeName(input.type) },
+                    ?: input.loadLabel(context).toString().ifBlank { inputTypeName(context, input.type) },
                 uri = TvContract.buildChannelUriForPassthroughInput(input.id).toString(),
             )
         }
@@ -49,10 +50,10 @@ fun passthroughInputs(context: Context): List<LiveChannel> {
     }
 }
 
-private fun inputTypeName(type: Int) = when (type) {
+private fun inputTypeName(context: Context, type: Int) = when (type) {
     TvInputInfo.TYPE_HDMI -> "HDMI"
-    TvInputInfo.TYPE_COMPOSITE -> "Composite"
-    TvInputInfo.TYPE_COMPONENT -> "Composante"
+    TvInputInfo.TYPE_COMPOSITE -> context.getString(R.string.reco_input_composite)
+    TvInputInfo.TYPE_COMPONENT -> context.getString(R.string.reco_input_component)
     TvInputInfo.TYPE_DISPLAY_PORT -> "DisplayPort"
-    else -> "Entrée"
+    else -> context.getString(R.string.reco_input)
 }

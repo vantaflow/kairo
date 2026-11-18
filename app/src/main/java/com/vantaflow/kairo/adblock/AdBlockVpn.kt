@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
+import androidx.annotation.StringRes
+import com.vantaflow.kairo.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.FileInputStream
@@ -26,9 +28,9 @@ fun isAdBlockingDns(host: String): Boolean =
     listOf("adguard", "nextdns", "adblock.dns.mullvad", "controld", "dns.oszx", "blahdns").any { host.contains(it, ignoreCase = true) }
 
 /** Serveurs filtrants AdGuard DNS (sans compte) : principal et secours. */
-enum class AdFilter(val label: String, val servers: List<String>) {
-    Ads("Pubs et pistage", listOf("94.140.14.14", "94.140.15.15")),
-    Family("Pubs, pistage et contenus adultes", listOf("94.140.14.15", "94.140.15.16")),
+enum class AdFilter(@StringRes val label: Int, val servers: List<String>) {
+    Ads(R.string.adfilter_ads, listOf("94.140.14.14", "94.140.15.15")),
+    Family(R.string.adfilter_family, listOf("94.140.14.15", "94.140.15.16")),
 }
 
 /** État du bloqueur, partagé avec les réglages. */
@@ -76,7 +78,7 @@ class AdBlockVpn : VpnService() {
     private fun establish() {
         val pfd = runCatching {
             Builder()
-                .setSession("Kairo · bloqueur de pubs")
+                .setSession(getString(R.string.adblock_vpn_session))
                 .addAddress(TUN_ADDRESS, 32)
                 .addDnsServer(DNS_ADDRESS)
                 .addRoute(DNS_ADDRESS, 32)

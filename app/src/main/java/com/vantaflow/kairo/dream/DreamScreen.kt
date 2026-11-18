@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.dream
 
+import com.vantaflow.kairo.R
+import androidx.compose.ui.res.stringResource
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
@@ -213,9 +215,9 @@ private fun DreamRadio(modifier: Modifier) {
             Text(station.name, fontSize = 24.sp, color = OnBackground, maxLines = 1)
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(vertical = 4.dp)) {
                 if (now.status == com.vantaflow.kairo.radio.RadioStatus.Playing) com.vantaflow.kairo.radio.Equalizer()
-                else Text("Connexion…", fontSize = 16.sp, color = OnBackgroundMuted)
+                else Text(stringResource(R.string.dreamscreen_connecting), fontSize = 16.sp, color = OnBackgroundMuted)
             }
-            Text("← → changer de radio · OK arrêter", fontSize = 15.sp, color = OnBackgroundMuted)
+            Text(stringResource(R.string.dreamscreen_radio_hint), fontSize = 15.sp, color = OnBackgroundMuted)
         }
     }
 }
@@ -238,7 +240,7 @@ private fun DreamMedia(modifier: Modifier) {
         Column(Modifier.widthIn(max = 520.dp)) {
             Text(media.title, fontSize = 24.sp, color = OnBackground, maxLines = 1)
             Text(listOfNotNull(media.subtitle, media.appLabel).distinct().joinToString(" · "), fontSize = 17.sp, color = OnBackgroundMuted, maxLines = 1)
-            Text(if (media.playing) "← → piste · OK pause" else "En pause · OK reprendre", fontSize = 15.sp, color = OnBackgroundMuted)
+            Text(stringResource(if (media.playing) R.string.dreamscreen_media_hint_playing else R.string.dreamscreen_media_hint_paused), fontSize = 15.sp, color = OnBackgroundMuted)
         }
     }
 }
@@ -249,7 +251,7 @@ private fun DreamQuote(modifier: Modifier) {
     val quote = remember { quoteOfDay(java.time.LocalDate.now()) }
     Column(modifier) {
         Text(
-            "« ${quote.text} »",
+            stringResource(R.string.dreamscreen_quote, quote.text),
             fontSize = 22.sp, color = OnBackground, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, lineHeight = 30.sp,
         )
         Text("— ${quote.author}", fontSize = 17.sp, color = OnBackgroundMuted, modifier = Modifier.padding(top = 6.dp))

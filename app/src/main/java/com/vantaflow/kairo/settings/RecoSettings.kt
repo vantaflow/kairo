@@ -30,6 +30,8 @@ import com.vantaflow.kairo.apps.AppInfo
 import com.vantaflow.kairo.reco.recoApps
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 /** Recommandations : accès, « À suivre », ordre et visibilité par appli et par chaîne. */
 @Composable
@@ -50,14 +52,14 @@ fun RecoSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
     // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item {
-            SwitchRow("Afficher « À suivre »", showWatchNext, vm::setShowWatchNext, "Les contenus commencés dans vos applis.")
+            SwitchRow(stringResource(R.string.settings_reco_watch_next), showWatchNext, vm::setShowWatchNext, stringResource(R.string.settings_reco_watch_next_desc))
         }
         if (!access) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Le launcher n'a pas encore accès aux recommandations des applis.", color = OnBackground)
-                    Button(onClick = { permission.launch(EPG_PERMISSIONS) }) { Text("Autoriser l'accès") }
-                    Text("Si la box refuse, accordez-le une fois depuis un PC :", color = OnBackgroundMuted)
+                    Text(stringResource(R.string.settings_reco_no_access), color = OnBackground)
+                    Button(onClick = { permission.launch(EPG_PERMISSIONS) }) { Text(stringResource(R.string.settings_reco_allow)) }
+                    Text(stringResource(R.string.settings_reco_adb), color = OnBackgroundMuted)
                     Text(
                         "adb shell pm grant com.vantaflow.kairo com.android.providers.tv.permission.READ_EPG_DATA\n" +
                             "adb shell pm grant com.vantaflow.kairo android.permission.READ_TV_LISTINGS",
@@ -67,7 +69,7 @@ fun RecoSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                 }
             }
         } else if (apps.isEmpty()) {
-            item { Text("Aucune appli ne publie de recommandations pour l'instant.", color = OnBackgroundMuted) }
+            item { Text(stringResource(R.string.settings_reco_none), color = OnBackgroundMuted) }
         }
         apps.forEachIndexed { index, pkg ->
             item(key = "app-$pkg") {
@@ -91,7 +93,7 @@ fun RecoSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                     )
                     SmallButton("↑", { vm.moveRecoApp(pkg, -1, apps) }, enabled = index > 0)
                     SmallButton("↓", { vm.moveRecoApp(pkg, +1, apps) }, enabled = index < apps.lastIndex)
-                    SmallButton(if (hidden) "Afficher" else "Masquer", { vm.setRecoAppHidden(pkg, !hidden) })
+                    SmallButton(stringResource(if (hidden) R.string.settings_reco_show else R.string.settings_reco_hide), { vm.setRecoAppHidden(pkg, !hidden) })
                 }
             }
             // Rangées de l'appli : un interrupteur par rangée.

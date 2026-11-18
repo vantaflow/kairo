@@ -1,6 +1,8 @@
 package com.vantaflow.kairo.home
 
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -61,10 +63,10 @@ fun HeaderBar(
                         Text("♪ " + name.take(22), maxLines = 1)
                     }
                 }
-                IconButton(TvIcon.Search, "Rechercher", onOpenSearch)
-                onOpenTools?.let { IconButton(TvIcon.Tools, "Outils", it) }
-                IconButton(TvIcon.Apps, "Applications", onOpenApps)
-                IconButton(TvIcon.Settings, "Réglages", onOpenSettings)
+                IconButton(TvIcon.Search, stringResource(R.string.home_search), onOpenSearch)
+                onOpenTools?.let { IconButton(TvIcon.Tools, stringResource(R.string.home_tools), it) }
+                IconButton(TvIcon.Apps, stringResource(R.string.home_apps), onOpenApps)
+                IconButton(TvIcon.Settings, stringResource(R.string.settings_title), onOpenSettings)
                 if (layout.showClock) {
                     // Météo courte (« 18° ») lue dans la ligne de date : « Vendredi 30 octobre · 18° · Couvert ».
                     val temp = dateText.split(" · ").getOrNull(1)?.takeIf { layout.showDate && it.endsWith("°") }
@@ -99,10 +101,10 @@ fun HeaderBar(
                         Text("♪ " + name.take(22), maxLines = 1)
                     }
                 }
-                HeaderButton(TvIcon.Search, "Rechercher", onOpenSearch)
-                onOpenTools?.let { HeaderButton(TvIcon.Tools, "Outils", it) }
-                HeaderButton(TvIcon.Apps, "Applications", onOpenApps)
-                HeaderButton(TvIcon.Settings, "Réglages", onOpenSettings)
+                HeaderButton(TvIcon.Search, stringResource(R.string.home_search), onOpenSearch)
+                onOpenTools?.let { HeaderButton(TvIcon.Tools, stringResource(R.string.home_tools), it) }
+                HeaderButton(TvIcon.Apps, stringResource(R.string.home_apps), onOpenApps)
+                HeaderButton(TvIcon.Settings, stringResource(R.string.settings_title), onOpenSettings)
             }
         }
         if (layout.showDate) {

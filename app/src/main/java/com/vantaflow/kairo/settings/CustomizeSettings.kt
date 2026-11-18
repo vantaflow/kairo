@@ -28,17 +28,34 @@ import com.vantaflow.kairo.ui.theme.CUSTOM_THEME_ID
 import com.vantaflow.kairo.ui.theme.HomeLayout
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 private val Palette = listOf(
     0xFFFFFFFF, 0xFF8AB4F8, 0xFF7FB2FF, 0xFF81C995, 0xFFFDD663, 0xFFFFB74D,
     0xFFF28B82, 0xFFFF8BCB, 0xFFC58AF9, 0xFF78D9EC, 0xFFE8EAED, 0xFF9AA0A6,
 )
 private val Radii = listOf(0, 4, 8, 12, 16, 24)
-private val Scales = listOf(1.0f to "Aucun", 1.05f to "Léger", 1.1f to "Normal", 1.15f to "Fort", 1.2f to "Très fort")
-private val ClockSizes = listOf(48 to "Petite", 72 to "Normale", 96 to "Grande", 120 to "Très grande")
-private val AnimationSpeeds = listOf(60 to "Rapide", 100 to "Normale", 150 to "Douce", 200 to "Très douce")
-private val HeroTransitions = listOf("fade" to "Fondu", "zoom" to "Zoom doux", "slide" to "Glissement", "none" to "Aucune")
-private val TileWidths = listOf(160 to "Petites", 192 to "Normales", 224 to "Grandes", 256 to "Très grandes")
+private val Scales = listOf(
+    1.0f to R.string.settings_zoom_none, 1.05f to R.string.settings_zoom_light, 1.1f to R.string.settings_zoom_normal,
+    1.15f to R.string.settings_zoom_strong, 1.2f to R.string.settings_zoom_very_strong,
+)
+private val ClockSizes = listOf(
+    48 to R.string.settings_size_small_f, 72 to R.string.settings_size_normal_f,
+    96 to R.string.settings_size_large_f, 120 to R.string.settings_size_xlarge_f,
+)
+private val AnimationSpeeds = listOf(
+    60 to R.string.settings_anim_fast, 100 to R.string.settings_anim_normal,
+    150 to R.string.settings_anim_smooth, 200 to R.string.settings_anim_very_smooth,
+)
+private val HeroTransitions = listOf(
+    "fade" to R.string.settings_hero_fade, "zoom" to R.string.settings_hero_zoom,
+    "slide" to R.string.settings_hero_slide, "none" to R.string.settings_hero_none,
+)
+private val TileWidths = listOf(
+    160 to R.string.settings_tiles_small, 192 to R.string.settings_tiles_normal,
+    224 to R.string.settings_tiles_large, 256 to R.string.settings_tiles_xlarge,
+)
 
 /** Réglages du thème personnalisé : couleurs, arrondi et zoom des tuiles. */
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -47,13 +64,13 @@ fun CustomThemeEditor(vm: SettingsViewModel) {
     val custom by vm.customTheme.collectAsStateWithLifecycle()
     val themeId by vm.themeId.collectAsStateWithLifecycle()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SettingLabel(if (themeId == CUSTOM_THEME_ID) "Personnaliser (thème personnalisé actif)" else "Personnaliser")
-        if (themeId != CUSTOM_THEME_ID) SettingHint("Modifier une option ci-dessous active le thème personnalisé.")
-        Text("Couleur d'accent", color = OnBackgroundMuted)
+        SettingLabel(stringResource(if (themeId == CUSTOM_THEME_ID) R.string.settings_custom_title_active else R.string.settings_custom_title))
+        if (themeId != CUSTOM_THEME_ID) SettingHint(stringResource(R.string.settings_custom_hint))
+        Text(stringResource(R.string.settings_custom_accent), color = OnBackgroundMuted)
         ColorRow(custom.accent) { vm.setCustomTheme(custom.copy(accent = it)) }
-        Text("Contour de sélection", color = OnBackgroundMuted)
+        Text(stringResource(R.string.settings_custom_focus_border), color = OnBackgroundMuted)
         ColorRow(custom.focusBorder) { vm.setCustomTheme(custom.copy(focusBorder = it)) }
-        Text("Arrondi des tuiles", color = OnBackgroundMuted)
+        Text(stringResource(R.string.settings_custom_radius), color = OnBackgroundMuted)
         ChoiceRow {
             Radii.forEach { r ->
                 ChoiceChip(selected = custom.tileRadiusDp == r, onClick = { vm.setCustomTheme(custom.copy(tileRadiusDp = r)) }) {
@@ -61,11 +78,11 @@ fun CustomThemeEditor(vm: SettingsViewModel) {
                 }
             }
         }
-        Text("Zoom au survol", color = OnBackgroundMuted)
+        Text(stringResource(R.string.settings_custom_zoom), color = OnBackgroundMuted)
         ChoiceRow {
             Scales.forEach { (s, label) ->
                 ChoiceChip(selected = custom.focusScale == s, onClick = { vm.setCustomTheme(custom.copy(focusScale = s)) }) {
-                    Text(label)
+                    Text(stringResource(label))
                 }
             }
         }
@@ -99,40 +116,40 @@ fun LayoutSettings(vm: SettingsViewModel) {
     val layout by vm.homeLayout.collectAsStateWithLifecycle()
     // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
     LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
-        item { Toggle("Afficher l'heure", layout.showClock) { vm.setHomeLayout(layout.copy(showClock = it)) } }
-        item { Toggle("Afficher la date et la météo", layout.showDate) { vm.setHomeLayout(layout.copy(showDate = it)) } }
-        item { Toggle("Afficher le titre « Favoris »", layout.showFavoritesLabel) { vm.setHomeLayout(layout.copy(showFavoritesLabel = it)) } }
-        item { Toggle("Afficher les titres des rangées", layout.showRowTitles) { vm.setHomeLayout(layout.copy(showRowTitles = it)) } }
-        item { Toggle("Afficher les applis récentes", layout.showRecentApps) { vm.setHomeLayout(layout.copy(showRecentApps = it)) } }
-        item { Toggle("Afficher les chaînes TV et entrées (box avec tuner ou HDMI)", layout.showLiveTv) { vm.setHomeLayout(layout.copy(showLiveTv = it)) } }
-        item { Toggle("Rangée Outils sur l'accueil (radio, météo, minuteur, nettoyeur)", layout.showTools) { vm.setHomeLayout(layout.copy(showTools = it)) } }
-        item { Toggle("Proposer nos applications (Kairo Player, Files, Send Files, Cast, Ultra TV)", layout.showOurApps) { vm.setHomeLayout(layout.copy(showOurApps = it)) } }
-        item { Toggle("Signaler les mises à jour de Kairo sur l'accueil", layout.showKairoUpdate) { vm.setHomeLayout(layout.copy(showKairoUpdate = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_clock), layout.showClock) { vm.setHomeLayout(layout.copy(showClock = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_date), layout.showDate) { vm.setHomeLayout(layout.copy(showDate = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_fav_label), layout.showFavoritesLabel) { vm.setHomeLayout(layout.copy(showFavoritesLabel = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_row_titles), layout.showRowTitles) { vm.setHomeLayout(layout.copy(showRowTitles = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_recent), layout.showRecentApps) { vm.setHomeLayout(layout.copy(showRecentApps = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_live_tv), layout.showLiveTv) { vm.setHomeLayout(layout.copy(showLiveTv = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_tools), layout.showTools) { vm.setHomeLayout(layout.copy(showTools = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_our_apps), layout.showOurApps) { vm.setHomeLayout(layout.copy(showOurApps = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_show_update), layout.showKairoUpdate) { vm.setHomeLayout(layout.copy(showKairoUpdate = it)) } }
         item {
-            Choices("Taille de l'horloge", ClockSizes, layout.clockSizeSp) { vm.setHomeLayout(layout.copy(clockSizeSp = it)) }
+            Choices(stringResource(R.string.settings_layout_clock_size), ClockSizes, layout.clockSizeSp) { vm.setHomeLayout(layout.copy(clockSizeSp = it)) }
         }
         item {
-            Choices("Taille des tuiles", TileWidths, layout.tileWidthDp) { vm.setHomeLayout(layout.copy(tileWidthDp = it)) }
+            Choices(stringResource(R.string.settings_layout_tile_size), TileWidths, layout.tileWidthDp) { vm.setHomeLayout(layout.copy(tileWidthDp = it)) }
         }
         item {
-            Choices("Vitesse des animations", AnimationSpeeds, layout.animationPercent) {
+            Choices(stringResource(R.string.settings_layout_anim_speed), AnimationSpeeds, layout.animationPercent) {
                 vm.setHomeLayout(layout.copy(animationPercent = it))
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Changement de l'image de fond", color = OnBackgroundMuted)
+                Text(stringResource(R.string.settings_layout_hero_transition), color = OnBackgroundMuted)
                 ChoiceRow {
                     HeroTransitions.forEach { (id, label) ->
                         ChoiceChip(selected = layout.heroTransition == id, onClick = { vm.setHomeLayout(layout.copy(heroTransition = id)) }) {
-                            Text(label)
+                            Text(stringResource(label))
                         }
                     }
                 }
             }
         }
         item {
-            ChoiceChip(selected = false, onClick = { vm.setHomeLayout(HomeLayout()) }) { Text("Rétablir l'affichage par défaut") }
+            ChoiceChip(selected = false, onClick = { vm.setHomeLayout(HomeLayout()) }) { Text(stringResource(R.string.settings_layout_reset)) }
         }
     }
 }
@@ -144,12 +161,12 @@ private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit)
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun Choices(label: String, options: List<Pair<Int, String>>, selected: Int, onPick: (Int) -> Unit) {
+private fun Choices(label: String, options: List<Pair<Int, Int>>, selected: Int, onPick: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, color = OnBackgroundMuted)
         ChoiceRow {
             options.forEach { (value, text) ->
-                ChoiceChip(selected = value == selected, onClick = { onPick(value) }) { Text(text) }
+                ChoiceChip(selected = value == selected, onClick = { onPick(value) }) { Text(stringResource(text)) }
             }
         }
     }

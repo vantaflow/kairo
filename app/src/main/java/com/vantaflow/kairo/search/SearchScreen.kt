@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.search
 
+import com.vantaflow.kairo.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.border
@@ -90,7 +92,8 @@ fun SearchScreen(
             voice.launch(
                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR"),
+                    // Dictée dans la langue de l'appli (« fr-FR », « ar-SA »…).
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, com.vantaflow.kairo.i18n.AppLocale.catalogLanguage()),
             )
         }
     }
@@ -120,7 +123,7 @@ fun SearchScreen(
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Rechercher", fontSize = 32.sp, color = OnBackground)
+                Text(stringResource(R.string.home_search), fontSize = 32.sp, color = OnBackground)
                 BasicTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -147,17 +150,17 @@ fun SearchScreen(
                 Button(onClick = ::listen) {
                     TvIconImage(TvIcon.Mic, LocalContentColor.current, size = 20.dp)
                     Spacer(Modifier.width(8.dp))
-                    Text("Dicter", maxLines = 1, softWrap = false)
+                    Text(stringResource(R.string.search_dictate), maxLines = 1, softWrap = false)
                 }
             }
         }
         if (query.isNotBlank() && foundApps.isEmpty() && foundPrograms.isEmpty() && targets.isEmpty()) {
-            item { Text("Aucun résultat pour « $query ».", color = OnBackgroundMuted) }
+            item { Text(stringResource(R.string.search_no_result, query), color = OnBackgroundMuted) }
         }
         if (query.isBlank()) {
             item {
                 Text(
-                    "Tapez le nom d'une appli ou d'un film, ou appuyez sur Dicter (ou sur la touche Recherche de la télécommande).",
+                    stringResource(R.string.search_hint),
                     color = OnBackgroundMuted,
                     fontSize = 18.sp,
                 )
@@ -166,7 +169,7 @@ fun SearchScreen(
         if (foundApps.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Applications", fontSize = 20.sp, color = OnBackground)
+                    Text(stringResource(R.string.home_apps), fontSize = 20.sp, color = OnBackground)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
                         itemsIndexed(foundApps, key = { _, app -> app.packageName }) { i, app ->
                             AppTile(
@@ -181,7 +184,7 @@ fun SearchScreen(
         if (foundPrograms.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Contenus", fontSize = 20.sp, color = OnBackground)
+                    Text(stringResource(R.string.search_contents), fontSize = 20.sp, color = OnBackground)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
                         itemsIndexed(foundPrograms, key = { _, p -> "${p.packageName}:${p.id}" }) { i, p ->
                             ProgramCard(
@@ -196,7 +199,7 @@ fun SearchScreen(
         if (targets.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Chercher « $query » dans…", fontSize = 20.sp, color = OnBackground)
+                    Text(stringResource(R.string.search_in, query), fontSize = 20.sp, color = OnBackground)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         targets.forEach { t -> OutlinedButton(onClick = { onSearchIn(t) }) { Text(t.label) } }
                     }

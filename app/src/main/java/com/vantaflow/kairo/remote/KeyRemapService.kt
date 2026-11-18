@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.remote
 
+import com.vantaflow.kairo.R
 import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.content.Context
@@ -40,7 +41,7 @@ class KeyRemapService : AccessibilityService() {
         scope.launch { container.prefs.wakeGuard.collect { guardEnabled = it; if (!it) wakeGuard.stop() } }
         scope.launch {
             wakeGuard.warning.collect { s ->
-                showSleepWarning(s, s?.let { "Allumée sans touche pressée · veille dans $it s · appuyez sur une touche pour rester" })
+                showSleepWarning(s, s?.let { getString(R.string.keyremap_wake_guard, it) })
             }
         }
         registerReceiver(screenReceiver, android.content.IntentFilter().apply {
@@ -82,7 +83,7 @@ class KeyRemapService : AccessibilityService() {
             warningView = null
             return
         }
-        val text = message ?: "Mise en veille dans $seconds s · appuyez sur une touche pour continuer"
+        val text = message ?: getString(R.string.keyremap_sleep_warning, seconds)
         warningView?.let { it.text = text; return }
         val density = resources.displayMetrics.density
         val view = android.widget.TextView(this).apply {

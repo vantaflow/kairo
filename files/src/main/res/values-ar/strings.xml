@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- الأماكن -->
+    <string name="place_box">تخزين الجهاز</string>
+    <string name="place_usb">ذاكرة USB</string>
+    <string name="place_free">%1$s متاحة من %2$s</string>
+    <string name="place_downloads">التنزيلات</string>
+    <string name="place_movies">الأفلام</string>
+    <string name="place_music">الموسيقى</string>
+    <string name="place_pictures">الصور</string>
+    <string name="place_box_folder">مجلد في الجهاز</string>
+    <string name="path_separator">" ‹ "</string>
+
+    <!-- وحدات الحجم -->
+    <string name="size_bytes">%1$s بايت</string>
+    <string name="size_kb">%1$s كيلوبايت</string>
+    <string name="size_mb">%1$s ميغابايت</string>
+    <string name="size_gb">%1$s غيغابايت</string>
+    <string name="size_tb">%1$s تيرابايت</string>
+
+    <!-- الإذن -->
+    <string name="permission_text">لتصفح الجهاز ووحدات USB، اسمح بالوصول إلى كل الملفات.</string>
+    <string name="permission_allow">سماح</string>
+    <string name="permission_adb">إذا رفض الجهاز، من حاسوب:</string>
+
+    <!-- شريط الإجراءات -->
+    <string name="paste_here">لصق هنا (%1$d)</string>
+    <string name="move_here">نقل إلى هنا (%1$d)</string>
+    <string name="clear_clipboard">إفراغ</string>
+    <string name="new_folder">مجلد جديد</string>
+    <string name="create">إنشاء</string>
+    <string name="sort_by">الترتيب: %1$s</string>
+    <string name="sort_name">الاسم</string>
+    <string name="sort_date">التاريخ</string>
+    <string name="sort_size">الحجم</string>
+    <string name="hidden_show">إظهار المخفية</string>
+    <string name="hidden_hide">إخفاء المخفية</string>
+    <string name="reading">جارٍ التحميل…</string>
+    <string name="folder_empty">مجلد فارغ</string>
+    <string name="folder">مجلد</string>
+    <plurals name="folder_items">
+        <item quantity="zero">%1$d عنصر</item>
+        <item quantity="one">عنصر واحد</item>
+        <item quantity="two">عنصران</item>
+        <item quantity="few">%1$d عناصر</item>
+        <item quantity="many">%1$d عنصرًا</item>
+        <item quantity="other">%1$d عنصر</item>
+    </plurals>
+
+    <!-- قائمة العنصر -->
+    <string name="open">فتح</string>
+    <string name="extract_menu">استخراج…</string>
+    <string name="open_with_menu">فتح باستخدام…</string>
+    <string name="open_with">فتح باستخدام</string>
+    <string name="send_to_phone">إرسال إلى الهاتف (Kairo Send Files)</string>
+    <string name="copy">نسخ</string>
+    <string name="cut">قص</string>
+    <string name="copy_hint">اختر المجلد، ثم «لصق هنا»</string>
+    <string name="cut_hint">اختر المجلد، ثم «نقل إلى هنا»</string>
+    <string name="rename">إعادة تسمية</string>
+    <string name="delete">حذف</string>
+    <string name="properties">الخصائص</string>
+    <string name="properties_size">الحجم: %1$s</string>
+    <string name="properties_content">المحتوى: %1$s</string>
+    <string name="properties_modified">آخر تعديل: %1$s</string>
+    <string name="close">إغلاق</string>
+    <string name="cancel">إلغاء</string>
+
+    <!-- الأرشيفات -->
+    <string name="extract_into">استخراج في «%1$s»</string>
+    <string name="extract_here">استخراج هنا</string>
+    <string name="archive_show_content">عرض المحتوى</string>
+    <plurals name="archive_files">
+        <item quantity="zero">%1$s · %2$d ملف</item>
+        <item quantity="one">%1$s · ملف واحد</item>
+        <item quantity="two">%1$s · ملفان</item>
+        <item quantity="few">%1$s · %2$d ملفات</item>
+        <item quantity="many">%1$s · %2$d ملفًا</item>
+        <item quantity="other">%1$s · %2$d ملف</item>
+    </plurals>
+    <string name="archive_unreadable">تعذّرت قراءة الأرشيف</string>
+    <string name="archive_rar5">صيغة RAR 5 غير مدعومة: استخدم «فتح باستخدام…»</string>
+    <string name="archive_password">أرشيف محمي بكلمة مرور</string>
+    <string name="archive_rar_unreadable">تعذّرت قراءة أرشيف RAR</string>
+    <string name="archive_unknown_format">صيغة أرشيف غير معروفة</string>
+
+    <!-- الحذف -->
+    <string name="delete_confirm">حذف «%1$s»؟</string>
+    <string name="delete_folder_warning">سيُحذف المجلد وكل محتواه نهائيًا.</string>
+    <string name="delete_file_warning">سيُحذف الملف نهائيًا.</string>
+
+    <!-- العمليات الجارية -->
+    <string name="job_copy">نسخ</string>
+    <string name="job_move">نقل</string>
+    <string name="job_extract">استخراج</string>
+    <string name="job_delete">حذف</string>
+    <string name="job_progress">%1$s من %2$s · %3$d%%</string>
+    <string name="job_running">قيد التنفيذ…</string>
+
+    <!-- الرسائل -->
+    <string name="cancelled">أُلغي</string>
+    <string name="failed">فشل: %1$s</string>
+    <string name="error_generic">خطأ</string>
+    <string name="cannot_create">تعذّر إنشاء %1$s</string>
+    <string name="delete_failed">تعذّر الحذف</string>
+    <string name="paste_into_itself">لا يمكن لصق مجلد داخل نفسه</string>
+    <string name="not_enough_space">المساحة غير كافية: يلزم %1$s، والمتاح %2$s</string>
+    <string name="not_enough_space_short">المساحة غير كافية: يلزم %1$s</string>
+    <string name="invalid_name">اسم غير صالح</string>
+    <string name="already_exists">«%1$s» موجود بالفعل</string>
+    <string name="create_failed">يتعذّر الإنشاء هنا</string>
+    <string name="rename_failed">تعذّرت إعادة التسمية</string>
+    <string name="file_inaccessible">يتعذّر الوصول إلى الملف</string>
+    <string name="no_app_to_open">لا يوجد تطبيق يمكنه فتح هذا الملف</string>
+    <string name="choose_a_file">اختر ملفًا (وليس مجلدًا)</string>
+    <string name="install_send">ثبّت Kairo Send Files للإرسال إلى الهاتف</string>
+</resources>

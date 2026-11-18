@@ -25,6 +25,8 @@ import androidx.tv.material3.Text
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.wallpaper.PresetGradients
 import com.vantaflow.kairo.wallpaper.toBrush
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 private val PresetSolids = listOf(0xFF101216, 0xFF1C2A3A, 0xFF202124, 0xFF1E2A22, 0xFF2A1E2E, 0xFF000000)
     .map { WallpaperConfig.Solid(it) }
@@ -36,9 +38,9 @@ fun WallpaperSettings(vm: SettingsViewModel) {
     val current by vm.wallpaper.collectAsStateWithLifecycle()
     Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PixabaySettings(vm, current)
-        Text("Dégradés", fontSize = 20.sp, color = OnBackground)
+        Text(stringResource(R.string.settings_wallpaper_gradients), fontSize = 20.sp, color = OnBackground)
         SwatchRow(PresetGradients, current, vm::setWallpaper)
-        Text("Couleurs unies", fontSize = 20.sp, color = OnBackground)
+        Text(stringResource(R.string.settings_wallpaper_solids), fontSize = 20.sp, color = OnBackground)
         SwatchRow(PresetSolids, current, vm::setWallpaper)
     }
 }

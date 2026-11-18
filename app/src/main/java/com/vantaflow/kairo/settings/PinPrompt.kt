@@ -25,6 +25,8 @@ import androidx.tv.material3.Text
 import com.vantaflow.kairo.ui.theme.Background
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 /** Demande le PIN du profil enfant avant d'ouvrir les réglages. */
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
@@ -46,13 +48,14 @@ fun PinPrompt(profile: Profile, guard: PinGuard, onUnlocked: () -> Unit, onCance
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Profil « ${profile.name} » : code PIN", color = OnBackground, fontSize = 26.sp)
+            Text(stringResource(R.string.settings_pin_title, profileDisplayName(profile)), color = OnBackground, fontSize = 26.sp)
             val valider = remember { androidx.compose.ui.focus.FocusRequester() }
+            val context = androidx.compose.ui.platform.LocalContext.current
             fun submit() {
                 when {
                     guard.attempt(pin, profile.pinHash) -> onUnlocked()
-                    guard.lockedForMs() > 0 -> error = "Trop d'essais : réessayez dans ${guard.lockedForMs() / 1000 + 1} s."
-                    else -> error = "Code incorrect."
+                    guard.lockedForMs() > 0 -> error = context.getString(R.string.settings_pin_locked, (guard.lockedForMs() / 1000 + 1).toInt())
+                    else -> error = context.getString(R.string.settings_pin_wrong)
                 }
                 pin = ""
             }
@@ -65,15 +68,15 @@ fun PinPrompt(profile: Profile, guard: PinGuard, onUnlocked: () -> Unit, onCance
                     // Bas : vers « Valider » (et non « Annuler », plus proche à l'écran).
                     .focusProperties { down = valider },
                 secret = true,
-                placeholder = "OK pour saisir",
+                placeholder = stringResource(R.string.settings_pin_placeholder),
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword,
                 // « Valider » sur le clavier vérifie directement le code.
                 onDone = { if (pin.isNotEmpty()) submit() },
             )
             error?.let { Text(it, color = OnBackgroundMuted) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = ::submit, modifier = Modifier.focusRequester(valider)) { Text("Valider") }
-                OutlinedButton(onClick = onCancel) { Text("Annuler") }
+                Button(onClick = ::submit, modifier = Modifier.focusRequester(valider)) { Text(stringResource(R.string.settings_validate)) }
+                OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.settings_cancel)) }
             }
         }
     }

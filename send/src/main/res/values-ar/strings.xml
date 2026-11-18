@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- وحدات الحجم (تستخدمها صفحة الويب أيضًا) -->
+    <string name="size_bytes">%1$s بايت</string>
+    <string name="size_kb">%1$s كيلوبايت</string>
+    <string name="size_mb">%1$s ميغابايت</string>
+    <string name="size_gb">%1$s غيغابايت</string>
+    <string name="size_tb">%1$s تيرابايت</string>
+
+    <!-- شاشة التلفاز -->
+    <string name="qr_code">رمز QR</string>
+    <string name="scan_hint">امسح الرمز بالهاتف، أو افتح العنوان على الحاسوب:</string>
+    <string name="same_wifi_hint">شبكة Wi-Fi نفسها التي يتصل بها الجهاز. تصل الملفات إلى التنزيلات ‹ Kairo Send.</string>
+    <string name="no_network">الجهاز غير متصل بأي شبكة.</string>
+    <string name="exchanged_files">الملفات المتبادلة</string>
+    <string name="transfer_failed">فشل الإرسال · OK للمسح</string>
+    <string name="transfer_progress">%1$s من %2$s · %3$d%%</string>
+    <string name="link_received">تم استلام رابط · OK لفتحه</string>
+    <string name="text_received_hint">تم استلام نص · OK لقراءته</string>
+    <string name="text_received">نص مستلم</string>
+    <string name="reading">جارٍ التحميل…</string>
+    <string name="nothing_yet">لا شيء حاليًا. أرسل ملفًا من الهاتف، أو اختر «إرسال إلى الهاتف» في Kairo Files.</string>
+    <string name="file_detail">%1$s · %2$s</string>
+    <string name="open">فتح</string>
+    <string name="delete">حذف</string>
+    <string name="close">إغلاق</string>
+    <string name="clear">مسح</string>
+    <string name="delete_failed">تعذّر الحذف</string>
+    <string name="no_app_to_open">لا يوجد تطبيق يمكنه فتح هذا الملف</string>
+    <string name="no_browser">لا يوجد متصفح على الجهاز</string>
+    <string name="notification_ready">جاهز لاستقبال الملفات</string>
+
+    <!-- ردود الخادم (يعرضها المتصفح) -->
+    <string name="server_forbidden">امسح رمز QR الذي يعرضه Kairo Send Files على التلفاز.</string>
+    <string name="server_file_not_found">الملف غير موجود</string>
+    <string name="server_length_required">حجم الملف غير محدد</string>
+    <string name="server_upload_failed">انقطع الإرسال أو التخزين ممتلئ</string>
+    <string name="server_text_too_long">النص طويل جدًا</string>
+    <string name="server_not_found">غير موجود</string>
+
+    <!-- صفحة الويب (الهاتف أو الحاسوب) -->
+    <string name="web_subtitle">أرسل ملفات إلى التلفاز، أو استرجع الملفات التي يتيحها لك الجهاز.</string>
+    <string name="web_send_title">إرسال إلى التلفاز</string>
+    <string name="web_pick">اختيار ملفات</string>
+    <string name="web_pick_hint">أو اسحبها إلى هنا · فيديوهات، صور، APK، مستندات…</string>
+    <string name="web_text_title">إرسال نص أو رابط</string>
+    <string name="web_text_placeholder">يُفتح الرابط مباشرة على التلفاز</string>
+    <string name="web_send">إرسال</string>
+    <string name="web_box_title">على الجهاز</string>
+    <string name="web_loading">جارٍ التحميل…</string>
+    <string name="web_waiting">%1$s · في الانتظار</string>
+    <string name="web_progress">%1$s · %2$s%% · %3$s/ث</string>
+    <string name="web_sent">أُرسل إلى التلفاز</string>
+    <string name="web_failed">فشل: %1$s</string>
+    <string name="web_error_status">خطأ %1$s</string>
+    <string name="web_connection_lost_wifi">انقطع الاتصال (هل أنت على شبكة Wi-Fi نفسها؟)</string>
+    <string name="web_shown_on_tv">عُرض على التلفاز</string>
+    <string name="web_failure">فشل</string>
+    <string name="web_connection_lost">انقطع الاتصال</string>
+    <string name="web_scan_qr">امسح رمز QR المعروض على التلفاز.</string>
+    <string name="web_download">تنزيل</string>
+    <string name="web_delete">حذف</string>
+    <string name="web_no_files">لا توجد ملفات حاليًا. على التلفاز: Kairo Files ‹ إرسال إلى الهاتف.</string>
+    <string name="web_delete_confirm">حذف «%1$s» من الجهاز؟</string>
+    <string name="web_delete_failed">تعذّر الحذف</string>
+</resources>

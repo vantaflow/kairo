@@ -1,19 +1,26 @@
 package com.vantaflow.kairo.wallpaper
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import com.vantaflow.kairo.net.HttpGet
 import org.json.JSONException
 import org.json.JSONObject
 import java.net.URLEncoder
 
-/** Thèmes d'images proposés : libellé affiché → requête Pixabay. */
-val PixabayThemes: List<Pair<String, String>> = listOf(
-    "Nature" to "nature landscape",
-    "Ville" to "city night",
-    "Montagne" to "mountains",
-    "Mer" to "ocean beach",
-    "Espace" to "space galaxy",
-    "Abstrait" to "abstract background",
+/** Thèmes d'images proposés : libellé (ressource) → requête Pixabay (en anglais, inchangée). */
+val PixabayThemeQueries: List<Pair<Int, String>> = listOf(
+    R.string.pixabay_nature to "nature landscape",
+    R.string.pixabay_city to "city night",
+    R.string.pixabay_mountain to "mountains",
+    R.string.pixabay_sea to "ocean beach",
+    R.string.pixabay_space to "space galaxy",
+    R.string.pixabay_abstract to "abstract background",
 )
+
+/** Thèmes d'images proposés : libellé dans la langue de l'appli → requête Pixabay. */
+val PixabayThemes: List<Pair<String, String>>
+    @Composable get() = PixabayThemeQueries.map { (label, query) -> stringResource(label) to query }
 
 /** Recherche d'images Pixabay (paysage, ≥ 1920 px, filtrées). Liste vide en cas d'erreur. */
 class PixabayClient(private val http: HttpGet, private val keyProvider: () -> String) {

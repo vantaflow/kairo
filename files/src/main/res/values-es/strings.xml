@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ubicaciones -->
+    <string name="place_box">Almacenamiento de la box</string>
+    <string name="place_usb">Memoria USB</string>
+    <string name="place_free">%1$s libres de %2$s</string>
+    <string name="place_downloads">Descargas</string>
+    <string name="place_movies">Películas</string>
+    <string name="place_music">Música</string>
+    <string name="place_pictures">Imágenes</string>
+    <string name="place_box_folder">Carpeta de la box</string>
+    <string name="path_separator">" › "</string>
+
+    <!-- Unidades de tamaño -->
+    <string name="size_bytes">%1$s B</string>
+    <string name="size_kb">%1$s KB</string>
+    <string name="size_mb">%1$s MB</string>
+    <string name="size_gb">%1$s GB</string>
+    <string name="size_tb">%1$s TB</string>
+
+    <!-- Permiso -->
+    <string name="permission_text">Para explorar la box y las memorias USB, permite el acceso a todos los archivos.</string>
+    <string name="permission_allow">Permitir</string>
+    <string name="permission_adb">Si la box lo rechaza, desde un ordenador:</string>
+
+    <!-- Barra de acciones -->
+    <string name="paste_here">Pegar aquí (%1$d)</string>
+    <string name="move_here">Mover aquí (%1$d)</string>
+    <string name="clear_clipboard">Vaciar</string>
+    <string name="new_folder">Nueva carpeta</string>
+    <string name="create">Crear</string>
+    <string name="sort_by">Orden: %1$s</string>
+    <string name="sort_name">Nombre</string>
+    <string name="sort_date">Fecha</string>
+    <string name="sort_size">Tamaño</string>
+    <string name="hidden_show">Ver ocultos</string>
+    <string name="hidden_hide">Ocultar ocultos</string>
+    <string name="reading">Cargando…</string>
+    <string name="folder_empty">Carpeta vacía</string>
+    <string name="folder">Carpeta</string>
+    <plurals name="folder_items">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="many">%1$d elementos</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
+
+    <!-- Menú de un elemento -->
+    <string name="open">Abrir</string>
+    <string name="extract_menu">Extraer…</string>
+    <string name="open_with_menu">Abrir con…</string>
+    <string name="open_with">Abrir con</string>
+    <string name="send_to_phone">Enviar al móvil (Kairo Send Files)</string>
+    <string name="copy">Copiar</string>
+    <string name="cut">Cortar</string>
+    <string name="copy_hint">Elige la carpeta y luego «Pegar aquí»</string>
+    <string name="cut_hint">Elige la carpeta y luego «Mover aquí»</string>
+    <string name="rename">Renombrar</string>
+    <string name="delete">Eliminar</string>
+    <string name="properties">Propiedades</string>
+    <string name="properties_size">Tamaño: %1$s</string>
+    <string name="properties_content">Contenido: %1$s</string>
+    <string name="properties_modified">Modificado el %1$s</string>
+    <string name="close">Cerrar</string>
+    <string name="cancel">Cancelar</string>
+
+    <!-- Archivos comprimidos -->
+    <string name="extract_into">Extraer en «%1$s»</string>
+    <string name="extract_here">Extraer aquí</string>
+    <string name="archive_show_content">Ver el contenido</string>
+    <plurals name="archive_files">
+        <item quantity="one">%1$s · %2$d archivo</item>
+        <item quantity="many">%1$s · %2$d archivos</item>
+        <item quantity="other">%1$s · %2$d archivos</item>
+    </plurals>
+    <string name="archive_unreadable">Archivo comprimido ilegible</string>
+    <string name="archive_rar5">RAR 5 no es compatible: usa «Abrir con…»</string>
+    <string name="archive_password">Archivo comprimido protegido con contraseña</string>
+    <string name="archive_rar_unreadable">Archivo RAR ilegible</string>
+    <string name="archive_unknown_format">Formato de archivo comprimido desconocido</string>
+
+    <!-- Eliminación -->
+    <string name="delete_confirm">¿Eliminar «%1$s»?</string>
+    <string name="delete_folder_warning">La carpeta y todo su contenido se eliminarán definitivamente.</string>
+    <string name="delete_file_warning">El archivo se eliminará definitivamente.</string>
+
+    <!-- Operaciones en curso -->
+    <string name="job_copy">Copia</string>
+    <string name="job_move">Traslado</string>
+    <string name="job_extract">Extracción</string>
+    <string name="job_delete">Eliminación</string>
+    <string name="job_progress">%1$s de %2$s · %3$d %%</string>
+    <string name="job_running">En curso…</string>
+
+    <!-- Mensajes -->
+    <string name="cancelled">Cancelado</string>
+    <string name="failed">Error: %1$s</string>
+    <string name="error_generic">error</string>
+    <string name="cannot_create">No se puede crear %1$s</string>
+    <string name="delete_failed">No se puede eliminar</string>
+    <string name="paste_into_itself">No se puede pegar una carpeta dentro de sí misma</string>
+    <string name="not_enough_space">No hay espacio suficiente: se necesitan %1$s, hay %2$s libres</string>
+    <string name="not_enough_space_short">No hay espacio suficiente: se necesitan %1$s</string>
+    <string name="invalid_name">Nombre no válido</string>
+    <string name="already_exists">«%1$s» ya existe</string>
+    <string name="create_failed">No se puede crear aquí</string>
+    <string name="rename_failed">No se puede renombrar</string>
+    <string name="file_inaccessible">Archivo inaccesible</string>
+    <string name="no_app_to_open">Ninguna app puede abrir este archivo</string>
+    <string name="choose_a_file">Elige un archivo (no una carpeta)</string>
+    <string name="install_send">Instala Kairo Send Files para enviar al móvil</string>
+</resources>

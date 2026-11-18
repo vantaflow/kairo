@@ -1,5 +1,6 @@
 package com.vantaflow.kairo.update
 
+import com.vantaflow.kairo.R
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -107,8 +108,8 @@ class UpdateReceiver : BroadcastReceiver() {
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> {
-                val reason = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "erreur inconnue"
-                Toast.makeText(context, "Installation impossible : $reason", Toast.LENGTH_LONG).show()
+                val reason = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: context.getString(R.string.updater_unknown_error)
+                Toast.makeText(context, context.getString(R.string.updater_install_failed, reason), Toast.LENGTH_LONG).show()
             }
         }
     }

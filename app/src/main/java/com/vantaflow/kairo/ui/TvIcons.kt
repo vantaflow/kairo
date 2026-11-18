@@ -48,6 +48,7 @@ enum class TvIcon(val path: String) {
     Timer("M20 13a8 8 0 1 1-16 0a8 8 0 1 1 16 0z M12 9v4l2 2 M10 2h4 M12 2v3"),
     Clean("M14 3l-4 9 M6 12h10l1 9H5z M9 16v3 M13 16v3"),
     Tools("M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"),
+    Language("M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0z M3 12h18 M12 3a14 14 0 0 1 0 18 M12 3a14 14 0 0 0 0 18"),
     Shield("M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z M9 12l2 2 4-4");
 
     val vector: ImageVector by lazy {

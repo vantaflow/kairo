@@ -37,11 +37,8 @@ fun Station.logoCandidates(): List<String> {
     return listOfNotNull(favicon.takeIf { it.isNotBlank() && !ico }, site, favicon.takeIf { it.isNotBlank() && ico })
 }
 
-/** Pays proposés (code ISO, libellé) ; « » = les plus écoutées du monde. */
-val RadioCountries = listOf(
-    "MA" to "Maroc", "FR" to "France", "DZ" to "Algérie", "TN" to "Tunisie",
-    "BE" to "Belgique", "CH" to "Suisse", "CA" to "Canada", "" to "Monde",
-)
+/** Pays proposés (code ISO) ; « » = les plus écoutées du monde. */
+val RadioCountries = listOf("MA", "FR", "DZ", "TN", "BE", "CH", "CA", "")
 
 fun parseStations(body: String): List<Station> = try {
     val a = JSONArray(body)

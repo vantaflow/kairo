@@ -8,6 +8,11 @@ import com.vantaflow.kairo.ui.DesignScale
 
 /** Aperçu de l'écran de veille depuis les réglages : n'importe quelle touche le ferme. */
 class DreamPreviewActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(newBase)
+        com.vantaflow.kairo.i18n.AppLocale.applyTo(this, newBase)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent { DesignScale { DreamScreen() } }

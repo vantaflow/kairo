@@ -67,10 +67,12 @@ class CatalogTest {
         val http = TmdbGet { path -> calls++; if (path.startsWith("discover")) trending else """{"results":[]}""" }
         val file = File.createTempFile("catalog", ".json").apply { delete() }
         val installed = mapOf("com.netflix.ninja" to "Netflix")
-        val rows = CatalogRepository(http, file, region = { "MA" }).rows(installed)
-        assertTrue(rows.any { it.title == "Films tendance sur Netflix" })
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val text: (Int, Array<out Any>) -> String = { id, args -> context.getString(id, *args) }
+        val rows = CatalogRepository(http, file, region = { "MA" }, text = text).rows(installed)
+        assertTrue(rows.any { it.title == context.getString(com.vantaflow.kairo.R.string.catalog_movies_trending_on, "Netflix") })
         val before = calls
-        val again = CatalogRepository(http, file, region = { "MA" }).rows(installed)
+        val again = CatalogRepository(http, file, region = { "MA" }, text = text).rows(installed)
         assertEquals(before, calls)
         assertEquals(rows.map { it.title }, again.map { it.title })
         file.delete()

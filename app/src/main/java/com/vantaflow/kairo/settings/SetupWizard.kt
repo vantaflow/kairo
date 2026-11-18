@@ -35,19 +35,25 @@ import androidx.tv.material3.Text
 import com.vantaflow.kairo.reco.EPG_PERMISSIONS
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 private const val PKG = "com.vantaflow.kairo"
 private const val DREAM = "$PKG/.dream.TvHomeDream"
 
 /** Une étape de l'assistant : [done] null = état illisible sur cette box. */
 private class SetupStep(
-    val title: String,
-    val description: String,
+    @StringRes val title: Int,
+    @StringRes val description: Int,
     val done: Boolean?,
-    val action: String,
+    @StringRes val action: Int,
     val onAction: () -> Unit,
     val adb: String? = null,
     val optional: Boolean = false,
+    /** Section des réglages citée dans la description (« Réglages › … »), le cas échéant. */
+    @StringRes val descriptionSection: Int? = null,
 )
 
 fun recoAccessGranted(context: Context): Boolean =
@@ -74,54 +80,55 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
     val steps = remember(refresh) {
         listOf(
             SetupStep(
-                "Recommandations",
-                "Rangées « À suivre », Netflix, YouTube… publiées par vos applis.",
+                R.string.settings_setup_reco,
+                R.string.settings_setup_reco_desc,
                 recoAccessGranted(context),
-                "Autoriser",
+                R.string.settings_allow,
                 { permission.launch(EPG_PERMISSIONS) },
                 adb = "adb shell pm grant $PKG android.permission.READ_TV_LISTINGS",
             ),
             SetupStep(
-                "Écran d'accueil par défaut",
-                "Kairo s'ouvre avec la touche Accueil de la télécommande.",
+                R.string.settings_setup_home,
+                R.string.settings_setup_home_desc,
                 isDefaultHome(context),
-                "Choisir",
+                R.string.settings_setup_choose,
                 { openHomeSettings(context) },
                 adb = "adb shell pm disable-user --user 0 $GOOGLE_TV_LAUNCHER\n(pour revenir : adb shell pm enable $GOOGLE_TV_LAUNCHER)",
             ),
             SetupStep(
-                "Mises à jour",
-                "Installer les nouvelles versions de Kairo depuis Réglages › Mise à jour.",
+                R.string.settings_setup_updates,
+                R.string.settings_setup_updates_desc,
                 context.packageManager.canRequestPackageInstalls(),
-                "Autoriser",
+                R.string.settings_allow,
                 {
                     openSafely(context, Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$PKG")))
                 },
                 adb = "adb shell appops set $PKG REQUEST_INSTALL_PACKAGES allow",
                 optional = true,
+                descriptionSection = R.string.section_update,
             ),
             SetupStep(
-                "Touches de la télécommande",
-                "Réassigner les touches YouTube, Netflix, Prime Video… : activez « Kairo » dans Accessibilité.",
+                R.string.settings_setup_keys,
+                R.string.settings_setup_keys_desc,
                 keyServiceRunning(context),
-                "Accessibilité",
+                R.string.settings_setup_accessibility,
                 { openSafely(context, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
                 optional = true,
             ),
             SetupStep(
-                "Musique et vidéos en cours",
-                "Pastille « ♪ » et petit lecteur pour Spotify, Anghami, Deezer… (accès aux notifications, rien n'est lu d'autre).",
+                R.string.settings_setup_media,
+                R.string.settings_setup_media_desc,
                 com.vantaflow.kairo.media.NowPlaying.hasAccess(context),
-                "Autoriser",
+                R.string.settings_allow,
                 { openSafely(context, Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
                 adb = com.vantaflow.kairo.media.MEDIA_ACCESS_ADB,
                 optional = true,
             ),
             SetupStep(
-                "Écran de veille Kairo",
-                "Images, heure et météo quand la box est inactive.",
+                R.string.settings_setup_dream,
+                R.string.settings_setup_dream_desc,
                 dreamEnabled(context),
-                "Écran de veille",
+                R.string.settings_setup_dream_action,
                 { openSafely(context, Intent(Settings.ACTION_DREAM_SETTINGS)) },
                 adb = "adb shell settings put secure screensaver_components $DREAM",
                 optional = true,
@@ -134,7 +141,8 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item {
             Text(
-                if (ready == steps.size) "Tout est prêt." else "$ready étapes prêtes sur ${steps.size}.",
+                if (ready == steps.size) stringResource(R.string.settings_setup_all_ready)
+                else pluralStringResource(R.plurals.settings_setup_ready_count, ready, ready, steps.size),
                 color = OnBackground,
                 fontSize = 20.sp,
             )
@@ -143,12 +151,12 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
         // Toujours un élément focalisable, même quand tout est prêt (sinon le focus quitte le panneau).
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SmallButton("Terminé", onDone)
-                SmallButton("Revoir l'accueil animé", onReplay)
+                SmallButton(stringResource(R.string.settings_setup_done), onDone)
+                SmallButton(stringResource(R.string.settings_setup_replay), onReplay)
             }
         }
         item {
-            SettingHint("Les commandes ADB se tapent depuis un PC sur le même réseau, après « adb connect <adresse de la box> ».")
+            SettingHint(stringResource(R.string.settings_setup_adb_hint))
         }
     }
 }
@@ -163,13 +171,13 @@ private fun StepRow(step: SetupStep) {
                 null -> "?" to OnBackgroundMuted
             }
             Text(mark, color = color, fontSize = 20.sp)
-            Text(step.title + if (step.optional) " (facultatif)" else "", color = OnBackground, fontSize = 18.sp)
+            Text(stringResource(step.title).let { if (step.optional) stringResource(R.string.settings_optional_suffix, it) else it }, color = OnBackground, fontSize = 18.sp)
         }
-        Text(step.description, color = OnBackgroundMuted, modifier = Modifier.padding(start = 24.dp))
+        Text(step.descriptionSection?.let { stringResource(step.description, settingsPath(it)) } ?: stringResource(step.description), color = OnBackgroundMuted, modifier = Modifier.padding(start = 24.dp))
         if (step.done != true) {
-            Row(Modifier.padding(start = 24.dp)) { SmallButton(step.action, step.onAction) }
+            Row(Modifier.padding(start = 24.dp)) { SmallButton(stringResource(step.action), step.onAction) }
             step.adb?.let { cmd ->
-                Text("Si la box refuse, depuis un PC :", color = OnBackgroundMuted, fontSize = 13.sp, modifier = Modifier.padding(start = 24.dp))
+                Text(stringResource(R.string.settings_box_refuses), color = OnBackgroundMuted, fontSize = 13.sp, modifier = Modifier.padding(start = 24.dp))
                 // Pas de SelectionContainer : il prendrait le focus sans le montrer.
                 Text(cmd, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = OnBackground, modifier = Modifier.padding(start = 24.dp))
             }

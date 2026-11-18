@@ -3,6 +3,7 @@ package com.vantaflow.kairo.apps
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
+import androidx.annotation.StringRes
 import com.vantaflow.kairo.R
 import com.vantaflow.kairo.update.Updater
 import com.vantaflow.kairo.update.isNewer
@@ -20,7 +21,7 @@ import org.json.JSONArray
 data class OurApp(
     val id: String,
     val name: String,
-    val tagline: String,
+    @StringRes val tagline: Int,
     /** Le premier est celui qu'on installe ; les suivants comptent aussi comme « installée » (debug…). */
     val packages: List<String>,
     val repo: String,
@@ -35,7 +36,7 @@ val OurApps: List<OurApp> = listOf(
     OurApp(
         id = "player",
         name = "Kairo Player",
-        tagline = "Vidéos, photos et musique de la box et des clés USB, avec reprise dans « À suivre ».",
+        tagline = R.string.apps_tagline_player,
         packages = listOf("com.vantaflow.kairo.player"),
         repo = "vantaflow/kairo",
         banner = R.drawable.app_kairo_player,
@@ -44,7 +45,7 @@ val OurApps: List<OurApp> = listOf(
     OurApp(
         id = "cast",
         name = "Kairo Cast",
-        tagline = "L'écran du Mac sur la TV : Recopie de l'écran › « Kairo », avec le son, sans limite de durée.",
+        tagline = R.string.apps_tagline_cast,
         packages = listOf("com.vantaflow.kairo.cast"),
         repo = "vantaflow/kairo-cast",
         banner = R.drawable.app_kairo_cast,
@@ -54,7 +55,7 @@ val OurApps: List<OurApp> = listOf(
     OurApp(
         id = "files",
         name = "Kairo Files",
-        tagline = "Gestionnaire de fichiers de la box et des clés USB : copier, déplacer, renommer, installer un APK.",
+        tagline = R.string.apps_tagline_files,
         packages = listOf("com.vantaflow.kairo.files"),
         repo = "vantaflow/kairo",
         banner = R.drawable.app_kairo_files,
@@ -63,7 +64,7 @@ val OurApps: List<OurApp> = listOf(
     OurApp(
         id = "send",
         name = "Kairo Send Files",
-        tagline = "Fichiers, textes et liens du téléphone ou de l'ordinateur vers la TV, et inversement, par QR code.",
+        tagline = R.string.apps_tagline_send,
         packages = listOf("com.vantaflow.kairo.send"),
         repo = "vantaflow/kairo",
         banner = R.drawable.app_kairo_send,
@@ -72,7 +73,7 @@ val OurApps: List<OurApp> = listOf(
     OurApp(
         id = "ultratv",
         name = "Ultra TV",
-        tagline = "Lecteur IPTV : Xtream Codes et M3U, guide TV, replay, pause du direct, profils.",
+        tagline = R.string.apps_tagline_ultratv,
         packages = listOf("com.ultratv.tv.nativeapp", "com.ultratv.tv.nativeapp.debug"),
         repo = "vantaflow/ultra-tv",
         banner = R.drawable.app_ultratv,
@@ -85,7 +86,7 @@ val OurApps: List<OurApp> = listOf(
 val KairoSelf = OurApp(
     id = "kairo",
     name = "Kairo",
-    tagline = "Nouvelle version de Kairo : nouveautés et corrections.",
+    tagline = R.string.apps_tagline_kairo,
     packages = listOf(com.vantaflow.kairo.BuildConfig.APPLICATION_ID),
     repo = "vantaflow/kairo",
     banner = R.drawable.banner,
@@ -124,7 +125,8 @@ sealed interface InstallState {
     data class Downloading(val percent: Int) : InstallState
     /** Téléchargé : Android affiche sa demande de confirmation. */
     data object Confirm : InstallState
-    data class Failed(val message: String) : InstallState
+    /** [message] : texte de l'erreur affichée. */
+    data class Failed(@StringRes val message: Int) : InstallState
 }
 
 /** Installe et met à jour nos applis depuis leurs publications GitHub. */
@@ -193,18 +195,18 @@ class OurAppsStore(private val context: Context) {
         scope.launch {
             val remote = latest(app)
             if (remote == null) {
-                set(app, InstallState.Failed("Impossible de joindre GitHub"))
+                set(app, InstallState.Failed(R.string.apps_github_unreachable))
                 return@launch
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Téléchargement de ${app.name} (${remote.size / 1_048_576} Mo)…", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.apps_downloading_toast, app.name, (remote.size / 1_048_576).toInt()), Toast.LENGTH_SHORT).show()
             }
             val ok = runCatching {
                 updater.installAsset(remote.assetUrl, app.packages.first()) { bytes ->
                     if (remote.size > 0) set(app, InstallState.Downloading((bytes * 100 / remote.size).toInt().coerceIn(0, 100)))
                 }
             }.getOrDefault(false)
-            set(app, if (ok) InstallState.Confirm else InstallState.Failed("Échec du téléchargement"))
+            set(app, if (ok) InstallState.Confirm else InstallState.Failed(R.string.apps_download_failed))
             // L'installation finit après la confirmation : on la guette (2 min au plus) pour mettre l'écran à jour.
             if (ok) {
                 val before = installedVersion(app)

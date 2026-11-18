@@ -41,6 +41,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,12 +78,17 @@ private const val SEARCH = "search"
 fun initialRadioTab(ipCountry: String?, savedCountry: String?, boxCountry: String): String =
     listOf(ipCountry, savedCountry, boxCountry).firstOrNull { !it.isNullOrBlank() } ?: ""
 
-/** Pays proposés, celui de l'utilisateur en premier (ajouté s'il n'est pas dans la liste). */
-fun radioCountriesFor(user: String): List<Pair<String, String>> {
-    if (user.isBlank()) return RadioCountries
-    val label = RadioCountries.firstOrNull { it.first == user }?.second
-        ?: Locale("", user).getDisplayCountry(Locale.FRENCH).ifBlank { user }
-    return listOf(user to label) + RadioCountries.filterNot { it.first == user }
+/** Nom d'un pays dans la langue [locale] ; [world] pour le code vide (le monde entier). */
+fun radioCountryLabel(code: String, world: String, locale: Locale = Locale.getDefault()): String =
+    if (code.isBlank()) world else Locale("", code).getDisplayCountry(locale).ifBlank { code }
+
+/**
+ * Pays proposés (code, nom dans la langue de l'appli), celui de l'utilisateur en premier (ajouté
+ * s'il n'est pas dans la liste) ; [world] = libellé de l'onglet « Monde ».
+ */
+fun radioCountriesFor(user: String, world: String, locale: Locale = Locale.getDefault()): List<Pair<String, String>> {
+    val codes = if (user.isBlank()) RadioCountries else listOf(user) + RadioCountries.filterNot { it == user }
+    return codes.map { it to radioCountryLabel(it, world, locale) }
 }
 
 /** Pays de la box d'après son adresse IP (gardé pour la session). */
@@ -165,9 +172,9 @@ fun RadioScreen(
         NowPlaying(now, isFavorite = now.station?.url in favUrls, onToggle = { now.station?.let(::play) }, onFavorite = { now.station?.let(::toggleFavorite) })
         ChoiceRow {
             if (favorites.orEmpty().isNotEmpty()) {
-                ChoiceChip(current == FAVORITES, { tab = FAVORITES }) { Text("★ Favoris") }
+                ChoiceChip(current == FAVORITES, { tab = FAVORITES }) { Text(stringResource(R.string.radio_favorites)) }
             }
-            radioCountriesFor(userCountry).forEach { (code, label) ->
+            radioCountriesFor(userCountry, stringResource(R.string.radio_world)).forEach { (code, label) ->
                 val chip = @Composable {
                     ChoiceChip(current == code, {
                         tab = code
@@ -177,22 +184,22 @@ fun RadioScreen(
                 // Focus d'arrivée sur le pays de l'utilisateur.
                 if (code == userCountry) Box(Modifier.focusRequester(firstChip)) { chip() } else chip()
             }
-            ChoiceChip(current == SEARCH, { tab = SEARCH }) { Text("Rechercher") }
+            ChoiceChip(current == SEARCH, { tab = SEARCH }) { Text(stringResource(R.string.radio_search)) }
         }
         if (current == SEARCH) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TvInput(query, { query = it }, Modifier.width(520.dp), placeholder = "Nom de la radio", onDone = { searched = query })
-                SmallButton("Chercher", { searched = query })
+                TvInput(query, { query = it }, Modifier.width(520.dp), placeholder = stringResource(R.string.radio_search_placeholder), onDone = { searched = query })
+                SmallButton(stringResource(R.string.radio_search_go), { searched = query })
             }
         }
         val list = stations
         when {
-            list == null -> Text("Chargement des radios…", color = OnBackgroundMuted, fontSize = 20.sp)
+            list == null -> Text(stringResource(R.string.radio_loading), color = OnBackgroundMuted, fontSize = 20.sp)
             list.isEmpty() -> Text(
                 when (current) {
-                    SEARCH -> if (searched.isBlank()) "Tapez le nom d'une radio (ou envoyez-le depuis le téléphone)." else "Aucune radio trouvée pour « $searched »."
-                    FAVORITES -> "Aucune favorite : appui long sur une radio pour l'ajouter."
-                    else -> "Radios indisponibles : vérifiez la connexion."
+                    SEARCH -> if (searched.isBlank()) stringResource(R.string.radio_search_hint) else stringResource(R.string.radio_search_none, searched)
+                    FAVORITES -> stringResource(R.string.radio_no_favorites)
+                    else -> stringResource(R.string.radio_unavailable)
                 },
                 color = OnBackgroundMuted, fontSize = 20.sp,
             )
@@ -257,21 +264,21 @@ private fun RadioPlayer(
             Row(Modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
                 when (now.status) {
                     RadioStatus.Playing -> Equalizer()
-                    RadioStatus.Loading -> Text("Connexion…", fontSize = 20.sp, color = OnBackgroundMuted)
-                    RadioStatus.Error -> Text("Cette radio ne répond pas : essayez la suivante.", fontSize = 20.sp, color = Color(0xFFFF8A80))
-                    RadioStatus.Idle -> Text("En pause", fontSize = 20.sp, color = OnBackgroundMuted)
+                    RadioStatus.Loading -> Text(stringResource(R.string.radio_connecting), fontSize = 20.sp, color = OnBackgroundMuted)
+                    RadioStatus.Error -> Text(stringResource(R.string.radio_error_next), fontSize = 20.sp, color = Color(0xFFFF8A80))
+                    RadioStatus.Idle -> Text(stringResource(R.string.radio_paused), fontSize = 20.sp, color = OnBackgroundMuted)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                PlayerButton("⏮  Précédente") { onSkip(-1) }
-                PlayerButton(if (now.active) "■  Arrêter" else "▶  Écouter", Modifier.focusRequester(main), big = true, onClick = onToggle)
-                PlayerButton("Suivante  ⏭") { onSkip(+1) }
+                PlayerButton(stringResource(R.string.radio_previous)) { onSkip(-1) }
+                PlayerButton(stringResource(if (now.active) R.string.radio_stop_big else R.string.radio_listen_big), Modifier.focusRequester(main), big = true, onClick = onToggle)
+                PlayerButton(stringResource(R.string.radio_next)) { onSkip(+1) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                PlayerButton(if (isFavorite) "★  Retirer des favoris" else "☆  Ajouter aux favoris", onClick = onFavorite)
-                PlayerButton("☰  Toutes les radios", onClick = onList)
+                PlayerButton(stringResource(if (isFavorite) R.string.radio_fav_remove_big else R.string.radio_fav_add_big), onClick = onFavorite)
+                PlayerButton(stringResource(R.string.radio_all), onClick = onList)
             }
-            Text("La radio continue sur l'accueil · touches ⏮ ⏭ de la télécommande pour changer", fontSize = 16.sp, color = OnBackgroundMuted)
+            Text(stringResource(R.string.radio_player_hint), fontSize = 16.sp, color = OnBackgroundMuted)
         }
     }
     LaunchedEffect(Unit) { runCatching { main.requestFocus() } }
@@ -326,22 +333,22 @@ private fun NowPlaying(now: RadioState, isFavorite: Boolean, onToggle: () -> Uni
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         StationLogo(now.station, 110.dp)
         Column(Modifier.weight(1f)) {
-            Text("Radio", fontSize = 18.sp, color = OnBackgroundMuted)
-            Text(now.station?.name ?: "Choisissez une radio", fontSize = 38.sp, fontWeight = FontWeight.Medium, color = OnBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.tool_radio), fontSize = 18.sp, color = OnBackgroundMuted)
+            Text(now.station?.name ?: stringResource(R.string.radio_choose), fontSize = 38.sp, fontWeight = FontWeight.Medium, color = OnBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 when (now.status) {
-                    RadioStatus.Loading -> "Connexion…"
-                    RadioStatus.Playing -> "♪ En direct · la radio continue sur l'accueil et dans les menus"
-                    RadioStatus.Error -> "Cette radio ne répond pas, essayez-en une autre."
-                    RadioStatus.Idle -> if (now.station != null) "En pause" else "OK pour écouter · appui long pour l'ajouter aux favoris"
+                    RadioStatus.Loading -> stringResource(R.string.radio_connecting)
+                    RadioStatus.Playing -> stringResource(R.string.radio_live)
+                    RadioStatus.Error -> stringResource(R.string.radio_error_other)
+                    RadioStatus.Idle -> stringResource(if (now.station != null) R.string.radio_paused else R.string.radio_idle_hint)
                 },
                 fontSize = 18.sp,
                 color = if (now.status == RadioStatus.Error) Color(0xFFFF8A80) else OnBackgroundMuted,
             )
         }
         if (now.station != null) {
-            SmallButton(if (now.active) "■ Arrêter" else "▶ Écouter", onToggle)
-            SmallButton(if (isFavorite) "★ Retirer des favoris" else "☆ Favori", onFavorite)
+            SmallButton(stringResource(if (now.active) R.string.radio_stop else R.string.radio_listen), onToggle)
+            SmallButton(stringResource(if (isFavorite) R.string.radio_fav_remove else R.string.radio_fav), onFavorite)
         }
     }
 }

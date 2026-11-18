@@ -1,5 +1,7 @@
 package com.vantaflow.kairo.reco
 
+import android.content.res.Resources
+import com.vantaflow.kairo.R
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -64,15 +66,15 @@ fun resumeCandidates(
         .take(max)
         .map { it.key to it.value }
 
-/** « à l'instant », « il y a 12 min », « il y a 3 h », « hier », « il y a 4 j ». */
-fun formatAgo(elapsedMs: Long): String {
-    val min = elapsedMs / 60_000
+/** « à l'instant », « il y a 12 min », « il y a 3 h », « hier », « il y a 4 j » (dans la langue de l'appli). */
+fun formatAgo(res: Resources, elapsedMs: Long): String {
+    val min = (elapsedMs / 60_000).toInt()
     return when {
-        min < 2 -> "à l'instant"
-        min < 60 -> "il y a $min min"
-        min < 24 * 60 -> "il y a ${min / 60} h"
-        min < 48 * 60 -> "hier"
-        else -> "il y a ${min / (24 * 60)} j"
+        min < 2 -> res.getString(R.string.reco_ago_now)
+        min < 60 -> res.getQuantityString(R.plurals.reco_ago_minutes, min, min)
+        min < 24 * 60 -> (min / 60).let { res.getQuantityString(R.plurals.reco_ago_hours, it, it) }
+        min < 48 * 60 -> res.getString(R.string.reco_ago_yesterday)
+        else -> (min / (24 * 60)).let { res.getQuantityString(R.plurals.reco_ago_days, it, it) }
     }
 }
 
@@ -117,7 +119,7 @@ fun resumePrograms(context: Context, usage: Map<String, Long>, exclude: Set<Stri
             id = -(pkg.hashCode().toLong().absoluteValue + 1),
             packageName = pkg,
             title = heard?.title ?: title?.title ?: pm.getApplicationLabel(app).toString(),
-            subtitle = "Reprendre · ${formatAgo(now - t)}",
+            subtitle = context.getString(R.string.reco_resume, formatAgo(context.resources, now - t)),
             posterUri = heard?.image?.let { android.net.Uri.fromFile(it).toString() }
                 ?: title?.let { com.vantaflow.kairo.catalog.tmdbImage(it.backdrop ?: it.poster) }
                 ?: bannerUri(pm, pkg, app, launch.component),

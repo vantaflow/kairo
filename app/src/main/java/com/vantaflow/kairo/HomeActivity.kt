@@ -83,6 +83,9 @@ import kotlinx.coroutines.flow.combine
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.themeFor
 
+/** Réglages ouverts au moment d'une recréation (changement de langue). */
+private const val STATE_SETTINGS = "kairo.settings"
+
 enum class Destination { Home, Apps, Settings, Search, Radio, Weather, Cleaner }
 
 class HomeActivity : ComponentActivity() {
@@ -179,9 +182,26 @@ class HomeActivity : ComponentActivity() {
     private val pinGuard = PinGuard()
     private val networkMonitor by lazy { NetworkMonitor(applicationContext) }
 
+    /** Langue choisie dans Kairo (Réglages › Langue), appliquée avant toute ressource. */
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(newBase)
+        com.vantaflow.kairo.i18n.AppLocale.applyTo(this, newBase)
+    }
+
+    /** Recréation (changement de langue) : les réglages restent ouverts sur la même section. */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (destination == Destination.Settings) outState.putString(STATE_SETTINGS, settingsSection?.name ?: "")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val opened = openFromIntent(intent)
+        val restoredSettings = savedInstanceState?.getString(STATE_SETTINGS)
+        val opened = if (restoredSettings != null) {
+            settingsSection = Section.entries.firstOrNull { it.name == restoredSettings }
+            openSettingsPanel()
+            true
+        } else openFromIntent(intent)
         lifecycleScope.launch {
             if (!opened && !container.prefs.setupShown.first()) {
                 container.prefs.setSetupShown()
@@ -582,10 +602,10 @@ class HomeActivity : ComponentActivity() {
         val home by homeViewModel.state.collectAsStateWithLifecycle()
         return remember(radio, sleepEnd, home.timeText, home.weatherText) {
             mapOf(
-                Tool.Radio to (radio.station?.takeIf { radio.active }?.let { "♪ ${it.name}" } ?: "Radios en direct"),
-                Tool.Weather to (home.weatherText ?: "Prévisions sur 7 jours"),
-                Tool.Sleep to (container.sleepTimer.remainingMinutes()?.let { "Veille dans ${formatMinutes(it)}" } ?: "Éteindre plus tard"),
-                Tool.Cleaner to "${formatMb(MemoryCleaner(this).state().availableBytes)} de mémoire libre",
+                Tool.Radio to (radio.station?.takeIf { radio.active }?.let { "♪ ${it.name}" } ?: getString(R.string.home_tool_radio)),
+                Tool.Weather to (home.weatherText ?: getString(R.string.home_tool_weather)),
+                Tool.Sleep to (container.sleepTimer.remainingMinutes()?.let { getString(R.string.home_tool_sleep_in, formatMinutes(it)) } ?: getString(R.string.home_tool_sleep)),
+                Tool.Cleaner to getString(R.string.home_tool_cleaner, formatMb(MemoryCleaner(this).state().availableBytes)),
             )
         }
     }

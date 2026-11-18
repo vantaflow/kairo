@@ -22,6 +22,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,11 +38,12 @@ import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 
 /** Ce qu'affiche une appli à installer : action ou progression. */
+@Composable
 fun installLabel(state: InstallState?, update: Boolean = false): String = when (state) {
-    is InstallState.Downloading -> "Téléchargement… ${state.percent} %"
-    InstallState.Confirm -> "Confirmez l'installation sur la télé"
-    is InstallState.Failed -> "${state.message} · OK pour réessayer"
-    else -> if (update) "OK pour mettre à jour" else "OK pour installer"
+    is InstallState.Downloading -> stringResource(R.string.home_install_downloading, state.percent)
+    InstallState.Confirm -> stringResource(R.string.home_install_confirm)
+    is InstallState.Failed -> stringResource(R.string.home_install_failed, stringResource(state.message))
+    else -> stringResource(if (update) R.string.home_install_update else R.string.home_install)
 }
 
 /** « Nos applications » : nos applis pas encore installées ou à mettre à jour (rangée masquée sinon). */
@@ -56,7 +59,7 @@ fun OurAppsRow(
     val layout = LocalHomeLayout.current
     Column(modifier) {
         if (layout.showRowTitles) {
-            Text("Nos applications", fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
+            Text(stringResource(R.string.home_our_apps), fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
         }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
@@ -71,11 +74,12 @@ fun OurAppsRow(
                         width = layout.tileWidthDp.dp * 1.5f,
                         modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
                     ) {
+                        val installDescription = stringResource(R.string.home_install_app, app.name)
                         Image(
                             painterResource(app.banner),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clearAndSetSemantics { contentDescription = "Installer ${app.name}" },
+                            modifier = Modifier.fillMaxSize().clearAndSetSemantics { contentDescription = installDescription },
                         )
                         if (state is InstallState.Downloading) {
                             Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(5.dp).background(Color.Black.copy(alpha = 0.4f))) {
@@ -83,7 +87,7 @@ fun OurAppsRow(
                             }
                         }
                         Text(
-                            if (app.id in updates) "Mise à jour" else "Nouveau",
+                            stringResource(if (app.id in updates) R.string.home_badge_update else R.string.home_badge_new),
                             fontSize = 12.sp,
                             color = Color.White,
                             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
@@ -92,7 +96,7 @@ fun OurAppsRow(
                     }
                     // Écart : la tuile zoomée au focus (et son contour) ne recouvre pas le texte.
                     Text(
-                        app.tagline, fontSize = 13.sp, color = OnBackgroundMuted, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        stringResource(app.tagline), fontSize = 13.sp, color = OnBackgroundMuted, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 18.dp),
                     )
                     Text(installLabel(state, update = app.id in updates), fontSize = 13.sp, color = if (state is InstallState.Failed) Color(0xFFFF8A80) else AccentColor)

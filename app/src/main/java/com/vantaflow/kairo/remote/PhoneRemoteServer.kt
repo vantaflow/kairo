@@ -78,6 +78,8 @@ fun tokenMatches(request: HttpRequest, token: String): Boolean {
 class PhoneRemoteServer(
     private val token: () -> String,
     private val route: (HttpRequest) -> HttpResponse,
+    /** Message lu sur le téléphone quand le jeton manque (dans la langue de l'appli). */
+    private val forbiddenMessage: () -> String,
     private val port: Int = PHONE_REMOTE_PORT,
 ) {
     @Volatile private var socket: ServerSocket? = null
@@ -125,7 +127,7 @@ class PhoneRemoteServer(
             val (path, query) = parseQuery(target)
             val request = HttpRequest(method, path, query, headers, input, headers["content-length"]?.toLongOrNull() ?: 0L)
             val response = if (!tokenMatches(request, token())) {
-                HttpResponse.text(403, "Scannez le QR code affiché par Kairo (Réglages › Télécommande sur téléphone).")
+                HttpResponse.text(403, forbiddenMessage())
             } else {
                 runCatching { route(request) }.getOrElse { HttpResponse.text(500, it.message ?: "erreur") }
             }

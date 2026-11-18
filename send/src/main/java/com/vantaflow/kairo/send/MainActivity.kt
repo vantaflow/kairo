@@ -52,6 +52,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,6 +88,11 @@ private val Danger = Color(0xFFFF7A7A)
 class MainActivity : ComponentActivity() {
     private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var resumes by mutableIntStateOf(0)
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        BoxLocale.applyTo(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -168,16 +174,17 @@ fun qrCode(text: String): ImageBitmap {
     return Bitmap.createBitmap(pixels, matrix.width, matrix.height, Bitmap.Config.ARGB_8888).asImageBitmap()
 }
 
-fun formatSize(bytes: Long): String {
-    if (bytes < 1024) return "$bytes o"
-    val units = listOf("Ko", "Mo", "Go", "To")
+/** Taille dans la langue de la box (o, Ko, Mo… en français ; B, KB, MB… en anglais). */
+fun Context.formatSize(bytes: Long): String {
+    val units = listOf(R.string.size_bytes, R.string.size_kb, R.string.size_mb, R.string.size_gb, R.string.size_tb)
+    if (bytes < 1024) return getString(units[0], bytes.toString())
     var value = bytes / 1024.0
-    var i = 0
+    var i = 1
     while (value >= 1024 && i < units.lastIndex) {
         value /= 1024
         i++
     }
-    return (if (value >= 100) "%.0f" else "%.1f").format(Locale.FRANCE, value) + " " + units[i]
+    return getString(units[i], (if (value >= 100) "%.0f" else "%.1f").format(Locale.getDefault(), value))
 }
 
 private fun open(context: Context, file: SharedFile): String? {
@@ -194,7 +201,7 @@ private fun open(context: Context, file: SharedFile): String? {
         context.startActivity(intent)
         null
     } catch (e: ActivityNotFoundException) {
-        "Aucune appli ne sait ouvrir ce fichier"
+        context.getString(R.string.no_app_to_open)
     }
 }
 
@@ -202,7 +209,7 @@ private fun openLink(context: Context, link: String): String? = try {
     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.trim())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     null
 } catch (e: ActivityNotFoundException) {
-    "Aucun navigateur sur la box"
+    context.getString(R.string.no_browser)
 }
 
 @Composable
@@ -241,24 +248,24 @@ fun SendScreen(resumes: Int) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("Kairo Send Files", fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
+            Text(stringResource(R.string.app_name), fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
             Spacer(Modifier.height(20.dp))
             if (qr != null && url != null) {
                 Box(Modifier.size(230.dp).background(Color.White, RoundedCornerShape(16.dp)).padding(12.dp)) {
-                    Image(qr, contentDescription = "QR code", filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
+                    Image(qr, contentDescription = stringResource(R.string.qr_code), filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
                 }
                 Spacer(Modifier.height(18.dp))
-                Text("Scannez avec le téléphone, ou ouvrez sur l'ordinateur :", fontSize = 15.sp, color = TextMuted)
+                Text(stringResource(R.string.scan_hint), fontSize = 15.sp, color = TextMuted)
                 Spacer(Modifier.height(6.dp))
                 Text(url, fontSize = 15.sp, color = TextMain, fontFamily = FontFamily.Monospace)
                 Spacer(Modifier.height(14.dp))
-                Text("Même Wi-Fi que la box. Les fichiers arrivent dans Téléchargements › Kairo Send.", fontSize = 13.sp, color = TextMuted)
+                Text(stringResource(R.string.same_wifi_hint), fontSize = 13.sp, color = TextMuted)
             } else {
-                Text("La box n'est connectée à aucun réseau.", fontSize = 17.sp, color = TextMuted)
+                Text(stringResource(R.string.no_network), fontSize = 17.sp, color = TextMuted)
             }
         }
         Column(Modifier.weight(1f).fillMaxHeight().padding(start = 40.dp, end = 48.dp, top = 36.dp)) {
-            Text("Fichiers échangés", fontSize = 22.sp, color = TextMain, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.exchanged_files), fontSize = 22.sp, color = TextMain, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(16.dp))
             val list = files
             // Le focus va sur le premier élément (envoi en cours, texte reçu ou fichier).
@@ -280,8 +287,9 @@ fun SendScreen(resumes: Int) {
                         modifier = mod("t${t.id}"),
                         icon = if (t.failed) "⚠" else "⬇",
                         title = t.name,
-                        detail = if (t.failed) "Échec de l'envoi · OK pour effacer"
-                        else if (t.total > 0) "${formatSize(t.done)} sur ${formatSize(t.total)} · $pct %" else formatSize(t.done),
+                        detail = if (t.failed) stringResource(R.string.transfer_failed)
+                        else if (t.total > 0) stringResource(R.string.transfer_progress, context.formatSize(t.done), context.formatSize(t.total), pct)
+                        else context.formatSize(t.done),
                         progress = if (t.failed || t.total <= 0) null else pct / 100f,
                         onClick = { if (t.failed) Hub.dismissFailed() },
                     )
@@ -291,16 +299,16 @@ fun SendScreen(resumes: Int) {
                         modifier = mod("n${n.id}"),
                         icon = if (isWebLink(n.text)) "🔗" else "💬",
                         title = n.text.lineSequence().first(),
-                        detail = if (isWebLink(n.text)) "Lien reçu · OK pour l'ouvrir" else "Texte reçu · OK pour le lire",
+                        detail = stringResource(if (isWebLink(n.text)) R.string.link_received else R.string.text_received_hint),
                         onClick = { if (isWebLink(n.text)) openLink(context, n.text)?.let { message = it } else noteOpen = n },
                         onMenu = { Hub.removeNote(n.id) },
                     )
                 }
                 when {
-                    list == null -> item { Text("Lecture…", color = TextMuted, fontSize = 17.sp) }
+                    list == null -> item { Text(stringResource(R.string.reading), color = TextMuted, fontSize = 17.sp) }
                     list.isEmpty() && transfers.isEmpty() && notes.isEmpty() -> item {
                         Text(
-                            "Rien pour l'instant. Envoyez un fichier depuis le téléphone, ou, depuis Kairo Files, choisissez « Envoyer au téléphone ».",
+                            stringResource(R.string.nothing_yet),
                             color = TextMuted, fontSize = 17.sp, lineHeight = 26.sp,
                         )
                     }
@@ -309,7 +317,11 @@ fun SendScreen(resumes: Int) {
                             modifier = mod("f${f.id}"),
                             icon = iconFor(f.name),
                             title = f.name,
-                            detail = formatSize(f.size) + " · " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(f.added)),
+                            detail = stringResource(
+                                R.string.file_detail,
+                                context.formatSize(f.size),
+                                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(f.added)),
+                            ),
                             onClick = { open(context, f)?.let { message = it } },
                             onMenu = { menuFor = f },
                         )
@@ -321,19 +333,19 @@ fun SendScreen(resumes: Int) {
 
     menuFor?.let { f ->
         Dialog(f.name, onDismiss = { menuFor = null }) {
-            MenuButton("Ouvrir", first = true) { menuFor = null; open(context, f)?.let { message = it } }
-            MenuButton("Supprimer", danger = true) {
+            MenuButton(stringResource(R.string.open), first = true) { menuFor = null; open(context, f)?.let { message = it } }
+            MenuButton(stringResource(R.string.delete), danger = true) {
                 menuFor = null
-                if (app.store.delete(f)) Hub.changed() else message = "Suppression impossible"
+                if (app.store.delete(f)) Hub.changed() else message = context.getString(R.string.delete_failed)
             }
         }
     }
 
     noteOpen?.let { n ->
-        Dialog("Texte reçu", onDismiss = { noteOpen = null }) {
+        Dialog(stringResource(R.string.text_received), onDismiss = { noteOpen = null }) {
             Text(n.text, color = TextMain, fontSize = 18.sp, lineHeight = 27.sp, modifier = Modifier.padding(bottom = 14.dp))
-            MenuButton("Fermer", first = true) { noteOpen = null }
-            MenuButton("Effacer", danger = true) { Hub.removeNote(n.id); noteOpen = null }
+            MenuButton(stringResource(R.string.close), first = true) { noteOpen = null }
+            MenuButton(stringResource(R.string.clear), danger = true) { Hub.removeNote(n.id); noteOpen = null }
         }
     }
 
