@@ -34,6 +34,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 
 **Accueil**
 - Comme Google TV : favoris en tête, puis **À suivre**, puis une rangée de recommandations publiées par vos applis (YouTube, SmartTube, Ultra TV, TiviMate…) et une rangée d'applis (**Récentes**, « Toutes les applis », outils) en alternance.
+- **4 langues** : français, anglais, espagnol et arabe (affichage de droite à gauche). Kairo suit la langue de la box, ou celle choisie dans Réglages › Langue ; Kairo Player, Kairo Files et Kairo Send Files suivent la langue de la box. Les 418 citations de l'écran de veille existent dans chaque langue.
 - **Onglets comme Google TV** : *Pour vous*, *Films*, *Séries*, *Applis* en haut à gauche ; à droite, boutons en icônes, température et heure.
 - **Films et séries à voir** (TMDB), **dans tous les pays** : Kairo repère le pays de la box et les plateformes qui y sont proposées (Netflix, Prime Video, Apple TV, Disney+, Shahid, Max, Canal+…), les rapproche des applis installées, puis affiche seulement ce qui est **inclus dans vos abonnements** (pas de location ni d'achat) : tendances, mieux notés, et une rangée par plateforme quand il y en a plusieurs. Catalogue mis à jour une fois par jour et gardé sur la box (l'accueil n'attend jamais le réseau). Fiche avec résumé, note et **« Regarder sur »** chaque appli où le titre est disponible.
 - **Ma liste** : un clic sur « + Ma liste » dans la fiche ; la rangée apparaît dans *Pour vous*, *Films* et *Séries*.
