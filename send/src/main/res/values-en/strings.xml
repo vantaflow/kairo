@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Size units (also used by the web page) -->
+    <string name="size_bytes">%1$s B</string>
+    <string name="size_kb">%1$s KB</string>
+    <string name="size_mb">%1$s MB</string>
+    <string name="size_gb">%1$s GB</string>
+    <string name="size_tb">%1$s TB</string>
+
+    <!-- TV screen -->
+    <string name="qr_code">QR code</string>
+    <string name="scan_hint">Scan with your phone, or open on your computer:</string>
+    <string name="same_wifi_hint">Same Wi-Fi as the box. Files arrive in Downloads › Kairo Send.</string>
+    <string name="no_network">The box isn\'t connected to any network.</string>
+    <string name="exchanged_files">Shared files</string>
+    <string name="transfer_failed">Sending failed · OK to clear</string>
+    <string name="transfer_progress">%1$s of %2$s · %3$d%%</string>
+    <string name="link_received">Link received · OK to open it</string>
+    <string name="text_received_hint">Text received · OK to read it</string>
+    <string name="text_received">Text received</string>
+    <string name="reading">Loading…</string>
+    <string name="nothing_yet">Nothing yet. Send a file from your phone, or, in Kairo Files, choose “Send to phone”.</string>
+    <string name="file_detail">%1$s · %2$s</string>
+    <string name="open">Open</string>
+    <string name="delete">Delete</string>
+    <string name="close">Close</string>
+    <string name="clear">Clear</string>
+    <string name="delete_failed">Can\'t delete</string>
+    <string name="no_app_to_open">No app can open this file</string>
+    <string name="no_browser">No browser on the box</string>
+    <string name="notification_ready">Ready to receive files</string>
+
+    <!-- Server responses (shown by the browser) -->
+    <string name="server_forbidden">Scan the QR code shown by Kairo Send Files on the TV.</string>
+    <string name="server_file_not_found">File not found</string>
+    <string name="server_length_required">File size missing</string>
+    <string name="server_upload_failed">Upload interrupted or storage full</string>
+    <string name="server_text_too_long">Text too long</string>
+    <string name="server_not_found">Not found</string>
+
+    <!-- Web page (phone or computer) -->
+    <string name="web_subtitle">Send files to the TV, or get the ones the box offers you.</string>
+    <string name="web_send_title">Send to the TV</string>
+    <string name="web_pick">Choose files</string>
+    <string name="web_pick_hint">or drop them here · videos, photos, APKs, documents…</string>
+    <string name="web_text_title">Send a text or a link</string>
+    <string name="web_text_placeholder">A link opens directly on the TV</string>
+    <string name="web_send">Send</string>
+    <string name="web_box_title">On the box</string>
+    <string name="web_loading">Loading…</string>
+    <string name="web_waiting">%1$s · waiting</string>
+    <string name="web_progress">%1$s · %2$s%% · %3$s/s</string>
+    <string name="web_sent">sent to the TV</string>
+    <string name="web_failed">failed: %1$s</string>
+    <string name="web_error_status">error %1$s</string>
+    <string name="web_connection_lost_wifi">connection lost (same Wi-Fi as the box?)</string>
+    <string name="web_shown_on_tv">Shown on the TV</string>
+    <string name="web_failure">Failed</string>
+    <string name="web_connection_lost">Connection lost</string>
+    <string name="web_scan_qr">Scan the QR code shown on the TV.</string>
+    <string name="web_download">Download</string>
+    <string name="web_delete">Delete</string>
+    <string name="web_no_files">No files yet. On the TV: Kairo Files › Send to phone.</string>
+    <string name="web_delete_confirm">Delete “%1$s” from the box?</string>
+    <string name="web_delete_failed">Can\'t delete</string>
+</resources>

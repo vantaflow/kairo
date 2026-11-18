@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Unidades de tamaño (también para la página web) -->
+    <string name="size_bytes">%1$s B</string>
+    <string name="size_kb">%1$s KB</string>
+    <string name="size_mb">%1$s MB</string>
+    <string name="size_gb">%1$s GB</string>
+    <string name="size_tb">%1$s TB</string>
+
+    <!-- Pantalla de la tele -->
+    <string name="qr_code">Código QR</string>
+    <string name="scan_hint">Escanea con el móvil, o abre en el ordenador:</string>
+    <string name="same_wifi_hint">Misma Wi-Fi que la box. Los archivos llegan a Descargas › Kairo Send.</string>
+    <string name="no_network">La box no está conectada a ninguna red.</string>
+    <string name="exchanged_files">Archivos intercambiados</string>
+    <string name="transfer_failed">Error en el envío · OK para borrar</string>
+    <string name="transfer_progress">%1$s de %2$s · %3$d %%</string>
+    <string name="link_received">Enlace recibido · OK para abrirlo</string>
+    <string name="text_received_hint">Texto recibido · OK para leerlo</string>
+    <string name="text_received">Texto recibido</string>
+    <string name="reading">Cargando…</string>
+    <string name="nothing_yet">Nada por ahora. Envía un archivo desde el móvil o, desde Kairo Files, elige «Enviar al móvil».</string>
+    <string name="file_detail">%1$s · %2$s</string>
+    <string name="open">Abrir</string>
+    <string name="delete">Eliminar</string>
+    <string name="close">Cerrar</string>
+    <string name="clear">Borrar</string>
+    <string name="delete_failed">No se puede eliminar</string>
+    <string name="no_app_to_open">Ninguna app puede abrir este archivo</string>
+    <string name="no_browser">No hay navegador en la box</string>
+    <string name="notification_ready">Listo para recibir archivos</string>
+
+    <!-- Respuestas del servidor (mostradas por el navegador) -->
+    <string name="server_forbidden">Escanea el código QR que muestra Kairo Send Files en la tele.</string>
+    <string name="server_file_not_found">Archivo no encontrado</string>
+    <string name="server_length_required">Falta el tamaño del archivo</string>
+    <string name="server_upload_failed">Envío interrumpido o almacenamiento lleno</string>
+    <string name="server_text_too_long">Texto demasiado largo</string>
+    <string name="server_not_found">No encontrado</string>
+
+    <!-- Página web (móvil u ordenador) -->
+    <string name="web_subtitle">Envía archivos a la tele o recupera los que te ofrece la box.</string>
+    <string name="web_send_title">Enviar a la tele</string>
+    <string name="web_pick">Elegir archivos</string>
+    <string name="web_pick_hint">o arrástralos aquí · vídeos, fotos, APK, documentos…</string>
+    <string name="web_text_title">Enviar un texto o un enlace</string>
+    <string name="web_text_placeholder">Un enlace se abre directamente en la tele</string>
+    <string name="web_send">Enviar</string>
+    <string name="web_box_title">En la box</string>
+    <string name="web_loading">Cargando…</string>
+    <string name="web_waiting">%1$s · en espera</string>
+    <string name="web_progress">%1$s · %2$s %% · %3$s/s</string>
+    <string name="web_sent">enviado a la tele</string>
+    <string name="web_failed">error: %1$s</string>
+    <string name="web_error_status">error %1$s</string>
+    <string name="web_connection_lost_wifi">conexión perdida (¿misma Wi-Fi que la box?)</string>
+    <string name="web_shown_on_tv">Mostrado en la tele</string>
+    <string name="web_failure">Error</string>
+    <string name="web_connection_lost">Conexión perdida</string>
+    <string name="web_scan_qr">Escanea el código QR que aparece en la tele.</string>
+    <string name="web_download">Descargar</string>
+    <string name="web_delete">Eliminar</string>
+    <string name="web_no_files">Ningún archivo por ahora. En la tele: Kairo Files › Enviar al móvil.</string>
+    <string name="web_delete_confirm">¿Eliminar «%1$s» de la box?</string>
+    <string name="web_delete_failed">No se puede eliminar</string>
+</resources>

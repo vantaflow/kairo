@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Français : langue par défaut. Chaque clé doit exister dans values-en, values-es et values-ar. -->
+    <string name="app_name" translatable="false">Kairo Send Files</string>
+
+    <!-- Unités de taille (aussi utilisées par la page web) -->
+    <string name="size_bytes">%1$s o</string>
+    <string name="size_kb">%1$s Ko</string>
+    <string name="size_mb">%1$s Mo</string>
+    <string name="size_gb">%1$s Go</string>
+    <string name="size_tb">%1$s To</string>
+
+    <!-- Écran de la TV -->
+    <string name="qr_code">QR code</string>
+    <string name="scan_hint">Scannez avec le téléphone, ou ouvrez sur l\'ordinateur :</string>
+    <string name="same_wifi_hint">Même Wi-Fi que la box. Les fichiers arrivent dans Téléchargements › Kairo Send.</string>
+    <string name="no_network">La box n\'est connectée à aucun réseau.</string>
+    <string name="exchanged_files">Fichiers échangés</string>
+    <string name="transfer_failed">Échec de l\'envoi · OK pour effacer</string>
+    <string name="transfer_progress">%1$s sur %2$s · %3$d %%</string>
+    <string name="link_received">Lien reçu · OK pour l\'ouvrir</string>
+    <string name="text_received_hint">Texte reçu · OK pour le lire</string>
+    <string name="text_received">Texte reçu</string>
+    <string name="reading">Lecture…</string>
+    <string name="nothing_yet">Rien pour l\'instant. Envoyez un fichier depuis le téléphone, ou, depuis Kairo Files, choisissez « Envoyer au téléphone ».</string>
+    <string name="file_detail">%1$s · %2$s</string>
+    <string name="open">Ouvrir</string>
+    <string name="delete">Supprimer</string>
+    <string name="close">Fermer</string>
+    <string name="clear">Effacer</string>
+    <string name="delete_failed">Suppression impossible</string>
+    <string name="no_app_to_open">Aucune appli ne sait ouvrir ce fichier</string>
+    <string name="no_browser">Aucun navigateur sur la box</string>
+    <string name="notification_ready">Prêt à recevoir des fichiers</string>
+
+    <!-- Réponses du serveur (affichées par le navigateur) -->
+    <string name="server_forbidden">Scannez le QR code affiché par Kairo Send Files sur la TV.</string>
+    <string name="server_file_not_found">Fichier introuvable</string>
+    <string name="server_length_required">Taille du fichier manquante</string>
+    <string name="server_upload_failed">Envoi interrompu ou stockage plein</string>
+    <string name="server_text_too_long">Texte trop long</string>
+    <string name="server_not_found">Introuvable</string>
+
+    <!-- Page web d'envoi (téléphone ou ordinateur) -->
+    <string name="web_subtitle">Envoyez des fichiers à la TV, ou récupérez ceux que la box vous propose.</string>
+    <string name="web_send_title">Envoyer à la TV</string>
+    <string name="web_pick">Choisir des fichiers</string>
+    <string name="web_pick_hint">ou glissez-les ici · vidéos, photos, APK, documents…</string>
+    <string name="web_text_title">Envoyer un texte ou un lien</string>
+    <string name="web_text_placeholder">Un lien s\'ouvre directement sur la TV</string>
+    <string name="web_send">Envoyer</string>
+    <string name="web_box_title">Sur la box</string>
+    <string name="web_loading">Chargement…</string>
+    <string name="web_waiting">%1$s · en attente</string>
+    <string name="web_progress">%1$s · %2$s %% · %3$s/s</string>
+    <string name="web_sent">envoyé sur la TV</string>
+    <string name="web_failed">échec : %1$s</string>
+    <string name="web_error_status">erreur %1$s</string>
+    <string name="web_connection_lost_wifi">connexion perdue (même Wi-Fi que la box ?)</string>
+    <string name="web_shown_on_tv">Affiché sur la TV</string>
+    <string name="web_failure">Échec</string>
+    <string name="web_connection_lost">Connexion perdue</string>
+    <string name="web_scan_qr">Scannez le QR code affiché sur la TV.</string>
+    <string name="web_download">Télécharger</string>
+    <string name="web_delete">Supprimer</string>
+    <string name="web_no_files">Aucun fichier pour l\'instant. Sur la TV, Kairo Files › Envoyer au téléphone.</string>
+    <string name="web_delete_confirm">Supprimer « %1$s » de la box ?</string>
+    <string name="web_delete_failed">Suppression impossible</string>
+</resources>

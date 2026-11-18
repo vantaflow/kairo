@@ -96,3 +96,24 @@ fun newToken(random: SecureRandom = SecureRandom()): String {
     val alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
     return (1..12).map { alphabet[random.nextInt(alphabet.length)] }.joinToString("")
 }
+
+/** Langues de la page d'envoi et des réponses du serveur ; le français est la langue par défaut. */
+val WEB_LANGUAGES = listOf("fr", "en", "es", "ar")
+
+/**
+ * Langue de la page : la première langue traduite du navigateur (en-tête Accept-Language, par
+ * préférence décroissante), sinon celle de la box, sinon le français.
+ */
+fun pickLanguage(acceptLanguage: String?, box: String): String {
+    val wanted = acceptLanguage.orEmpty().split(',').mapNotNull { part ->
+        val bits = part.split(';')
+        val language = bits[0].trim().lowercase().substringBefore('-').takeIf { it.isNotEmpty() && it != "*" } ?: return@mapNotNull null
+        val q = bits.drop(1).map { it.trim() }.firstOrNull { it.startsWith("q=") }?.removePrefix("q=")?.toDoubleOrNull() ?: 1.0
+        (language to q).takeIf { q > 0 }
+    }.sortedByDescending { it.second }
+    return wanted.firstOrNull { it.first in WEB_LANGUAGES }?.first ?: box.takeIf { it in WEB_LANGUAGES } ?: "fr"
+}
+
+/** Textes de la page en objet JSON, insérable tel quel dans une balise <script>. */
+fun i18nJson(texts: Map<String, String>): String =
+    texts.entries.joinToString(",", "{", "}") { (k, v) -> jsonString(k) + ":" + jsonString(v) }.replace("<", "\\u003c")
