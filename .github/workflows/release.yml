@@ -77,8 +77,9 @@ jobs:
           cp send/build/outputs/apk/release/send-release.apk out/kairo-send.apk
           SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           for f in out/*.apk; do
-            CERT=$("$SIGNER" verify --print-certs "$f" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-            [ "$CERT" = "$EXPECTED_CERT" ] || { echo "$f : mauvaise clé ($CERT)"; exit 1; }
+            INFO=$("$SIGNER" verify --print-certs "$f" 2>&1 || true)
+            CERT=$(printf '%s\n' "$INFO" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            [ "$CERT" = "$EXPECTED_CERT" ] || { echo "$f : mauvaise clé ($CERT)"; printf '%s\n' "$INFO" | head -20; exit 1; }
           done
       - name: Publier
         env:
