@@ -42,6 +42,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,7 +80,7 @@ fun dirSize(f: File): Long = if (f.isFile) f.length() else f.listFiles()?.sumOf(
 
 /** Stockage interne puis clés USB / cartes branchées. */
 fun storageSpaces(context: Context): List<Space> {
-    val internal = StatFs(Environment.getDataDirectory().path).let { Space("Stockage interne", it.availableBytes, it.totalBytes) }
+    val internal = StatFs(Environment.getDataDirectory().path).let { Space(context.getString(R.string.cleaner_internal_storage), it.availableBytes, it.totalBytes) }
     val external = context.getSystemService(StorageManager::class.java).storageVolumes
         .filter { it.isRemovable && it.state == Environment.MEDIA_MOUNTED }
         .mapNotNull { v -> v.directory?.let { d -> runCatching { StatFs(d.path) }.getOrNull()?.let { Space(v.getDescription(context), it.availableBytes, it.totalBytes) } } }
@@ -140,7 +142,7 @@ fun CleanerScreen(installedApps: List<AppInfo>) {
         context.imageLoader.memoryCache?.clear()
         delay(1_500)
         val freed = (cleaner.state().availableBytes - before).coerceAtLeast(0)
-        message = "$closed applis fermées en arrière-plan, ${formatMb(freed)} de mémoire et ${formatMb(kairoCache)} de cache libérés."
+        message = context.resources.getQuantityString(R.plurals.cleaner_done, closed, closed, formatMb(freed), formatMb(kairoCache))
         busy = false
         refresh++
     }
@@ -151,25 +153,25 @@ fun CleanerScreen(installedApps: List<AppInfo>) {
             .padding(start = 72.dp, end = 72.dp, top = 44.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text("Nettoyeur", fontSize = 40.sp, fontWeight = FontWeight.Medium, color = OnBackground)
+        Text(stringResource(R.string.tool_cleaner), fontSize = 40.sp, fontWeight = FontWeight.Medium, color = OnBackground)
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            Gauge("Mémoire vive", memory.availableBytes, memory.totalBytes, Modifier.weight(1f))
+            Gauge(stringResource(R.string.cleaner_ram), memory.availableBytes, memory.totalBytes, Modifier.weight(1f))
             spaces.forEach { Gauge(it.label, it.free, it.total, Modifier.weight(1f)) }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Box(Modifier.focusRequester(first)) {
-                SmallButton(if (busy) "Nettoyage…" else "Tout optimiser", ::optimize, enabled = !busy)
+                SmallButton(stringResource(if (busy) R.string.cleaner_busy else R.string.cleaner_optimize), ::optimize, enabled = !busy)
             }
-            Text("Ferme les applis en arrière-plan et vide le cache de Kairo (${formatMb(kairoCache)}).", color = OnBackgroundMuted, fontSize = 18.sp)
+            Text(stringResource(R.string.cleaner_optimize_hint, formatMb(kairoCache)), color = OnBackgroundMuted, fontSize = 18.sp)
         }
         message?.let { Text("✓ $it", color = AccentColor, fontSize = 18.sp) }
         Box(Modifier.width(900.dp)) { com.vantaflow.kairo.settings.AutoCleanSettings() }
-        Text("Applis les plus lourdes", fontSize = 22.sp, color = OnBackground)
+        Text(stringResource(R.string.cleaner_heaviest), fontSize = 22.sp, color = OnBackground)
         val list = heavy
         if (list == null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Kairo a besoin de l'accès aux données d'utilisation pour mesurer chaque appli.", color = OnBackgroundMuted, fontSize = 18.sp)
-                SmallButton("Autoriser", {
+                Text(stringResource(R.string.cleaner_usage_needed), color = OnBackgroundMuted, fontSize = 18.sp)
+                SmallButton(stringResource(R.string.cleaner_allow), {
                     openSafely(context, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:${context.packageName}")))
                 })
             }
@@ -196,11 +198,11 @@ private fun Gauge(label: String, free: Long, total: Long, modifier: Modifier) {
     }
     Column(modifier.background(SurfaceColor.copy(alpha = 0.7f), RoundedCornerShape(20.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(label, fontSize = 18.sp, color = OnBackgroundMuted)
-        Text("${formatMb(free)} libres", fontSize = 30.sp, color = OnBackground)
+        Text(stringResource(R.string.cleaner_free, formatMb(free)), fontSize = 30.sp, color = OnBackground)
         Box(Modifier.fillMaxWidth().height(12.dp).background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(6.dp))) {
             Box(Modifier.fillMaxHeight().fillMaxWidth(shown).background(color, RoundedCornerShape(6.dp)))
         }
-        Text("sur ${formatMb(total)} · ${(used * 100).toInt()} % utilisé", fontSize = 15.sp, color = OnBackgroundMuted)
+        Text(stringResource(R.string.cleaner_used, formatMb(total), (used * 100).toInt()), fontSize = 15.sp, color = OnBackgroundMuted)
     }
 }
 
@@ -220,7 +222,7 @@ private fun AppSpaceRow(app: AppSpace, onClick: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(app.label, fontSize = 19.sp, modifier = Modifier.weight(1f))
             Text(formatMb(app.total), fontSize = 19.sp, modifier = Modifier.width(140.dp))
-            Text(if (app.cache > 0) "cache ${formatMb(app.cache)} · OK pour vider" else "", fontSize = 16.sp, modifier = Modifier.width(300.dp))
+            Text(if (app.cache > 0) stringResource(R.string.cleaner_app_cache, formatMb(app.cache)) else "", fontSize = 16.sp, modifier = Modifier.width(300.dp))
         }
     }
 }

@@ -44,6 +44,8 @@ class AppContainer(val app: Application) {
         java.io.File(app.filesDir, "catalog.json"),
         region = ::catalogRegion,
         language = ::catalogLanguage,
+        // Titres des rangées dans la langue de l'appli (la langue fait partie de la clé du cache).
+        text = { id, args -> app.getString(id, *args) },
     )
 
     /**
@@ -71,7 +73,9 @@ class AppContainer(val app: Application) {
 
     /** Météo pour une ville (vide = position par IP) ; la position est gardée en mémoire. */
     val weather: suspend (String, Boolean) -> Weather? = { city, fahrenheit ->
+        // Libellé du ciel dans la langue de l'appli (l'en-tête n'a pas de Context).
         placeFor(city)?.let { weatherRepo.current(it, fahrenheit) }
+            ?.let { w -> w.copy(label = com.vantaflow.kairo.weather.weatherLabel(app, w.code)) }
     }
 
     /** Prévisions sur 7 jours (écran Météo). */
@@ -126,7 +130,7 @@ class AppContainer(val app: Application) {
 
     /** Télécommande sur téléphone : démarrée ou arrêtée selon le réglage. */
     @Volatile private var phoneToken = ""
-    val phoneRemote = PhoneRemoteServer({ phoneToken }, PhoneRemoteActions(app)::route)
+    val phoneRemote = PhoneRemoteServer({ phoneToken }, PhoneRemoteActions(app)::route, { app.getString(R.string.phoneremote_forbidden) })
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun watchPhoneRemote() {

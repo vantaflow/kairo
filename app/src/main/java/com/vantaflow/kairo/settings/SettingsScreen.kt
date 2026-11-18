@@ -118,10 +118,12 @@ fun SettingsScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
-        // Voile progressif : l'accueil reste visible à gauche.
+        // Voile progressif : l'accueil reste visible du côté opposé au panneau (à droite en arabe).
+        val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
         Box(
             Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(0.35f to Color.Transparent, 0.62f to Background.copy(alpha = 0.8f)),
+                if (rtl) Brush.horizontalGradient(0.38f to Background.copy(alpha = 0.8f), 0.65f to Color.Transparent)
+                else Brush.horizontalGradient(0.35f to Color.Transparent, 0.62f to Background.copy(alpha = 0.8f)),
             ),
         )
         Column(

@@ -35,7 +35,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -58,7 +62,7 @@ import kotlinx.coroutines.launch
 fun NetworkIndicator(state: NetState, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         when (state) {
-            NetState.Offline -> Text("Hors ligne", color = Color(0xFFF28B82), fontSize = 16.sp)
+            NetState.Offline -> Text(stringResource(R.string.network_offline), color = Color(0xFFF28B82), fontSize = 16.sp)
             is NetState.Ethernet -> Text("Ethernet", color = OnBackground, fontSize = 16.sp)
             is NetState.Wifi -> SignalBars(state.signalLevel)
         }
@@ -80,20 +84,26 @@ private fun SignalBars(level: Int) {
     }
 }
 
-private fun stateText(state: NetState): String = when (state) {
-    NetState.Offline -> "Aucune connexion"
-    is NetState.Ethernet -> "Connecté en Ethernet" + (state.ip?.let { " · IP $it" } ?: "")
-    is NetState.Wifi -> "Connecté en Wi-Fi" + (state.ssid?.let { " à « $it »" } ?: "") +
-        " · signal ${state.signalLevel}/4" + (state.ip?.let { " · IP $it" } ?: "")
+private fun stateText(context: Context, state: NetState): String = when (state) {
+    NetState.Offline -> context.getString(R.string.network_no_connection)
+    is NetState.Ethernet -> listOfNotNull(
+        context.getString(R.string.network_ethernet_connected),
+        state.ip?.let { context.getString(R.string.network_ip, it) },
+    ).joinToString(" · ")
+    is NetState.Wifi -> listOfNotNull(
+        state.ssid?.let { context.getString(R.string.network_wifi_connected_to, it) } ?: context.getString(R.string.network_wifi_connected),
+        context.getString(R.string.network_signal, state.signalLevel),
+        state.ip?.let { context.getString(R.string.network_ip, it) },
+    ).joinToString(" · ")
 }
 
 private val NetworkShortcuts = listOf(
-    SettingsShortcut("Paramètres Wi-Fi", listOf(Settings.ACTION_WIFI_SETTINGS, Settings.ACTION_SETTINGS)),
+    SettingsShortcut(R.string.network_wifi_settings, listOf(Settings.ACTION_WIFI_SETTINGS, Settings.ACTION_SETTINGS)),
     SettingsShortcut(
-        "Ethernet, IP fixe, DNS et proxy",
+        R.string.network_ethernet_settings,
         listOf(Settings.ACTION_WIRELESS_SETTINGS, Settings.ACTION_WIFI_SETTINGS, Settings.ACTION_SETTINGS),
     ),
-    SettingsShortcut("Partage de connexion et VPN", listOf(Settings.ACTION_VPN_SETTINGS, Settings.ACTION_SETTINGS)),
+    SettingsShortcut(R.string.network_tethering_vpn, listOf(Settings.ACTION_VPN_SETTINGS, Settings.ACTION_SETTINGS)),
 )
 
 /** Réseau : état, connexion à un Wi-Fi, raccourcis vers les options avancées. */
@@ -109,25 +119,25 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
 
     fun scan() {
         if (!monitor.locationEnabled()) {
-            message = "Activez la localisation dans les paramètres Android : sans elle, la liste des Wi-Fi reste vide."
+            message = context.getString(R.string.network_location_off)
         }
         scope.launch { networks = monitor.scanAndWait() }
     }
     // L'écran système d'ajout de réseau doit être ouvert « pour résultat », sinon il se ferme aussitôt.
     val addNetwork = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         message = if (result.resultCode == Activity.RESULT_OK) {
-            "Réseau ajouté : la box va s'y connecter."
+            context.getString(R.string.network_added)
         } else {
             context.startSafely(Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            "Ajout non confirmé : terminez dans les paramètres Wi-Fi."
+            context.getString(R.string.network_add_unconfirmed)
         }
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) scan() else message = "Sans l'autorisation de localisation, Android ne donne pas la liste des Wi-Fi."
+        if (granted) scan() else message = context.getString(R.string.network_location_denied)
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text(stateText(state), color = OnBackground, fontSize = 20.sp) }
+        item { Text(stateText(context, state), color = OnBackground, fontSize = 20.sp) }
         // Au-dessus de la liste Wi-Fi : le résultat de la recherche arrive après coup et ferait
         // sauter le DNS (et le focus) vers le bas.
         item(key = "dns") { PrivateDnsPicker() }
@@ -139,13 +149,13 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
                 } else {
                     permission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                 }
-            }) { Text("Rechercher les réseaux Wi-Fi") }
+            }) { Text(stringResource(R.string.network_scan)) }
         }
         val selected = target
         if (selected != null) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Se connecter à « ${selected.ssid} »", color = OnBackground)
+                    Text(stringResource(R.string.network_connect_to, selected.ssid), color = OnBackground)
                     if (selected.security == WifiSecurity.Wpa2 || selected.security == WifiSecurity.Wpa3) {
                         val passwordFocus = remember { FocusRequester() }
                         LaunchedEffect(selected) { runCatching { passwordFocus.requestFocus() } }
@@ -168,20 +178,20 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
                             when (val request = wifiAddRequest(selected, password)) {
                                 is WifiAddRequest.Ready -> runCatching { addNetwork.launch(request.intent) }.onFailure {
                                     context.startSafely(Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                    message = "La box ne permet pas l'ajout direct : terminez dans les paramètres Wi-Fi."
+                                    message = context.getString(R.string.network_direct_add_unsupported)
                                 }
-                                is WifiAddRequest.Invalid -> message = request.reason
+                                is WifiAddRequest.Invalid -> message = context.getString(request.reason)
                             }
                             target = null
                             password = ""
-                        }) { Text("Se connecter") }
-                        OutlinedButton(onClick = { target = null }) { Text("Annuler") }
+                        }) { Text(stringResource(R.string.network_connect)) }
+                        OutlinedButton(onClick = { target = null }) { Text(stringResource(R.string.network_cancel)) }
                     }
                 }
             }
         }
         networks?.let { list ->
-            if (list.isEmpty()) item { Text("Aucun réseau trouvé.", color = OnBackgroundMuted) }
+            if (list.isEmpty()) item { Text(stringResource(R.string.network_none_found), color = OnBackgroundMuted) }
             items(list, key = { it.ssid }) { net ->
                 ListItem(
                     selected = false,
@@ -189,20 +199,23 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
                     headlineContent = { Text(net.ssid) },
                     supportingContent = {
                         Text(
-                            "Signal ${net.signalLevel}/4 · " + when (net.security) {
-                                WifiSecurity.Open -> "ouvert"
-                                WifiSecurity.Wpa2 -> "WPA2"
-                                WifiSecurity.Wpa3 -> "WPA3"
-                                WifiSecurity.Unsupported -> "WEP/entreprise (paramètres Android)"
-                            },
+                            stringResource(
+                                R.string.network_signal_item, net.signalLevel,
+                                when (net.security) {
+                                    WifiSecurity.Open -> stringResource(R.string.network_security_open)
+                                    WifiSecurity.Wpa2 -> "WPA2"
+                                    WifiSecurity.Wpa3 -> "WPA3"
+                                    WifiSecurity.Unsupported -> stringResource(R.string.network_security_enterprise)
+                                },
+                            ),
                         )
                     },
                 )
             }
         }
-        item { Text("Options avancées (paramètres Android)", color = OnBackgroundMuted, modifier = Modifier.padding(top = 8.dp)) }
+        item { Text(stringResource(R.string.network_advanced), color = OnBackgroundMuted, modifier = Modifier.padding(top = 8.dp)) }
         items(NetworkShortcuts, key = { it.title }) { s ->
-            ListItem(selected = false, onClick = { context.openSettings(s) }, headlineContent = { Text(s.title) })
+            ListItem(selected = false, onClick = { context.openSettings(s) }, headlineContent = { Text(stringResource(s.title)) })
         }
     }
     LaunchedEffect(Unit) {
@@ -212,7 +225,7 @@ fun NetworkSettings(monitor: NetworkMonitor, stateFlow: Flow<NetState>) {
 
 private sealed interface WifiAddRequest {
     data class Ready(val intent: Intent) : WifiAddRequest
-    data class Invalid(val reason: String) : WifiAddRequest
+    data class Invalid(@StringRes val reason: Int) : WifiAddRequest
 }
 
 /** Demande d'ajout du réseau à Android (écran de confirmation système, API 30). */
@@ -222,10 +235,10 @@ private fun wifiAddRequest(net: WifiNetwork, password: String): WifiAddRequest {
         WifiSecurity.Wpa2 -> builder.setWpa2Passphrase(password)
         WifiSecurity.Wpa3 -> builder.setWpa3Passphrase(password)
         WifiSecurity.Open -> Unit
-        WifiSecurity.Unsupported -> return WifiAddRequest.Invalid("Ce type de réseau se configure dans les paramètres Wi-Fi d'Android.")
+        WifiSecurity.Unsupported -> return WifiAddRequest.Invalid(R.string.network_unsupported_type)
     }
     val suggestion = runCatching { builder.build() }.getOrElse {
-        return WifiAddRequest.Invalid("Mot de passe invalide (8 caractères minimum).")
+        return WifiAddRequest.Invalid(R.string.network_bad_password)
     }
     return WifiAddRequest.Ready(
         Intent(Settings.ACTION_WIFI_ADD_NETWORKS)

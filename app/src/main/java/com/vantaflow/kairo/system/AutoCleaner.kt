@@ -2,6 +2,10 @@ package com.vantaflow.kairo.system
 
 import android.content.Context
 import android.os.SystemClock
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
+import com.vantaflow.kairo.tools.formatMinutes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -15,7 +19,14 @@ fun idleApps(lastSeen: Map<String, Long>, now: Long, idleMs: Long, foreground: S
     if (idleMs <= 0) emptyList() else lastSeen.filter { (pkg, t) -> pkg != foreground && now - t >= idleMs }.keys.toList()
 
 /** Délais proposés pour fermer une appli inutilisée (minutes, 0 = jamais). */
-val IdleCloseChoices = listOf(15 to "15 min", 30 to "30 min", 60 to "1 h", 120 to "2 h", 0 to "Jamais")
+val IdleCloseMinutes = listOf(15, 30, 60, 120, 0)
+
+/** Délais proposés (minutes, libellé dans la langue de l'appli). */
+val IdleCloseChoices: List<Pair<Int, String>>
+    @Composable get() {
+        val never = stringResource(R.string.duration_never)
+        return IdleCloseMinutes.map { it to if (it <= 0) never else formatMinutes(it) }
+    }
 
 /**
  * Nettoyage automatique : ferme les applis laissées en arrière-plan depuis trop longtemps, et

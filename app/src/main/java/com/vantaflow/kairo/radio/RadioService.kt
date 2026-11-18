@@ -89,7 +89,7 @@ class RadioService : Service() {
         current = this
         audio = getSystemService(AudioManager::class.java)
         getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, "Radio", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CHANNEL, getString(com.vantaflow.kairo.R.string.tool_radio), NotificationManager.IMPORTANCE_LOW),
         )
         session = MediaSession(this, "KairoRadio").apply {
             setCallback(object : MediaSession.Callback() {
@@ -107,7 +107,7 @@ class RadioService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val station = Radio.state.value.station
-        startForeground(1, notification(station?.name ?: "Radio"), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        startForeground(1, notification(station?.name ?: getString(com.vantaflow.kairo.R.string.tool_radio)), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         when (intent?.action) {
             ACTION_PLAY -> if (station != null) start(station) else stopSelf()
             else -> stopSelf()

@@ -1,5 +1,8 @@
 package com.vantaflow.kairo.weather
 
+import android.content.Context
+import androidx.annotation.StringRes
+import com.vantaflow.kairo.R
 import com.vantaflow.kairo.net.HttpGet
 import org.json.JSONException
 import org.json.JSONObject
@@ -8,30 +11,34 @@ import kotlin.math.roundToInt
 
 data class Place(val name: String, val lat: Double, val lon: Double)
 
-data class Weather(val temperature: Double, val code: Int, val place: String) {
+/** [label] : libellé du ciel dans la langue de l'appli (rempli par l'appli, vide sinon). */
+data class Weather(val temperature: Double, val code: Int, val place: String, val label: String = "") {
     /** Texte de l'en-tête de l'accueil : « 22° · Ensoleillé ». */
     fun headerText(): String {
-        val label = weatherLabel(code)
         val temp = "${temperature.roundToInt()}°"
         return if (label.isEmpty()) temp else "$temp · $label"
     }
 }
 
-/** Libellé français d'un code météo WMO (Open-Meteo). */
-fun weatherLabel(code: Int): String = when (code) {
-    0 -> "Ensoleillé"
-    1 -> "Plutôt dégagé"
-    2 -> "Partiellement nuageux"
-    3 -> "Couvert"
-    45, 48 -> "Brouillard"
-    in 51..57 -> "Bruine"
-    in 61..67 -> "Pluie"
-    in 71..77 -> "Neige"
-    in 80..82 -> "Averses"
-    85, 86 -> "Averses de neige"
-    in 95..99 -> "Orage"
-    else -> ""
+/** Libellé d'un code météo WMO (Open-Meteo) ; null si le code est inconnu. */
+@StringRes
+fun weatherLabelRes(code: Int): Int? = when (code) {
+    0 -> R.string.weather_code_clear
+    1 -> R.string.weather_code_mostly_clear
+    2 -> R.string.weather_code_partly_cloudy
+    3 -> R.string.weather_code_overcast
+    45, 48 -> R.string.weather_code_fog
+    in 51..57 -> R.string.weather_code_drizzle
+    in 61..67 -> R.string.weather_code_rain
+    in 71..77 -> R.string.weather_code_snow
+    in 80..82 -> R.string.weather_code_showers
+    85, 86 -> R.string.weather_code_snow_showers
+    in 95..99 -> R.string.weather_code_thunderstorm
+    else -> null
 }
+
+/** Libellé d'un code météo dans la langue de l'appli ; vide si le code est inconnu. */
+fun weatherLabel(context: Context, code: Int): String = weatherLabelRes(code)?.let(context::getString).orEmpty()
 
 /** Symbole d'un code météo WMO (emoji, lisible de loin) ; [night] : lune au lieu du soleil. */
 fun weatherEmoji(code: Int, night: Boolean = false): String = when (code) {
@@ -64,17 +71,18 @@ data class DayForecast(
     val windDir: Int = -1,
 )
 
-/** Point cardinal d'où vient le vent : « N », « NE »… */
-fun windDirection(deg: Int): String =
-    if (deg < 0) "" else listOf("N", "NE", "E", "SE", "S", "SO", "O", "NO")[((deg % 360 + 22) / 45) % 8]
+/** Point cardinal d'où vient le vent : « N », « NE »… ; [points] = les 8 points (N, NE… NO) dans la langue de l'appli. */
+fun windDirection(deg: Int, points: List<String> = listOf("N", "NE", "E", "SE", "S", "SO", "O", "NO")): String =
+    if (deg < 0 || points.size != 8) "" else points[((deg % 360 + 22) / 45) % 8]
 
 /** Niveau d'UV en mots (échelle OMS). */
-fun uvLabel(uv: Double): String = when {
-    uv < 3 -> "faible"
-    uv < 6 -> "modéré"
-    uv < 8 -> "élevé"
-    uv < 11 -> "très élevé"
-    else -> "extrême"
+@StringRes
+fun uvLabelRes(uv: Double): Int = when {
+    uv < 3 -> R.string.weather_uv_low
+    uv < 6 -> R.string.weather_uv_moderate
+    uv < 8 -> R.string.weather_uv_high
+    uv < 11 -> R.string.weather_uv_very_high
+    else -> R.string.weather_uv_extreme
 }
 
 /** Prévisions : maintenant, heure par heure et sur 7 jours. */
@@ -159,8 +167,9 @@ class WeatherRepository(private val http: HttpGet) {
         return Place(city, lat, lon)
     }
 
-    fun geocode(city: String): Place? =
-        json("https://geocoding-api.open-meteo.com/v1/search?name=${enc(city)}&count=1&language=fr&format=json") { o ->
+    /** [language] : langue du nom de ville renvoyé (celle de l'appli). */
+    fun geocode(city: String, language: String = java.util.Locale.getDefault().language.ifBlank { "fr" }): Place? =
+        json("https://geocoding-api.open-meteo.com/v1/search?name=${enc(city)}&count=1&language=${enc(language)}&format=json") { o ->
             val first = o.optJSONArray("results")?.optJSONObject(0) ?: return@json null
             Place(first.getString("name"), first.getDouble("latitude"), first.getDouble("longitude"))
         }

@@ -14,11 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
+import com.vantaflow.kairo.R
 import com.vantaflow.kairo.settings.ChoiceChip
 import com.vantaflow.kairo.settings.ChoiceRow
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
@@ -35,9 +37,9 @@ fun SleepTimerDialog(remaining: Int?, serviceOn: Boolean, onPick: (Int?) -> Unit
             Modifier.width(560.dp).background(Color(0xFF202329), RoundedCornerShape(20.dp)).padding(28.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Minuteur de mise en veille", fontSize = 26.sp, color = Color.White)
+            Text(stringResource(R.string.sleep_title), fontSize = 26.sp, color = Color.White)
             Text(
-                if (remaining != null) "La box se met en veille dans ${formatMinutes(remaining)}." else "La box (et la télé, via HDMI-CEC) se met en veille au bout de :",
+                if (remaining != null) stringResource(R.string.sleep_remaining, formatMinutes(remaining)) else stringResource(R.string.sleep_pick),
                 fontSize = 18.sp, color = OnBackgroundMuted,
             )
             ChoiceRow {
@@ -47,12 +49,12 @@ fun SleepTimerDialog(remaining: Int?, serviceOn: Boolean, onPick: (Int?) -> Unit
                 }
             }
             if (remaining != null) {
-                Button(onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth().focusRequester(first)) { Text("Arrêter le minuteur") }
+                Button(onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth().focusRequester(first)) { Text(stringResource(R.string.sleep_stop)) }
             }
-            Text("1 minute avant, un bandeau prévient : une touche de la télécommande ajoute $SLEEP_EXTEND_MIN min.", fontSize = 15.sp, color = OnBackgroundMuted)
+            Text(stringResource(R.string.sleep_warning_hint, SLEEP_EXTEND_MIN), fontSize = 15.sp, color = OnBackgroundMuted)
             if (!serviceOn) {
                 Text(
-                    "⚠ Activez le service Kairo (Réglages › Assistant de configuration) : sans lui, la box ne peut pas se mettre en veille.",
+                    stringResource(R.string.sleep_service_off),
                     fontSize = 15.sp, color = Color(0xFFFFB74D),
                 )
             }

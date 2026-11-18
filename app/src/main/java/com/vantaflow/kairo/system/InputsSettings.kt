@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.Text
@@ -19,10 +21,10 @@ import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 
 /** Réglages de la sortie HDMI de la box (vers la télé). */
 private val OutputShortcuts = listOf(
-    SettingsShortcut("Résolution et image (sortie HDMI)", listOf(Settings.ACTION_DISPLAY_SETTINGS, Settings.ACTION_SETTINGS)),
-    SettingsShortcut("Son (sortie HDMI, Dolby, volume)", listOf(Settings.ACTION_SOUND_SETTINGS, Settings.ACTION_SETTINGS)),
+    SettingsShortcut(R.string.inputs_resolution, listOf(Settings.ACTION_DISPLAY_SETTINGS, Settings.ACTION_SETTINGS)),
+    SettingsShortcut(R.string.inputs_sound, listOf(Settings.ACTION_SOUND_SETTINGS, Settings.ACTION_SETTINGS)),
     SettingsShortcut(
-        "HDMI-CEC (allumer et piloter la télé)",
+        R.string.inputs_cec,
         listOf("android.settings.HDMI_CEC_SETTINGS", "com.android.tv.settings.HDMI_CEC_SETTINGS", Settings.ACTION_SETTINGS),
     ),
 )
@@ -36,9 +38,9 @@ fun InputsSettings() {
     val context = LocalContext.current
     val inputs = remember { passthroughInputs(context) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        item { Text("Entrées", color = OnBackground) }
+        item { Text(stringResource(R.string.inputs_title), color = OnBackground) }
         if (inputs.isEmpty()) {
-            item { Text("Cette box n'a pas d'entrée HDMI : elle se branche sur une entrée de la télé.", color = OnBackgroundMuted) }
+            item { Text(stringResource(R.string.inputs_none), color = OnBackgroundMuted) }
         }
         items(inputs, key = { it.key }) { input ->
             ListItem(
@@ -47,9 +49,9 @@ fun InputsSettings() {
                 headlineContent = { Text(input.name) },
             )
         }
-        item { Text("Sortie HDMI", color = OnBackground) }
+        item { Text(stringResource(R.string.inputs_output), color = OnBackground) }
         items(OutputShortcuts, key = { it.title }) { s ->
-            ListItem(selected = false, onClick = { context.openSettings(s) }, headlineContent = { Text(s.title) })
+            ListItem(selected = false, onClick = { context.openSettings(s) }, headlineContent = { Text(stringResource(s.title)) })
         }
     }
 }

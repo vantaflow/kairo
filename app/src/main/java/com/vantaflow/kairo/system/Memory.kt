@@ -5,11 +5,22 @@ import android.content.Context
 import android.provider.Settings
 import java.util.Locale
 
-/** Taille lisible en français : « 512 Mo », « 1,5 Go ». */
-fun formatMb(bytes: Long): String {
+/** Unités (Mo, Go) dans la langue de [locale]. */
+private fun sizeUnits(locale: Locale): Pair<String, String> = when (locale.language) {
+    "fr" -> "Mo" to "Go"
+    "ar" -> "ميغابايت" to "غيغابايت"
+    else -> "MB" to "GB"
+}
+
+/** Taille lisible dans la langue de l'appli : « 512 Mo », « 1,5 Go », « 1.5 GB ». */
+fun formatMb(bytes: Long, locale: Locale = Locale.getDefault()): String {
+    val (mbUnit, gbUnit) = sizeUnits(locale)
     val mb = bytes / (1024.0 * 1024.0)
-    return if (mb < 1024) "${mb.toLong()} Mo"
-    else String.format(Locale.FRENCH, "%.1f Go", mb / 1024).replace(",0 Go", " Go")
+    if (mb < 1024) return "${mb.toLong()} $mbUnit"
+    val gb = mb / 1024
+    val tenths = kotlin.math.round(gb * 10).toLong()
+    val number = if (tenths % 10 == 0L) (tenths / 10).toString() else String.format(locale, "%.1f", gb)
+    return "$number $gbUnit"
 }
 
 /** Applis à fermer : toutes sauf le launcher et celles à garder (ex. service de touches, clavier). */

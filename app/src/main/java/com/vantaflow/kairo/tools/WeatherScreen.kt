@@ -37,7 +37,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import android.content.Context
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -53,9 +56,9 @@ import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.weather.DayForecast
 import com.vantaflow.kairo.weather.Forecast
 import com.vantaflow.kairo.weather.HourForecast
-import com.vantaflow.kairo.weather.uvLabel
+import com.vantaflow.kairo.weather.uvLabelRes
 import com.vantaflow.kairo.weather.weatherEmoji
-import com.vantaflow.kairo.weather.weatherLabel
+import com.vantaflow.kairo.weather.weatherLabelRes
 import com.vantaflow.kairo.weather.windDirection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -64,7 +67,21 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val DayName = DateTimeFormatter.ofPattern("EEE d", Locale.FRENCH)
+/**
+ * Format de date de la langue de l'appli à partir d'un squelette sans séparateurs (« EEEEdMMMM ») ;
+ * [fallback] (motif français) hors Android, dans les tests JVM.
+ */
+private fun localizedDate(skeleton: String, fallback: String, locale: Locale = Locale.getDefault()): DateTimeFormatter =
+    DateTimeFormatter.ofPattern(
+        runCatching { android.text.format.DateFormat.getBestDateTimePattern(locale, skeleton) }.getOrElse { fallback },
+        locale,
+    )
+
+private fun String.capitalized(locale: Locale = Locale.getDefault()) = replaceFirstChar { it.titlecase(locale) }
+
+/** Libellé du ciel dans la langue de l'appli (vide si le code est inconnu). */
+@Composable
+private fun weatherLabel(code: Int): String = weatherLabelRes(code)?.let { stringResource(it) }.orEmpty()
 private val HourMin = DateTimeFormatter.ofPattern("HH:mm")
 private val Glass = Color.White.copy(alpha = 0.12f)
 private val GlassShape = RoundedCornerShape(22.dp)
@@ -81,18 +98,20 @@ fun hourlyFor(f: Forecast, day: Int): List<HourForecast> {
 fun hoursFor(f: Forecast, day: Int): List<HourForecast> = hourlyFor(f, day).filterIndexed { i, _ -> i % 3 == 0 }.take(8)
 
 /** Détails d'un jour (icône, libellé, valeur) ; aujourd'hui, en plus, pression et nuages. */
-fun dayDetails(f: Forecast, day: Int): List<Triple<String, String, String>> {
+fun dayDetails(context: Context, f: Forecast, day: Int): List<Triple<String, String, String>> {
     val d = f.days.getOrNull(day) ?: return emptyList()
+    val s = { id: Int -> context.getString(id) }
+    val points = context.getString(R.string.weather_wind_points).split(',').map(String::trim)
     return buildList {
-        d.sunrise?.let { add(Triple("🌅", "Lever", it.format(HourMin))) }
-        d.sunset?.let { add(Triple("🌇", "Coucher", it.format(HourMin))) }
-        add(Triple("☀️", "Indice UV", "${d.uvMax.roundToInt()} · ${uvLabel(d.uvMax)}"))
-        add(Triple("💧", "Pluie", if (d.rainMm >= 0.1) "${"%.1f".format(Locale.FRENCH, d.rainMm)} mm" else "${d.rainChance} %"))
-        add(Triple("💨", "Vent", "${d.windMax.roundToInt()} km/h ${windDirection(d.windDir)}".trim()))
-        add(Triple("🌬️", "Rafales", "${d.gustMax.roundToInt()} km/h"))
+        d.sunrise?.let { add(Triple("🌅", s(R.string.weather_sunrise), it.format(HourMin))) }
+        d.sunset?.let { add(Triple("🌇", s(R.string.weather_sunset), it.format(HourMin))) }
+        add(Triple("☀️", s(R.string.weather_uv), "${d.uvMax.roundToInt()} · ${s(uvLabelRes(d.uvMax))}"))
+        add(Triple("💧", s(R.string.weather_rain), if (d.rainMm >= 0.1) "${"%.1f".format(Locale.getDefault(), d.rainMm)} mm" else context.getString(R.string.weather_percent, d.rainChance)))
+        add(Triple("💨", s(R.string.weather_wind), "${d.windMax.roundToInt()} km/h ${windDirection(d.windDir, points)}".trim()))
+        add(Triple("🌬️", s(R.string.weather_gusts), "${d.gustMax.roundToInt()} km/h"))
         if (day == 0) {
-            if (f.pressure > 0) add(Triple("🧭", "Pression", "${f.pressure} hPa"))
-            if (f.cloudCover >= 0) add(Triple("☁️", "Nuages", "${f.cloudCover} %"))
+            if (f.pressure > 0) add(Triple("🧭", s(R.string.weather_pressure), "${f.pressure} hPa"))
+            if (f.cloudCover >= 0) add(Triple("☁️", s(R.string.weather_clouds), context.getString(R.string.weather_percent, f.cloudCover)))
         }
     }
 }
@@ -147,14 +166,14 @@ fun WeatherScreen() {
             f != null -> Column(Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth().height(230.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Now(f, Modifier.width(430.dp).fillMaxHeight())
-                    DetailsGrid(dayDetails(f, day), Modifier.weight(1f).fillMaxHeight())
+                    DetailsGrid(dayDetails(context, f, day), Modifier.weight(1f).fillMaxHeight())
                 }
                 Column(Modifier.fillMaxWidth().weight(1f).background(Glass, GlassShape).padding(horizontal = 24.dp, vertical = 12.dp)) {
                     Text(
                         when (day) {
-                            0 -> "Les prochaines 24 heures"
-                            1 -> "Demain, heure par heure"
-                            else -> f.days[day].date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH)).replaceFirstChar { it.uppercase() } + ", heure par heure"
+                            0 -> stringResource(R.string.weather_next_24h)
+                            1 -> stringResource(R.string.weather_tomorrow_hourly)
+                            else -> stringResource(R.string.weather_day_hourly, f.days[day].date.format(localizedDate("EEEEdMMMM", "EEEE d MMMM")).capitalized())
                         },
                         fontSize = 18.sp, color = Dim,
                     )
@@ -175,12 +194,12 @@ fun WeatherScreen() {
                 LaunchedEffect(Unit) { runCatching { firstDay.requestFocus() } }
             }
             failed -> Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Météo indisponible", fontSize = 34.sp, color = Color.White)
-                Text("Vérifiez la connexion, ou la ville choisie dans Réglages › Météo.", fontSize = 20.sp, color = OnBackgroundMuted)
-                Box(Modifier.focusRequester(retry)) { SmallButton("Réessayer", { attempt++ }) }
+                Text(stringResource(R.string.weather_unavailable), fontSize = 34.sp, color = Color.White)
+                Text(stringResource(R.string.weather_unavailable_hint), fontSize = 20.sp, color = OnBackgroundMuted)
+                Box(Modifier.focusRequester(retry)) { SmallButton(stringResource(R.string.weather_retry), { attempt++ }) }
                 LaunchedEffect(Unit) { runCatching { retry.requestFocus() } }
             }
-            else -> Text("Chargement de la météo…", fontSize = 26.sp, color = OnBackgroundMuted, modifier = Modifier.align(Alignment.Center))
+            else -> Text(stringResource(R.string.weather_loading), fontSize = 26.sp, color = OnBackgroundMuted, modifier = Modifier.align(Alignment.Center))
         }
     }
 }
@@ -192,7 +211,7 @@ private fun Now(f: Forecast, modifier: Modifier) {
     Column(modifier.background(Glass, GlassShape).padding(horizontal = 24.dp, vertical = 16.dp)) {
         Text(f.place, fontSize = 28.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1)
         Text(
-            f.now.format(DateTimeFormatter.ofPattern("EEEE d MMMM · HH:mm", Locale.FRENCH)).replaceFirstChar { it.uppercase() },
+            f.now.format(localizedDate("EEEEdMMMM", "EEEE d MMMM")).capitalized() + " · " + f.now.format(HourMin),
             fontSize = 18.sp, color = Dim,
         )
         Spacer(Modifier.weight(1f))
@@ -209,8 +228,8 @@ private fun Now(f: Forecast, modifier: Modifier) {
         Spacer(Modifier.weight(1f))
         Text(
             buildList {
-                add("Ressenti ${f.feelsLike.roundToInt()}°")
-                if (f.humidity >= 0) add("Humidité ${f.humidity} %")
+                add(stringResource(R.string.weather_feels_like, "${f.feelsLike.roundToInt()}°"))
+                if (f.humidity >= 0) add(stringResource(R.string.weather_humidity, f.humidity))
             }.joinToString("  ·  "),
             fontSize = 17.sp, color = Dim, maxLines = 1,
         )
@@ -246,6 +265,7 @@ private fun DetailsGrid(items: List<Triple<String, String, String>>, modifier: M
  */
 @Composable
 private fun TemperatureCurve(hours: List<HourForecast>, modifier: Modifier) {
+    val context = LocalContext.current
     val measurer = rememberTextMeasurer()
     val tempStyle = TextStyle(color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Medium)
     val hourStyle = TextStyle(color = Dim, fontSize = 16.sp)
@@ -284,7 +304,7 @@ private fun TemperatureCurve(hours: List<HourForecast>, modifier: Modifier) {
             val t = measurer.measure("${h.temperature.roundToInt()}°", tempStyle)
             drawText(t, topLeft = Offset(p.x - t.size.width / 2, p.y - t.size.height - 6.dp.toPx()))
             // Bas : symbole puis heure, sous la courbe.
-            val hr = measurer.measure("${h.time.hour} h", hourStyle)
+            val hr = measurer.measure(context.getString(R.string.weather_hour, h.time.hour), hourStyle)
             drawText(hr, topLeft = Offset(p.x - hr.size.width / 2, size.height - hr.size.height))
             val e = measurer.measure(weatherEmoji(h.code, h.time.hour < 7 || h.time.hour >= 20), iconStyle)
             drawText(e, topLeft = Offset(p.x - e.size.width / 2, size.height - hr.size.height - e.size.height))
@@ -296,9 +316,9 @@ private fun TemperatureCurve(hours: List<HourForecast>, modifier: Modifier) {
 @Composable
 private fun DayCard(d: DayForecast, index: Int, selected: Boolean, lo: Double, hi: Double, modifier: Modifier) {
     val name = when (index) {
-        0 -> "Aujourd'hui"
-        1 -> "Demain"
-        else -> d.date.format(DayName).replaceFirstChar { it.uppercase() }.removeSuffix(".")
+        0 -> stringResource(R.string.weather_today)
+        1 -> stringResource(R.string.weather_tomorrow)
+        else -> d.date.format(localizedDate("EEEd", "EEE d")).capitalized().removeSuffix(".")
     }
     Surface(
         onClick = {},
@@ -330,7 +350,7 @@ private fun DayCard(d: DayForecast, index: Int, selected: Boolean, lo: Double, h
                     topLeft = Offset(x0, 0f), size = Size((x1 - x0).coerceAtLeast(size.height), size.height), cornerRadius = r,
                 )
             }
-            Text(if (d.rainChance >= 20) "💧 ${d.rainChance} %" else weatherLabel(d.code), fontSize = 13.sp, maxLines = 1)
+            Text(if (d.rainChance >= 20) "💧 " + stringResource(R.string.weather_percent, d.rainChance) else weatherLabel(d.code), fontSize = 13.sp, maxLines = 1)
         }
     }
 }

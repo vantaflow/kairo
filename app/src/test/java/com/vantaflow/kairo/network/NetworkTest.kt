@@ -47,9 +47,9 @@ class NetworkTest {
 
     @Test
     fun everySettingsShortcutFallsBackToMainSettings() {
-        SettingsShortcuts.forEach { assertEquals(it.title, Settings.ACTION_SETTINGS, it.actions.last()) }
+        SettingsShortcuts.forEach { assertEquals(it.title.toString(), Settings.ACTION_SETTINGS, it.actions.last()) }
         assertEquals(SettingsShortcuts.size, SettingsShortcuts.map { it.title }.toSet().size)
-        assertTrue(SettingsShortcuts.any { it.title.contains("CEC") })
+        assertTrue(SettingsShortcuts.any { it.title == com.vantaflow.kairo.R.string.shortcut_cec })
     }
 
     @Test

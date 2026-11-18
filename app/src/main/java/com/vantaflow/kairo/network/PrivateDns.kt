@@ -4,6 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
@@ -22,19 +25,24 @@ import com.vantaflow.kairo.settings.SettingLabel
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 
-/** DNS privé (DNS sur TLS) proposé dans la liste ; [host] nul = DNS du réseau (box Internet). */
-data class DnsChoice(val label: String, val host: String?, val note: String)
+/**
+ * DNS privé (DNS sur TLS) proposé dans la liste ; [host] nul = DNS du réseau (box Internet).
+ * [brand] : nom affiché tel quel (marque), sinon [labelRes] traduit.
+ */
+data class DnsChoice(val brand: String?, val host: String?, @StringRes val note: Int, @StringRes val labelRes: Int = 0) {
+    fun label(context: Context): String = brand ?: context.getString(labelRes)
+}
 
 val DnsChoices = listOf(
-    DnsChoice("Automatique", null, "DNS de votre box Internet, sans chiffrement imposé."),
-    DnsChoice("Cloudflare", "one.one.one.one", "Rapide, sans filtrage."),
-    DnsChoice("Google", "dns.google", "Sans filtrage."),
-    DnsChoice("Quad9", "dns.quad9.net", "Bloque les sites malveillants."),
-    DnsChoice("AdGuard", "dns.adguard-dns.com", "Bloque pubs et pistage."),
-    DnsChoice("AdGuard Famille", "family.adguard-dns.com", "Pubs, pistage et contenus adultes bloqués."),
-    DnsChoice("Cloudflare Famille", "family.cloudflare-dns.com", "Logiciels malveillants et contenus adultes bloqués."),
-    DnsChoice("Mullvad", "dns.mullvad.net", "Sans filtrage, sans journal."),
-    DnsChoice("Mullvad anti-pub", "adblock.dns.mullvad.net", "Bloque pubs et pistage, sans journal."),
+    DnsChoice(null, null, R.string.dns_note_auto, R.string.dns_auto),
+    DnsChoice("Cloudflare", "one.one.one.one", R.string.dns_note_cloudflare),
+    DnsChoice("Google", "dns.google", R.string.dns_note_google),
+    DnsChoice("Quad9", "dns.quad9.net", R.string.dns_note_quad9),
+    DnsChoice("AdGuard", "dns.adguard-dns.com", R.string.dns_note_adguard),
+    DnsChoice(null, "family.adguard-dns.com", R.string.dns_note_adguard_family, R.string.dns_adguard_family),
+    DnsChoice(null, "family.cloudflare-dns.com", R.string.dns_note_cloudflare_family, R.string.dns_cloudflare_family),
+    DnsChoice("Mullvad", "dns.mullvad.net", R.string.dns_note_mullvad),
+    DnsChoice(null, "adblock.dns.mullvad.net", R.string.dns_note_mullvad_adblock, R.string.dns_mullvad_adblock),
 )
 
 const val PRIVATE_DNS_ADB = "adb shell pm grant com.vantaflow.kairo android.permission.WRITE_SECURE_SETTINGS"
@@ -64,33 +72,33 @@ fun PrivateDnsPicker() {
     var message by remember { mutableStateOf<String?>(null) }
     val allowed = remember { canSetPrivateDns(context) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SettingLabel("DNS privé (DNS sur TLS)")
+        SettingLabel(stringResource(R.string.dns_title))
         // Deux lignes : sur une seule, les neuf choix deviendraient illisibles.
         DnsChoices.chunked(5).forEach { line -> ChoiceRow {
             line.forEach { c ->
                 val selected = if (c.host == null) current == null else current.equals(c.host, ignoreCase = true)
                 ChoiceChip(selected, {
                     if (!allowed) {
-                        message = "Autorisation à donner une seule fois depuis un ordinateur :"
+                        message = context.getString(R.string.system_permission_adb)
                     } else if (setPrivateDns(context, c.host)) {
                         current = currentPrivateDns(context)
                         // Un DNS privé strict remplace tout autre DNS : le bloqueur de Kairo (VPN) n'a plus d'effet.
                         if (c.host != null && com.vantaflow.kairo.adblock.AdBlock.running.value) {
                             com.vantaflow.kairo.adblock.AdBlock.stop(context)
                         }
-                        message = "${c.label} : ${c.note}"
+                        message = context.getString(R.string.dns_applied, c.label(context), context.getString(c.note))
                     } else {
-                        message = "La box a refusé le changement."
+                        message = context.getString(R.string.system_change_refused)
                     }
-                }) { Text(c.label) }
+                }) { Text(c.label(context)) }
             }
         } }
         val active = DnsChoices.firstOrNull { it.host != null && it.host.equals(current, ignoreCase = true) }
         Text(
             message ?: when {
-                current == null -> "DNS de votre box Internet."
-                active != null -> "${active.label} (${active.host}) : ${active.note}"
-                else -> "DNS privé actuel : $current"
+                current == null -> stringResource(R.string.dns_isp)
+                active != null -> stringResource(R.string.dns_active, active.label(context), active.host.orEmpty(), stringResource(active.note))
+                else -> stringResource(R.string.dns_current, current.orEmpty())
             },
             color = OnBackgroundMuted, fontSize = 15.sp,
         )
