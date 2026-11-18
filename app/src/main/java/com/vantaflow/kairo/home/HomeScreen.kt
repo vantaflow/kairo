@@ -142,7 +142,22 @@ fun HomeScreen(
     // En arabe la rangée est en miroir : ← déplace le favori vers la fin de la liste.
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
-    Box(Modifier.fillMaxSize()) {
+    // Filet : la tuile sélectionnée a disparu (appli masquée ou désinstallée dans n'importe quelle rangée)
+    // et plus rien n'a le focus : il revient sur les favoris au lieu de rester perdu.
+    var hasFocus by remember { mutableStateOf(true) }
+    val lostFocusView = LocalView.current
+    LaunchedEffect(state.favorites.size, otherApps.size, recentApps.size) {
+        for (attempt in 1..120) {
+            if (lostFocusView.hasWindowFocus()) break
+            withFrameNanos { }
+        }
+        repeat(3) { withFrameNanos { } }
+        if (!hasFocus && focus.followFavorite == null && requesters.isNotEmpty()) {
+            runCatching { requesters[focus.index.coerceIn(0, requesters.lastIndex)].requestFocus() }
+        }
+    }
+
+    Box(Modifier.fillMaxSize().onFocusChanged { hasFocus = it.hasFocus }) {
         HeroBackground(heroProgram, appLabels, layout.heroTransition) {
             // Couche à part : le fond n'est pas redessiné à chaque mouvement du focus.
             WallpaperLayer(state.wallpaper, Modifier.graphicsLayer(), imageUrl = state.wallpaperImageUrl)
@@ -237,7 +252,7 @@ fun HomeScreen(
                                 modifier = Modifier.padding(start = 72.dp, bottom = 12.dp),
                             )
                         }
-                        if (state.favorites.isEmpty()) {
+                        if (state.favorites.isEmpty() && state.loaded) {
                             Text(
                                 stringResource(R.string.home_favorites_empty),
                                 fontSize = 16.sp,

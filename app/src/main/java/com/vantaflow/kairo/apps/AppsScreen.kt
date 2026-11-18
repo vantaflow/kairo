@@ -17,6 +17,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
@@ -46,7 +50,21 @@ fun AppsScreen(
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
-    Column(Modifier.fillMaxSize().background(Background).padding(start = 72.dp, end = 72.dp, top = 40.dp)) {
+    // Tuile sélectionnée disparue (appli masquée ou désinstallée) : le focus revient sur la première.
+    var hasFocus by remember { mutableStateOf(true) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    LaunchedEffect(apps.size) {
+        for (attempt in 1..120) {
+            if (view.hasWindowFocus()) break
+            androidx.compose.runtime.withFrameNanos { }
+        }
+        repeat(3) { androidx.compose.runtime.withFrameNanos { } }
+        if (!hasFocus && apps.isNotEmpty()) runCatching { first.requestFocus() }
+    }
+    Column(
+        Modifier.fillMaxSize().background(Background).padding(start = 72.dp, end = 72.dp, top = 40.dp)
+            .onFocusChanged { hasFocus = it.hasFocus },
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.home_apps), fontSize = 32.sp, color = OnBackground)
             Spacer(Modifier.weight(1f))

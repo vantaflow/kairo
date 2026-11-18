@@ -196,6 +196,8 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Écran recréé par un changement de langue : le ViewModel survit, sa météo est encore dans l'ancienne.
+        if (savedInstanceState != null) homeViewModel.reloadWeather()
         val restoredSettings = savedInstanceState?.getString(STATE_SETTINGS)
         val opened = if (restoredSettings != null) {
             settingsSection = Section.entries.firstOrNull { it.name == restoredSettings }

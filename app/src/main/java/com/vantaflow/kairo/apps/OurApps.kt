@@ -266,6 +266,8 @@ class OurAppsStore(
                         return@launch
                     }
                 }
+                // Installation annulée ou refusée : la carte redevient normale au lieu de rester sur « Confirmez ».
+                set(app, InstallState.Idle)
             }
         }
     }

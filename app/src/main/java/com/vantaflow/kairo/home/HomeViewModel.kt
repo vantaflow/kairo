@@ -48,6 +48,8 @@ data class HomeUiState(
     /** Chaînes des tuners et entrées HDMI : rangées affichées seulement si la box en a. */
     val liveChannels: List<LiveChannel> = emptyList(),
     val tvInputs: List<LiveChannel> = emptyList(),
+    /** Faux tant que les favoris ne sont pas encore lus (démarrage) : rien n'annonce « aucun favori » à tort. */
+    val loaded: Boolean = false,
 )
 
 /** Données brutes lues dans le TvProvider. */
@@ -129,6 +131,12 @@ class HomeViewModel(
 
 
     private val weatherText = MutableStateFlow<String?>(null)
+    private val weatherReload = MutableStateFlow(0)
+
+    /** Langue changée : la météo est redemandée tout de suite, son libellé étant traduit à la réception. */
+    fun reloadWeather() {
+        weatherReload.value++
+    }
 
     // Déclaré avant init (qui lance la rotation) : sinon encore nul au premier appel.
     /** Vrai tant que l'accueil est visible : la rotation des fonds s'arrête sinon (écran de veille, autre appli). */
@@ -179,7 +187,7 @@ class HomeViewModel(
 
     val state: StateFlow<HomeUiState> =
         combine(clockText, favorites, prefs.wallpaper, reco, prefs.pixabayCurrent) { (time, date), favs, wallpaper, r, image ->
-            HomeUiState(time, date, favs, wallpaper, r.watchNext, r.rows, image, weatherText.value, r.live, r.inputs)
+            HomeUiState(time, date, favs, wallpaper, r.watchNext, r.rows, image, weatherText.value, r.live, r.inputs, loaded = true)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
     init {
@@ -203,7 +211,9 @@ class HomeViewModel(
     private fun startWeather() {
         val fetch = weather ?: return
         viewModelScope.launch {
-            combine(prefs.weatherEnabled, prefs.weatherCity, prefs.useFahrenheit, ::Triple).collectLatest { (enabled, city, fahrenheit) ->
+            combine(prefs.weatherEnabled, prefs.weatherCity, prefs.useFahrenheit, weatherReload) { enabled, city, fahrenheit, _ ->
+                Triple(enabled, city, fahrenheit)
+            }.collectLatest { (enabled, city, fahrenheit) ->
                 if (!enabled) {
                     weatherText.value = null
                     return@collectLatest

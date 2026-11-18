@@ -54,10 +54,11 @@ class AppsViewModel(
     fun moveFavoriteBy(pkg: String, delta: Int) {
         viewModelScope.launch {
             val list = prefs.favorites.first()
-            val index = list.indexOf(pkg)
-            if (index < 0) return@launch
-            val target = (index + delta).coerceIn(0, list.lastIndex)
-            if (target != index) prefs.moveFavorite(pkg, target)
+            // Voisin pris parmi les favoris affichés : la liste enregistrée garde les applis masquées ou
+            // désinstallées, par-dessus lesquelles un appui « ne faisait rien ».
+            val shown = visibleApps.value.map { it.packageName }.toSet()
+            val target = favoriteMoveTarget(list, list.filter { it in shown }, pkg, delta) ?: return@launch
+            prefs.moveFavorite(pkg, target)
         }
     }
 
@@ -66,4 +67,13 @@ class AppsViewModel(
             prefs.setHidden(pkg, pkg !in prefs.hidden.first())
         }
     }
+}
+
+/**
+ * Position, dans la liste enregistrée [all], où placer [pkg] pour qu'il passe par-dessus son voisin
+ * affiché ([shown], dans le même ordre) vers la gauche (-1) ou la droite (+1) ; null s'il est au bout.
+ */
+fun favoriteMoveTarget(all: List<String>, shown: List<String>, pkg: String, delta: Int): Int? {
+    val neighbour = shown.getOrNull(shown.indexOf(pkg).takeIf { it >= 0 }?.plus(delta) ?: return null) ?: return null
+    return all.indexOf(neighbour).takeIf { it >= 0 }
 }
