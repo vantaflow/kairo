@@ -1,0 +1,92 @@
+name: Release
+
+# Publie une version de Kairo et de ses applis (Player, Files, Send Files), signée avec la clé du projet.
+# La clé est un secret du dépôt : aucune machine n'a besoin de l'avoir pour publier.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Numéro de version (ex. 1.25.0)"
+        required: true
+      branch:
+        description: "Branche à publier"
+        default: master
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      # Empreinte du certificat de toutes les versions publiées : une autre clé empêcherait la mise à jour sur les box.
+      EXPECTED_CERT: b5c0901798aa6a67b3cd619c56c27057431eec2681c9b1799f9afc2aba5e8c3e
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.branch }}
+      - name: Vérifier le numéro de version
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Version invalide : $VERSION"; exit 1; }
+          ! git ls-remote --exit-code --tags origin "v$VERSION" || { echo "La version $VERSION existe déjà"; exit 1; }
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: "8.14"
+      - name: Installer la plateforme Android
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-34" "build-tools;34.0.0"
+      - name: Clé de signature et secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.KAIRO_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KAIRO_KEYSTORE_PASSWORD }}
+          PIXABAY: ${{ secrets.PIXABAY_API_KEY }}
+          TMDB: ${{ secrets.TMDB_READ_TOKEN }}
+        run: |
+          mkdir -p keystore
+          echo "$KEYSTORE_B64" | base64 -d > keystore/tvhome.jks
+          {
+            echo "TVHOME_KEYSTORE=keystore/tvhome.jks"
+            echo "TVHOME_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "PIXABAY_API_KEY=$PIXABAY"
+            echo "TMDB_READ_TOKEN=$TMDB"
+          } > secrets.properties
+      - name: Numéro de version
+        run: |
+          IFS=. read -r MAJ MIN PAT <<<"$VERSION"
+          CODE=$((MAJ * 10000 + MIN * 100 + PAT))
+          sed -E -i "s/versionCode = [0-9]+/versionCode = $CODE/; s/versionName = \"[^\"]+\"/versionName = \"$VERSION\"/" \
+            app/build.gradle.kts player/build.gradle.kts files/build.gradle.kts send/build.gradle.kts
+      - name: Tests et APK
+        run: >
+          gradle :app:testDebugUnitTest :player:testDebugUnitTest :files:testDebugUnitTest :send:testDebugUnitTest
+          :app:assembleRelease :player:assembleRelease :files:assembleRelease :send:assembleRelease
+      - name: Vérifier la signature
+        run: |
+          mkdir out
+          cp app/build/outputs/apk/release/app-release.apk "out/kairo-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk out/kairo.apk
+          cp player/build/outputs/apk/release/player-release.apk out/kairo-player.apk
+          cp files/build/outputs/apk/release/files-release.apk out/kairo-files.apk
+          cp send/build/outputs/apk/release/send-release.apk out/kairo-send.apk
+          SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          for f in out/*.apk; do
+            CERT=$("$SIGNER" verify --print-certs "$f" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            [ "$CERT" = "$EXPECTED_CERT" ] || { echo "$f : mauvaise clé ($CERT)"; exit 1; }
+          done
+      - name: Publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf keystore secrets.properties
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "chore: version $VERSION"
+          git push -q origin "HEAD:${{ inputs.branch }}"
+          gh release create "v$VERSION" out/*.apk --target "$(git rev-parse HEAD)" --title "Kairo $VERSION" --generate-notes --latest
