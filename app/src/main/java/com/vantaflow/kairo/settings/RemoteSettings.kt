@@ -43,6 +43,8 @@ import com.vantaflow.kairo.remote.KeyRemapService
 import com.vantaflow.kairo.remote.keyLabel
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 /** Réaffectation des touches d'applis de la télécommande (YouTube, Netflix, Prime Video, Disney+…). */
 @Composable
@@ -69,7 +71,7 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
     val pending = pendingKey
     if (pending != null) {
         AppPicker(
-            title = "Touche ${keyLabel(pending)} : quelle appli ouvrir ?",
+            title = stringResource(R.string.settings_remote_pick_app, keyLabel(pending)),
             apps = installedApps,
             onPick = { vm.setKeyBinding(pending, it.packageName); pendingKey = null },
             onCancel = { pendingKey = null },
@@ -79,15 +81,14 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            if (serviceOn) "Le service de touches est actif." else "Le service de touches n'est pas activé.",
+            stringResource(if (serviceOn) R.string.settings_remote_service_on else R.string.settings_remote_service_off),
             color = OnBackground,
             fontSize = 20.sp,
         )
         if (!serviceOn) {
-            Text("Activez-le une fois depuis un PC (la box masque souvent ce réglage) :", color = OnBackgroundMuted)
+            Text(stringResource(R.string.settings_remote_enable_pc), color = OnBackgroundMuted)
             Text(
-                "Attention : cette commande remplace les autres services d'accessibilité actifs. " +
-                    "Vérifiez-les d'abord avec : adb shell settings get secure enabled_accessibility_services",
+                stringResource(R.string.settings_remote_warning, "adb shell settings get secure enabled_accessibility_services"),
                 color = OnBackgroundMuted,
             )
             Text(
@@ -101,7 +102,7 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
         if (learning) {
             val focus = remember { FocusRequester() }
             Text(
-                "Appuyez maintenant sur la touche à réaffecter (YouTube, Netflix…).",
+                stringResource(R.string.settings_remote_press_key),
                 color = OnBackground,
                 modifier = Modifier
                     .focusRequester(focus)
@@ -112,9 +113,9 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                     },
             )
             LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-            OutlinedButton(onClick = learner::cancel) { Text("Annuler") }
+            OutlinedButton(onClick = learner::cancel) { Text(stringResource(R.string.settings_cancel)) }
         } else {
-            Button(onClick = learner::start) { Text("Ajouter une touche") }
+            Button(onClick = learner::start) { Text(stringResource(R.string.settings_remote_add)) }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
             items(bindings.entries.sortedBy { it.key }, key = { it.key }) { entry ->
@@ -124,13 +125,13 @@ fun RemoteSettings(vm: SettingsViewModel, installedApps: List<AppInfo>) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        "${keyLabel(entry.key)} → ${labels[entry.value] ?: entry.value}",
+                        stringResource(R.string.settings_remote_binding, keyLabel(entry.key), labels[entry.value] ?: entry.value),
                         color = OnBackground,
                         maxLines = 2,
                         modifier = Modifier.weight(1f),
                     )
-                    SmallButton("Changer", { pendingKey = entry.key })
-                    SmallButton("Retirer", { vm.setKeyBinding(entry.key, null) })
+                    SmallButton(stringResource(R.string.settings_remote_change), { pendingKey = entry.key })
+                    SmallButton(stringResource(R.string.settings_remove), { vm.setKeyBinding(entry.key, null) })
                 }
             }
         }
@@ -143,7 +144,7 @@ fun AppPicker(title: String, apps: List<AppInfo>, onPick: (AppInfo) -> Unit, onC
     val first = remember { FocusRequester() }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title, color = OnBackground, fontSize = 20.sp)
-        OutlinedButton(onClick = onCancel) { Text("Annuler") }
+        OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.settings_cancel)) }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
             items(apps, key = { it.packageName }) { app ->
                 ListItem(

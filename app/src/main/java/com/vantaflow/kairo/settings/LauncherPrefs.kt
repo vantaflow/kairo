@@ -390,6 +390,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             focusScale = it[Keys.customScale] ?: base.focusScale,
             background = base.background,
             surface = base.surface,
+            nameRes = com.vantaflow.kairo.R.string.theme_custom,
         )
     }
 

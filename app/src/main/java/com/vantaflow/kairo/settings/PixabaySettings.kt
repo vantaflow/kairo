@@ -27,8 +27,13 @@ import androidx.tv.material3.Text
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.wallpaper.PixabayThemes
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
-private val Intervals = listOf(15 to "15 min", 30 to "30 min", 60 to "1 h", 180 to "3 h", 1440 to "1 jour")
+private val Intervals = listOf(
+    15 to R.string.settings_pixabay_15m, 30 to R.string.settings_pixabay_30m, 60 to R.string.settings_pixabay_1h,
+    180 to R.string.settings_pixabay_3h, 1440 to R.string.settings_pixabay_1d,
+)
 
 /** Fond Pixabay : thème, fréquence de changement et clé API. */
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -39,7 +44,7 @@ fun PixabaySettings(vm: SettingsViewModel, current: WallpaperConfig) {
     var keyText by remember(savedKey) { mutableStateOf(savedKey) }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Images Pixabay", fontSize = 20.sp, color = OnBackground)
+        Text(stringResource(R.string.settings_pixabay_title), fontSize = 20.sp, color = OnBackground)
         ChoiceRow {
             PixabayThemes.forEach { (label, query) ->
                 ChoiceChip(
@@ -50,16 +55,16 @@ fun PixabaySettings(vm: SettingsViewModel, current: WallpaperConfig) {
         }
         if (pixabay != null) {
             ChoiceRow {
-                Text("Changer toutes les", color = OnBackgroundMuted)
+                Text(stringResource(R.string.settings_pixabay_every), color = OnBackgroundMuted)
                 Intervals.forEach { (minutes, label) ->
                     ChoiceChip(
                         selected = pixabay.intervalMin == minutes,
                         onClick = { vm.setWallpaper(pixabay.copy(intervalMin = minutes)) },
-                    ) { Text(label) }
+                    ) { Text(stringResource(label)) }
                 }
             }
-            OutlinedButton(onClick = vm::nextPixabayImage) { Text("Image suivante") }
+            OutlinedButton(onClick = vm::nextPixabayImage) { Text(stringResource(R.string.settings_pixabay_next)) }
         }
-        FieldWithButton("Clé API Pixabay (vide = clé intégrée)", keyText, { keyText = it }, "Enregistrer", { vm.setPixabayKey(keyText) }, secret = true)
+        FieldWithButton(stringResource(R.string.settings_pixabay_key), keyText, { keyText = it }, stringResource(R.string.settings_save), { vm.setPixabayKey(keyText) }, secret = true)
     }
 }

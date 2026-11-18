@@ -26,8 +26,10 @@ class ExtrasTest {
     // --- Mémoire
     @Test
     fun formatsMegabytes() {
-        assertEquals("512 Mo", formatMb(512L * 1024 * 1024))
-        assertEquals("1,5 Go", formatMb(1536L * 1024 * 1024))
+        assertEquals("512 Mo", formatMb(512L * 1024 * 1024, java.util.Locale.FRENCH))
+        assertEquals("1,5 Go", formatMb(1536L * 1024 * 1024, java.util.Locale.FRENCH))
+        assertEquals("2 Go", formatMb(2048L * 1024 * 1024, java.util.Locale.FRENCH))
+        assertEquals("1.5 GB", formatMb(1536L * 1024 * 1024, java.util.Locale.ENGLISH))
     }
 
     @Test

@@ -48,6 +48,9 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 private val OnLight = Color(0xFF101216)
 
@@ -98,15 +101,23 @@ fun ChoiceRow(content: @Composable () -> Unit) {
     ) { measurables, constraints ->
         val row = measurables.first().measure(constraints.copy(minWidth = 0, maxWidth = androidx.compose.ui.unit.Constraints.Infinity))
         val scale = if (constraints.hasBoundedWidth && row.width > constraints.maxWidth) constraints.maxWidth.toFloat() / row.width else 1f
+        // Droite à gauche : la rangée réduite reste collée au bord de départ (à droite), d'où le
+        // placement relatif et l'origine de mise à l'échelle sur le bord droit.
+        val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
         layout((row.width * scale).toInt(), (row.height * scale).toInt()) {
-            row.placeWithLayer(0, 0) {
+            row.placeRelativeWithLayer(0, 0) {
                 scaleX = scale
                 scaleY = scale
-                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(if (rtl) 1f else 0f, 0f)
             }
         }
     }
 }
+
+/** Chemin « Réglages › section » affiché dans les textes d'aide (chevron adapté au sens de lecture). */
+@Composable
+fun settingsPath(@StringRes section: Int): String =
+    "${stringResource(R.string.settings_title)} ${stringResource(R.string.chevron_forward)} ${stringResource(section)}"
 
 /** Libellé d'un groupe de réglages dans une section. */
 @Composable

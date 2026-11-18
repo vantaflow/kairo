@@ -30,6 +30,9 @@ import androidx.tv.material3.Text
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.ui.theme.Themes
+import com.vantaflow.kairo.ui.theme.displayName
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 /** Choix du thème visuel. */
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -40,10 +43,10 @@ fun ThemeSettings(vm: SettingsViewModel) {
         // Thème personnalisé : activé en modifiant une option plus bas (pas de 7e choix, la rangée tient sur une ligne).
         ChoiceRow {
             Themes.forEach { theme ->
-                ChoiceChip(selected = theme.id == current, onClick = { vm.setThemeId(theme.id) }) { Text(theme.name) }
+                ChoiceChip(selected = theme.id == current, onClick = { vm.setThemeId(theme.id) }) { Text(theme.displayName) }
             }
         }
-        Text("Le thème change les couleurs des écrans, de l'en-tête et de ce panneau, l'accent, le contour de sélection, l'arrondi et le zoom des tuiles.", color = OnBackgroundMuted)
+        Text(stringResource(R.string.settings_theme_hint), color = OnBackgroundMuted)
         CustomThemeEditor(vm)
     }
 }
@@ -57,9 +60,9 @@ fun WeatherSettings(vm: SettingsViewModel) {
     var cityText by remember(city) { mutableStateOf(city) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SwitchRow("Afficher la météo", enabled, vm::setWeatherEnabled, "Température et ciel, à côté de la date.")
-        SwitchRow("Degrés Fahrenheit", fahrenheit, vm::setUseFahrenheit, "Sinon en degrés Celsius.")
-        FieldWithButton("Ville (vide = position automatique)", cityText, { cityText = it }, "Enregistrer", { vm.setWeatherCity(cityText) })
-        Text("Données : Open-Meteo. Position automatique : geojs.io.", color = OnBackgroundMuted)
+        SwitchRow(stringResource(R.string.settings_weather_show), enabled, vm::setWeatherEnabled, stringResource(R.string.settings_weather_show_desc))
+        SwitchRow(stringResource(R.string.settings_weather_fahrenheit), fahrenheit, vm::setUseFahrenheit, stringResource(R.string.settings_weather_fahrenheit_desc))
+        FieldWithButton(stringResource(R.string.settings_weather_city), cityText, { cityText = it }, stringResource(R.string.settings_save), { vm.setWeatherCity(cityText) })
+        Text(stringResource(R.string.settings_weather_credits), color = OnBackgroundMuted)
     }
 }

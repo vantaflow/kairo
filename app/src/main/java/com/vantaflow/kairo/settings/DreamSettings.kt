@@ -47,6 +47,9 @@ import com.vantaflow.kairo.ui.startSafely
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.wallpaper.PixabayThemes
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 private val SwatchShape = RoundedCornerShape(12.dp)
 
@@ -71,19 +74,19 @@ fun DreamSettings() {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SmallButton("Aperçu", { context.startSafely(Intent(context, DreamPreviewActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
-                SmallButton("Choisir Kairo comme écran de veille", { openSafely(context, Intent(Settings.ACTION_DREAM_SETTINGS)) })
+                SmallButton(stringResource(R.string.settings_dream_preview), { context.startSafely(Intent(context, DreamPreviewActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
+                SmallButton(stringResource(R.string.settings_dream_choose), { openSafely(context, Intent(Settings.ACTION_DREAM_SETTINGS)) })
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SettingLabel("Contenu")
+                SettingLabel(stringResource(R.string.settings_dream_content))
                 ChoiceRow {
                     DreamModes.forEach { (id, label) ->
                         ChoiceChip(selected = config.mode == id, onClick = {
                             save(config.copy(mode = id))
                             if (id == "photos" && photosGranted == 0) permission.launch(Manifest.permission.READ_MEDIA_IMAGES)
-                        }) { Text(label) }
+                        }) { Text(stringResource(label)) }
                     }
                 }
             }
@@ -91,7 +94,7 @@ fun DreamSettings() {
         when (config.mode) {
             "pixabay" -> item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SettingLabel("Thème des photos")
+                    SettingLabel(stringResource(R.string.settings_dream_photo_theme))
                     ChoiceRow {
                         PixabayThemes.forEach { (label, query) ->
                             ChoiceChip(selected = config.query == query, onClick = { save(config.copy(query = query)) }) { Text(label) }
@@ -102,16 +105,16 @@ fun DreamSettings() {
             "photos" -> item {
                 Text(
                     when {
-                        photosGranted == 0 -> "Kairo doit pouvoir lire vos photos : acceptez la demande d'Android (ou choisissez à nouveau « Mes photos »)."
-                        photoCount == 0 -> "Aucune photo trouvée. Branchez une clé USB, ou envoyez des photos depuis le téléphone (Télécommande sur téléphone)."
-                        else -> "$photoCount photos de la box et des clés USB, dans un ordre aléatoire."
+                        photosGranted == 0 -> stringResource(R.string.settings_dream_photos_permission)
+                        photoCount == 0 -> stringResource(R.string.settings_dream_no_photos)
+                        else -> pluralStringResource(R.plurals.settings_dream_photo_count, photoCount, photoCount)
                     },
                     color = OnBackgroundMuted,
                 )
             }
             "gradient" -> item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SettingLabel("Couleurs")
+                    SettingLabel(stringResource(R.string.settings_dream_colors))
                     ChoiceRow {
                         Palettes.forEach { p ->
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -129,7 +132,7 @@ fun DreamSettings() {
                                         drawRect(Brush.linearGradient(p.colors.map { Color(it) }, start = Offset.Zero, end = Offset(size.width, size.height)))
                                     }
                                 }
-                                Text(p.name, color = OnBackgroundMuted)
+                                Text(stringResource(p.name), color = OnBackgroundMuted)
                             }
                         }
                     }
@@ -138,11 +141,11 @@ fun DreamSettings() {
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SettingLabel(if (config.mode == "gradient") "Vitesse du dégradé" else "Durée de chaque image")
+                SettingLabel(stringResource(if (config.mode == "gradient") R.string.settings_dream_gradient_speed else R.string.settings_dream_image_duration))
                 ChoiceRow {
                     DreamIntervals.forEach { (sec, label) ->
                         ChoiceChip(selected = config.intervalSec == sec, onClick = { save(config.copy(intervalSec = sec)) }) {
-                            Text(if (config.mode == "gradient") GradientSpeeds[sec] ?: label else label)
+                            Text(stringResource(if (config.mode == "gradient") GradientSpeeds[sec] ?: label else label))
                         }
                     }
                 }
@@ -151,20 +154,20 @@ fun DreamSettings() {
         if (config.mode != "gradient") {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SettingLabel("Transition")
+                    SettingLabel(stringResource(R.string.settings_dream_transition))
                     ChoiceRow {
                         DreamTransitions.forEach { (id, label) ->
-                            ChoiceChip(selected = config.transition == id, onClick = { save(config.copy(transition = id)) }) { Text(label) }
+                            ChoiceChip(selected = config.transition == id, onClick = { save(config.copy(transition = id)) }) { Text(stringResource(label)) }
                         }
                     }
                 }
             }
         }
-        item { SwitchRow("Afficher l'heure, la date et la météo", config.showClock, { save(config.copy(showClock = it)) }) }
-        item { SwitchRow("Citation du jour", config.showQuote, { save(config.copy(showQuote = it)) }, "Une phrase sous l'heure, différente chaque jour.") }
+        item { SwitchRow(stringResource(R.string.settings_dream_show_clock), config.showClock, { save(config.copy(showClock = it)) }) }
+        item { SwitchRow(stringResource(R.string.settings_dream_quote), config.showQuote, { save(config.copy(showQuote = it)) }, stringResource(R.string.settings_dream_quote_desc)) }
         item {
             Text(
-                "L'écran de veille démarre après l'inactivité réglée dans les paramètres Android (Écran de veille).",
+                stringResource(R.string.settings_dream_footer),
                 color = OnBackgroundMuted,
             )
         }
@@ -172,4 +175,7 @@ fun DreamSettings() {
 }
 
 /** Pour les dégradés, la durée devient une vitesse (cycle complet des couleurs). */
-private val GradientSpeeds = mapOf(20 to "Rapide", 45 to "Normale", 120 to "Lente", 300 to "Très lente")
+private val GradientSpeeds = mapOf(
+    20 to R.string.settings_speed_fast, 45 to R.string.settings_speed_normal,
+    120 to R.string.settings_speed_slow, 300 to R.string.settings_speed_very_slow,
+)

@@ -96,21 +96,29 @@ import com.vantaflow.kairo.ui.theme.Background
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.ui.theme.Themes
+import com.vantaflow.kairo.ui.theme.displayName
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.annotation.StringRes
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.LayoutDirection
+import com.vantaflow.kairo.settings.settingsPath
 
 private const val PKG = "com.vantaflow.kairo"
 
 /** Une étape de configuration : [isDone] est relu à chaque retour dans Kairo. */
 private class Step(
     val icon: TvIcon,
-    val title: String,
-    val text: String,
-    val action: String,
+    @StringRes val title: Int,
+    @StringRes val text: Int,
+    @StringRes val action: Int,
     val optional: Boolean,
     val adb: String?,
     val isDone: () -> Boolean,
     val run: () -> Unit,
+    /** Section des réglages citée dans le texte (« Réglages › … »), le cas échéant. */
+    @StringRes val textSection: Int? = null,
 )
 
 private sealed interface Page {
@@ -139,40 +147,41 @@ fun Onboarding(onFinish: () -> Unit) {
     val pages = remember {
         val steps = listOf(
             Step(
-                TvIcon.Reco, "Vos contenus sur l'accueil",
-                "Autorisez Kairo à afficher « À suivre » et les recommandations de Netflix, YouTube, TiviMate…",
-                "Autoriser", optional = false,
+                TvIcon.Reco, R.string.onboarding_reco_title,
+                R.string.onboarding_reco_text,
+                R.string.settings_allow, optional = false,
                 adb = "adb shell pm grant $PKG android.permission.READ_TV_LISTINGS",
                 isDone = { recoAccessGranted(context) },
                 run = { permission.launch(EPG_PERMISSIONS) },
             ),
             Step(
-                TvIcon.Home, "Kairo comme écran d'accueil",
-                "La touche Accueil de la télécommande ouvrira directement Kairo.",
-                "Choisir l'écran d'accueil", optional = false,
+                TvIcon.Home, R.string.onboarding_home_title,
+                R.string.onboarding_home_text,
+                R.string.onboarding_home_action, optional = false,
                 adb = "adb shell pm disable-user --user 0 $GOOGLE_TV_LAUNCHER",
                 isDone = { isDefaultHome(context) },
                 run = { openHomeSettings(context) },
             ),
             Step(
-                TvIcon.Remote, "Les touches de votre télécommande",
-                "Envoyez les touches YouTube, Netflix, Prime Video… vers l'appli de votre choix : activez « Kairo » dans Accessibilité.",
-                "Ouvrir Accessibilité", optional = true, adb = null,
+                TvIcon.Remote, R.string.onboarding_keys_title,
+                R.string.onboarding_keys_text,
+                R.string.onboarding_keys_action, optional = true, adb = null,
                 isDone = { keyServiceRunning(context) },
                 run = { openSafely(context, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
             ),
             Step(
-                TvIcon.Update, "Mises à jour en un clic",
-                "Autorisez Kairo à installer ses nouvelles versions depuis Réglages › Mise à jour.",
-                "Autoriser", optional = true,
+                TvIcon.Update, R.string.onboarding_update_title,
+                R.string.onboarding_update_text,
+                R.string.settings_allow, optional = true,
                 adb = "adb shell appops set $PKG REQUEST_INSTALL_PACKAGES allow",
                 isDone = { context.packageManager.canRequestPackageInstalls() },
                 run = { openSafely(context, Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$PKG"))) },
+                textSection = R.string.section_update,
             ),
             Step(
-                TvIcon.Clock, "Un bel écran de veille",
-                "Images, heure et météo quand la box reste inactive : choisissez « Kairo » comme écran de veille.",
-                "Écran de veille", optional = true,
+                TvIcon.Clock, R.string.onboarding_dream_title,
+                R.string.onboarding_dream_text,
+                R.string.settings_setup_dream_action, optional = true,
                 adb = "adb shell settings put secure screensaver_components $PKG/.dream.TvHomeDream",
                 isDone = { dreamEnabled(context) == true },
                 run = { openSafely(context, Intent(Settings.ACTION_DREAM_SETTINGS)) },
@@ -189,6 +198,8 @@ fun Onboarding(onFinish: () -> Unit) {
         index = (index + delta).coerceIn(0, pages.lastIndex)
     }
     BackHandler { if (index == 0) onFinish() else go(-1) }
+    // Droite à gauche : la page suivante arrive par la gauche (sens de lecture).
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     // L'accueil derrière pose aussi son focus au démarrage : tant que l'assistant est ouvert,
     // tout focus perdu revient sur le premier bouton de la page.
     val rootFocus = remember { FocusRequester() }
@@ -214,7 +225,7 @@ fun Onboarding(onFinish: () -> Unit) {
         AnimatedContent(
             targetState = index,
             transitionSpec = {
-                val dir = if (forward) 1 else -1
+                val dir = (if (forward) 1 else -1) * (if (rtl) -1 else 1)
                 (slideInHorizontally(tween(560, easing = FastOutSlowInEasing)) { it / 5 * dir } + fadeIn(tween(420, delayMillis = 100)))
                     .togetherWith(slideOutHorizontally(tween(420, easing = FastOutSlowInEasing)) { -it / 5 * dir } + fadeOut(tween(240)))
             },
@@ -317,16 +328,16 @@ private fun WelcomePage(onStart: () -> Unit) {
             )
         }
         Spacer(Modifier.height(28.dp))
-        Text("Bienvenue dans Kairo", fontSize = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(1))
+        Text(stringResource(R.string.onboarding_welcome), fontSize = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(1))
         Spacer(Modifier.height(10.dp))
         Text(
-            "Un écran d'accueil rapide et complet, pensé pour votre box.",
+            stringResource(R.string.onboarding_welcome_text),
             fontSize = 20.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(2),
         )
         Spacer(Modifier.height(36.dp))
-        Button(onClick = onStart, modifier = Modifier.reveal(3).focusRequester(focus)) { Text("Commencer", fontSize = 18.sp) }
+        Button(onClick = onStart, modifier = Modifier.reveal(3).focusRequester(focus)) { Text(stringResource(R.string.onboarding_start), fontSize = 18.sp) }
         Spacer(Modifier.height(14.dp))
-        Text("Quelques réglages, une minute à peine.", fontSize = 14.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(4))
+        Text(stringResource(R.string.onboarding_start_hint), fontSize = 14.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(4))
     }
 }
 
@@ -349,22 +360,22 @@ private fun SetupPage(step: Step, refresh: Int, onNext: () -> Unit) {
         StepBadge(step.icon, done, Modifier.reveal(0))
         Column(Modifier.width(560.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (step.optional) {
-                Text("FACULTATIF", fontSize = 13.sp, color = AccentColor, fontWeight = FontWeight.SemiBold, modifier = Modifier.reveal(1))
+                Text(stringResource(R.string.onboarding_optional), fontSize = 13.sp, color = AccentColor, fontWeight = FontWeight.SemiBold, modifier = Modifier.reveal(1))
             }
-            Text(step.title, fontSize = 38.sp, lineHeight = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(1))
-            Text(step.text, fontSize = 19.sp, lineHeight = 28.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(2))
+            Text(stringResource(step.title), fontSize = 38.sp, lineHeight = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(1))
+            Text(step.textSection?.let { stringResource(step.text, settingsPath(it)) } ?: stringResource(step.text), fontSize = 19.sp, lineHeight = 28.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(2))
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.reveal(3)) {
                 if (done) {
-                    Button(onClick = onNext, modifier = Modifier.focusRequester(focus)) { Text("Continuer", fontSize = 17.sp) }
+                    Button(onClick = onNext, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.onboarding_continue), fontSize = 17.sp) }
                 } else {
-                    Button(onClick = step.run, modifier = Modifier.focusRequester(focus)) { Text(step.action, fontSize = 17.sp) }
-                    OutlinedButton(onClick = onNext) { Text("Plus tard", fontSize = 17.sp) }
+                    Button(onClick = step.run, modifier = Modifier.focusRequester(focus)) { Text(stringResource(step.action), fontSize = 17.sp) }
+                    OutlinedButton(onClick = onNext) { Text(stringResource(R.string.onboarding_later), fontSize = 17.sp) }
                 }
             }
             if (!done && step.adb != null) {
                 Column(Modifier.reveal(4).padding(top = 12.dp)) {
-                    Text("Si la box refuse, depuis un PC :", fontSize = 13.sp, color = OnBackgroundMuted)
+                    Text(stringResource(R.string.settings_box_refuses), fontSize = 13.sp, color = OnBackgroundMuted)
                     Text(step.adb, fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = OnBackground)
                 }
             }
@@ -434,10 +445,10 @@ private fun OurAppsPage(refresh: Int, onNext: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("FACULTATIF", fontSize = 13.sp, color = AccentColor, fontWeight = FontWeight.SemiBold, modifier = Modifier.reveal(0))
-        Text("Nos applications", fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(0))
+        Text(stringResource(R.string.onboarding_optional), fontSize = 13.sp, color = AccentColor, fontWeight = FontWeight.SemiBold, modifier = Modifier.reveal(0))
+        Text(stringResource(R.string.settings_ourapps_title), fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(0))
         Spacer(Modifier.height(8.dp))
-        Text("Installez-les en un clic : Android vous demandera de confirmer.", fontSize = 18.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(1))
+        Text(stringResource(R.string.onboarding_ourapps_text), fontSize = 18.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(1))
         Spacer(Modifier.height(36.dp))
         val apps = com.vantaflow.kairo.apps.OurApps
         // Écran TV de 960 dp de large : les cartes rétrécissent quand il y a plus de deux applis.
@@ -462,22 +473,22 @@ private fun OurAppsPage(refresh: Int, onNext: () -> Unit) {
                         Image(painterResource(app.banner), contentDescription = app.name, modifier = Modifier.fillMaxSize())
                     }
                     Text(app.name, fontSize = if (small) 16.sp else 20.sp, color = OnBackground, fontWeight = FontWeight.SemiBold)
-                    Text(app.tagline, fontSize = if (small) 12.sp else 14.sp, color = OnBackgroundMuted)
+                    Text(androidx.compose.ui.res.stringResource(app.tagline), fontSize = if (small) 12.sp else 14.sp, color = OnBackgroundMuted)
                     Text(
-                        if (installed) "✓ Installée · OK pour ouvrir" else com.vantaflow.kairo.home.installLabel(states[app.id]),
+                        if (installed) stringResource(R.string.onboarding_ourapps_installed) else com.vantaflow.kairo.home.installLabel(states[app.id]),
                         fontSize = if (small) 13.sp else 15.sp,
                         color = if (installed) Color(0xFF6DD58C) else AccentColor,
                     )
                     // La box refuse l'affichage par-dessus les autres applis : commande ADB à lancer une fois.
                     adb?.let {
-                        Text("Pour s'ouvrir quand le Mac se connecte, lancez une fois depuis un ordinateur :", fontSize = 13.sp, color = OnBackgroundMuted)
+                        Text(stringResource(R.string.onboarding_ourapps_adb), fontSize = 13.sp, color = OnBackgroundMuted)
                         Text(it, fontSize = 13.sp, color = OnBackground, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                     }
                 }
             }
         }
         Spacer(Modifier.height(36.dp))
-        Button(onClick = onNext, modifier = Modifier.reveal(3)) { Text("Continuer", fontSize = 17.sp) }
+        Button(onClick = onNext, modifier = Modifier.reveal(3)) { Text(stringResource(R.string.onboarding_continue), fontSize = 17.sp) }
     }
 }
 
@@ -493,10 +504,10 @@ private fun ThemePage(onNext: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Choisissez votre style", fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(0))
+        Text(stringResource(R.string.onboarding_theme_title), fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(0))
         Spacer(Modifier.height(8.dp))
         Text(
-            "Le thème s'applique tout de suite. Vous pourrez le changer dans Réglages › Thème.",
+            stringResource(R.string.onboarding_theme_text, settingsPath(R.string.section_theme)),
             fontSize = 18.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(1),
         )
         Spacer(Modifier.height(40.dp))
@@ -519,7 +530,7 @@ private fun ThemePage(onNext: () -> Unit) {
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(theme.surface), Color(theme.background))))) {
                         Box(Modifier.padding(14.dp).size(34.dp).background(Color(theme.accent), CircleShape))
                         Text(
-                            theme.name, fontSize = 15.sp, color = Color.White, textAlign = TextAlign.Start,
+                            theme.displayName, fontSize = 15.sp, color = Color.White, textAlign = TextAlign.Start,
                             modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
                         )
                     }
@@ -527,7 +538,7 @@ private fun ThemePage(onNext: () -> Unit) {
             }
         }
         Spacer(Modifier.height(44.dp))
-        Button(onClick = onNext, modifier = Modifier.reveal(3)) { Text("Continuer", fontSize = 17.sp) }
+        Button(onClick = onNext, modifier = Modifier.reveal(3)) { Text(stringResource(R.string.onboarding_continue), fontSize = 17.sp) }
     }
 }
 
@@ -540,14 +551,14 @@ private fun DonePage(onFinish: () -> Unit) {
         verticalArrangement = Arrangement.Center,
     ) {
         StepBadge(TvIcon.Check, done = true, modifier = Modifier.reveal(0))
-        Text("Tout est prêt !", fontSize = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(1))
+        Text(stringResource(R.string.onboarding_done_title), fontSize = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(1))
         Spacer(Modifier.height(10.dp))
         Text(
-            "Appui long sur une appli pour l'ajouter aux favoris. Cet assistant reste dans Réglages.",
+            stringResource(R.string.onboarding_done_text),
             fontSize = 19.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(2),
         )
         Spacer(Modifier.height(36.dp))
-        Button(onClick = onFinish, modifier = Modifier.reveal(3).focusRequester(focus)) { Text("Aller à l'accueil", fontSize = 18.sp) }
+        Button(onClick = onFinish, modifier = Modifier.reveal(3).focusRequester(focus)) { Text(stringResource(R.string.onboarding_go_home), fontSize = 18.sp) }
     }
 }
 

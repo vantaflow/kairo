@@ -17,6 +17,8 @@ import com.vantaflow.kairo.home.formatTime
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import java.time.ZoneId
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 @Composable
 fun ClockSettings(vm: SettingsViewModel) {
@@ -26,14 +28,14 @@ fun ClockSettings(vm: SettingsViewModel) {
     val zone = ZoneId.systemDefault()
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SwitchRow("Format 24 heures", use24h, vm::setUse24h, "Sinon 12 heures avec AM/PM.")
-        Text("Serveurs : ${TrustedClock.DEFAULT_HOSTS.joinToString(", ")}", color = OnBackgroundMuted)
+        SwitchRow(stringResource(R.string.settings_clock_24h), use24h, vm::setUse24h, stringResource(R.string.settings_clock_24h_desc))
+        Text(stringResource(R.string.settings_clock_servers, TrustedClock.DEFAULT_HOSTS.joinToString(", ")), color = OnBackgroundMuted)
         Text(
             lastSync?.let {
-                "Dernière synchronisation : ${formatDate(it, zone)} à ${formatTime(it, zone, use24h)} (écart ${offset} ms)"
-            } ?: "Pas encore synchronisé : l'heure de la box est affichée.",
+                stringResource(R.string.settings_clock_last_sync, formatDate(it, zone), formatTime(it, zone, use24h), offset)
+            } ?: stringResource(R.string.settings_clock_not_synced),
             color = OnBackgroundMuted,
         )
-        Button(onClick = vm::syncNow) { Text("Synchroniser maintenant") }
+        Button(onClick = vm::syncNow) { Text(stringResource(R.string.settings_clock_sync_now)) }
     }
 }

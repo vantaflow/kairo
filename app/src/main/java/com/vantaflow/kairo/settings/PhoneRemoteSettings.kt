@@ -42,6 +42,8 @@ import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import kotlinx.coroutines.launch
 import java.net.Inet4Address
+import androidx.compose.ui.res.stringResource
+import com.vantaflow.kairo.R
 
 /** Adresse IPv4 de la box sur le réseau local (Wi-Fi ou Ethernet) ; null hors réseau. */
 fun localIpv4(context: Context): String? {
@@ -77,32 +79,32 @@ fun PhoneRemoteSettings() {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
         item {
             SwitchRow(
-                "Activer la télécommande sur téléphone",
+                stringResource(R.string.settings_phone_enable),
                 enabled,
                 { on -> scope.launch { container.prefs.setPhoneRemoteEnabled(on) } },
-                "Flèches, OK, volume, texte, lancement d'applis et envoi de fichiers ou d'APK, depuis le navigateur du téléphone.",
+                stringResource(R.string.settings_phone_enable_desc),
             )
         }
         if (enabled && token.isNotEmpty()) {
             if (ip == null) {
-                item { Text("La box n'est connectée à aucun réseau.", color = OnBackground) }
+                item { Text(stringResource(R.string.settings_phone_no_network), color = OnBackground) }
             } else {
                 val url = "http://$ip:$PHONE_REMOTE_PORT/?t=$token"
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                         val qr = remember(url) { qrCode(url) }
                         Box(Modifier.background(Color.White, RoundedCornerShape(12.dp)).padding(10.dp)) {
-                            Image(qr, contentDescription = "QR code", filterQuality = FilterQuality.None, modifier = Modifier.size(190.dp))
+                            Image(qr, contentDescription = stringResource(R.string.settings_phone_qr), filterQuality = FilterQuality.None, modifier = Modifier.size(190.dp))
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Scannez avec l'appareil photo du téléphone", color = OnBackground, fontSize = 17.sp)
-                            Text("Le téléphone doit être sur le même réseau que la box. Ajoutez la page à l'écran d'accueil du téléphone pour la retrouver.", color = OnBackgroundMuted, fontSize = 14.sp)
+                            Text(stringResource(R.string.settings_phone_scan), color = OnBackground, fontSize = 17.sp)
+                            Text(stringResource(R.string.settings_phone_scan_desc), color = OnBackgroundMuted, fontSize = 14.sp)
                         }
                     }
                 }
                 item { Text(url, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = OnBackground) }
                 item {
-                    SmallButton("Nouveau lien (déconnecte les téléphones)", {
+                    SmallButton(stringResource(R.string.settings_phone_new_link), {
                         scope.launch {
                             container.prefs.renewPhoneRemoteToken()
                             renewed++
@@ -112,7 +114,7 @@ fun PhoneRemoteSettings() {
             }
             if (KeyRemapService.instance == null) {
                 item {
-                    SettingHint("Pour les flèches, OK et Retour dans toutes les applis, activez aussi « Kairo » dans Accessibilité (Réglages › Assistant de configuration).")
+                    SettingHint(stringResource(R.string.settings_phone_accessibility_hint, settingsPath(R.string.section_setup)))
                 }
             }
         }
