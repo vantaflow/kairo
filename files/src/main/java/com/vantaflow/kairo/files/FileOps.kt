@@ -16,7 +16,7 @@ enum class Kind(val icon: String, val color: Long) {
     Other("📄", 0xFF6B7385),
 }
 
-enum class SortBy(val label: String) { Name("Nom"), Date("Date"), Size("Taille") }
+enum class SortBy { Name, Date, Size }
 
 private val EXT_KIND: Map<String, Kind> = buildMap {
     listOf("mp4", "mkv", "avi", "mov", "webm", "ts", "m2ts", "wmv", "flv", "m4v", "3gp", "mpg", "mpeg").forEach { put(it, Kind.Video) }
@@ -56,18 +56,23 @@ fun kindOf(name: String, directory: Boolean): Kind =
 /** Type MIME pour « Ouvrir » (« * / * » si inconnu : Android propose toutes les applis). */
 fun mimeOf(name: String): String = EXT_MIME[extensionOf(name)] ?: "*/*"
 
-/** Taille lisible, en unités françaises (o, Ko, Mo, Go, To). */
-fun formatSize(bytes: Long): String {
-    if (bytes < 1024) return "$bytes o"
-    val units = listOf("Ko", "Mo", "Go", "To")
+/** Formats des unités (octets, Ko, Mo, Go, To), le nombre en %1$s ; en français par défaut. */
+val FRENCH_SIZE_UNITS = listOf("%1\$s o", "%1\$s Ko", "%1\$s Mo", "%1\$s Go", "%1\$s To")
+
+/**
+ * Taille lisible : [units] donne les formats de la langue courante (`size_bytes`… `size_tb`),
+ * [locale] le séparateur décimal. En français par défaut (o, Ko, Mo, Go, To).
+ */
+fun formatSize(bytes: Long, units: List<String> = FRENCH_SIZE_UNITS, locale: Locale = Locale.FRANCE): String {
+    if (bytes < 1024) return units[0].format(locale, bytes.toString())
     var value = bytes / 1024.0
-    var i = 0
+    var i = 1
     while (value >= 1024 && i < units.lastIndex) {
         value /= 1024
         i++
     }
-    val text = if (value >= 100) "%.0f".format(Locale.FRANCE, value) else "%.1f".format(Locale.FRANCE, value)
-    return "$text ${units[i]}"
+    val text = if (value >= 100) "%.0f".format(locale, value) else "%.1f".format(locale, value)
+    return units[i].format(locale, text)
 }
 
 private val marks = Regex("\\p{Mn}+")
@@ -135,6 +140,9 @@ fun naturalCompare(a: String, b: String): Int {
     return (a.length - i) - (b.length - j)
 }
 
+/** Dossier impossible à créer (copie, extraction) ; le message affiché est traduit. */
+class CreateDirException(val dirName: String) : java.io.IOException("Impossible de créer $dirName")
+
 /** Nom libre dans [dir] : « film.mkv » devient « film (2).mkv » s'il existe déjà. */
 fun freeName(dir: File, name: String): String {
     if (!File(dir, name).exists()) return name
@@ -176,7 +184,7 @@ fun copyInto(source: File, destDir: File, onBytes: (Long) -> Unit, cancelled: ()
 private fun copyTo(source: File, target: File, onBytes: (Long) -> Unit, cancelled: () -> Boolean) {
     if (cancelled()) throw InterruptedException()
     if (source.isDirectory) {
-        if (!target.mkdirs() && !target.isDirectory) throw java.io.IOException("Impossible de créer ${target.name}")
+        if (!target.mkdirs() && !target.isDirectory) throw CreateDirException(target.name)
         source.listFiles()?.forEach { copyTo(it, File(target, it.name), onBytes, cancelled) }
     } else {
         source.inputStream().use { input ->

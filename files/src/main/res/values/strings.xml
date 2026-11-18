@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Français : langue par défaut. Chaque clé doit exister dans values-en, values-es et values-ar. -->
+    <string name="app_name" translatable="false">Kairo Files</string>
+
+    <!-- Emplacements -->
+    <string name="place_box">Stockage de la box</string>
+    <string name="place_usb">Clé USB</string>
+    <string name="place_free">%1$s libres sur %2$s</string>
+    <string name="place_downloads">Téléchargements</string>
+    <string name="place_movies">Films</string>
+    <string name="place_music">Musique</string>
+    <string name="place_pictures">Images</string>
+    <string name="place_box_folder">Dossier de la box</string>
+    <string name="path_separator">" › "</string>
+
+    <!-- Unités de taille -->
+    <string name="size_bytes">%1$s o</string>
+    <string name="size_kb">%1$s Ko</string>
+    <string name="size_mb">%1$s Mo</string>
+    <string name="size_gb">%1$s Go</string>
+    <string name="size_tb">%1$s To</string>
+
+    <!-- Autorisation -->
+    <string name="permission_text">Pour parcourir la box et les clés USB, autorisez l\'accès à tous les fichiers.</string>
+    <string name="permission_allow">Autoriser</string>
+    <string name="permission_adb">Si la box refuse, depuis un ordinateur :</string>
+
+    <!-- Barre d'actions -->
+    <string name="paste_here">Coller ici (%1$d)</string>
+    <string name="move_here">Déplacer ici (%1$d)</string>
+    <string name="clear_clipboard">Vider</string>
+    <string name="new_folder">Nouveau dossier</string>
+    <string name="create">Créer</string>
+    <string name="sort_by">Tri : %1$s</string>
+    <string name="sort_name">Nom</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_size">Taille</string>
+    <string name="hidden_show">Voir les cachés</string>
+    <string name="hidden_hide">Masquer les cachés</string>
+    <string name="reading">Lecture…</string>
+    <string name="folder_empty">Dossier vide</string>
+    <string name="folder">Dossier</string>
+    <plurals name="folder_items">
+        <item quantity="one">%1$d élément</item>
+        <item quantity="other">%1$d éléments</item>
+    </plurals>
+
+    <!-- Menu d'un élément -->
+    <string name="open">Ouvrir</string>
+    <string name="extract_menu">Extraire…</string>
+    <string name="open_with_menu">Ouvrir avec…</string>
+    <string name="open_with">Ouvrir avec</string>
+    <string name="send_to_phone">Envoyer au téléphone (Kairo Send Files)</string>
+    <string name="copy">Copier</string>
+    <string name="cut">Couper</string>
+    <string name="copy_hint">Choisissez le dossier, puis « Coller ici »</string>
+    <string name="cut_hint">Choisissez le dossier, puis « Déplacer ici »</string>
+    <string name="rename">Renommer</string>
+    <string name="delete">Supprimer</string>
+    <string name="properties">Propriétés</string>
+    <string name="properties_size">Taille : %1$s</string>
+    <string name="properties_content">Contenu : %1$s</string>
+    <string name="properties_modified">Modifié le %1$s</string>
+    <string name="close">Fermer</string>
+    <string name="cancel">Annuler</string>
+
+    <!-- Archives -->
+    <string name="extract_into">Extraire dans « %1$s »</string>
+    <string name="extract_here">Extraire ici</string>
+    <string name="archive_show_content">Voir le contenu</string>
+    <plurals name="archive_files">
+        <item quantity="one">%1$s · %2$d fichier</item>
+        <item quantity="other">%1$s · %2$d fichiers</item>
+    </plurals>
+    <string name="archive_unreadable">Archive illisible</string>
+    <string name="archive_rar5">RAR 5 non pris en charge : utilisez « Ouvrir avec… »</string>
+    <string name="archive_password">Archive protégée par mot de passe</string>
+    <string name="archive_rar_unreadable">Archive RAR illisible</string>
+    <string name="archive_unknown_format">Format d\'archive inconnu</string>
+
+    <!-- Suppression -->
+    <string name="delete_confirm">Supprimer « %1$s » ?</string>
+    <string name="delete_folder_warning">Le dossier et tout son contenu seront supprimés définitivement.</string>
+    <string name="delete_file_warning">Le fichier sera supprimé définitivement.</string>
+
+    <!-- Opérations en cours -->
+    <string name="job_copy">Copie</string>
+    <string name="job_move">Déplacement</string>
+    <string name="job_extract">Extraction</string>
+    <string name="job_delete">Suppression</string>
+    <string name="job_progress">%1$s sur %2$s · %3$d %%</string>
+    <string name="job_running">En cours…</string>
+
+    <!-- Messages -->
+    <string name="cancelled">Annulé</string>
+    <string name="failed">Échec : %1$s</string>
+    <string name="error_generic">erreur</string>
+    <string name="cannot_create">Impossible de créer %1$s</string>
+    <string name="delete_failed">Suppression impossible</string>
+    <string name="paste_into_itself">Impossible de coller un dossier dans lui-même</string>
+    <string name="not_enough_space">Pas assez de place : %1$s nécessaires, %2$s libres</string>
+    <string name="not_enough_space_short">Pas assez de place : %1$s nécessaires</string>
+    <string name="invalid_name">Nom invalide</string>
+    <string name="already_exists">« %1$s » existe déjà</string>
+    <string name="create_failed">Création impossible ici</string>
+    <string name="rename_failed">Renommage impossible</string>
+    <string name="file_inaccessible">Fichier inaccessible</string>
+    <string name="no_app_to_open">Aucune appli ne sait ouvrir ce fichier</string>
+    <string name="choose_a_file">Choisissez un fichier (pas un dossier)</string>
+    <string name="install_send">Installez Kairo Send Files pour envoyer au téléphone</string>
+</resources>

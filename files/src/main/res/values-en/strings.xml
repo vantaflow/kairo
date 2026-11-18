@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Places -->
+    <string name="place_box">Box storage</string>
+    <string name="place_usb">USB drive</string>
+    <string name="place_free">%1$s free of %2$s</string>
+    <string name="place_downloads">Downloads</string>
+    <string name="place_movies">Movies</string>
+    <string name="place_music">Music</string>
+    <string name="place_pictures">Pictures</string>
+    <string name="place_box_folder">Box folder</string>
+    <string name="path_separator">" › "</string>
+
+    <!-- Size units -->
+    <string name="size_bytes">%1$s B</string>
+    <string name="size_kb">%1$s KB</string>
+    <string name="size_mb">%1$s MB</string>
+    <string name="size_gb">%1$s GB</string>
+    <string name="size_tb">%1$s TB</string>
+
+    <!-- Permission -->
+    <string name="permission_text">To browse the box and USB drives, allow access to all files.</string>
+    <string name="permission_allow">Allow</string>
+    <string name="permission_adb">If the box refuses, from a computer:</string>
+
+    <!-- Action bar -->
+    <string name="paste_here">Paste here (%1$d)</string>
+    <string name="move_here">Move here (%1$d)</string>
+    <string name="clear_clipboard">Clear</string>
+    <string name="new_folder">New folder</string>
+    <string name="create">Create</string>
+    <string name="sort_by">Sort: %1$s</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_size">Size</string>
+    <string name="hidden_show">Show hidden</string>
+    <string name="hidden_hide">Hide hidden</string>
+    <string name="reading">Loading…</string>
+    <string name="folder_empty">Empty folder</string>
+    <string name="folder">Folder</string>
+    <plurals name="folder_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
+    <!-- Item menu -->
+    <string name="open">Open</string>
+    <string name="extract_menu">Extract…</string>
+    <string name="open_with_menu">Open with…</string>
+    <string name="open_with">Open with</string>
+    <string name="send_to_phone">Send to phone (Kairo Send Files)</string>
+    <string name="copy">Copy</string>
+    <string name="cut">Cut</string>
+    <string name="copy_hint">Choose the folder, then “Paste here”</string>
+    <string name="cut_hint">Choose the folder, then “Move here”</string>
+    <string name="rename">Rename</string>
+    <string name="delete">Delete</string>
+    <string name="properties">Properties</string>
+    <string name="properties_size">Size: %1$s</string>
+    <string name="properties_content">Contents: %1$s</string>
+    <string name="properties_modified">Modified %1$s</string>
+    <string name="close">Close</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Archives -->
+    <string name="extract_into">Extract to “%1$s”</string>
+    <string name="extract_here">Extract here</string>
+    <string name="archive_show_content">Show contents</string>
+    <plurals name="archive_files">
+        <item quantity="one">%1$s · %2$d file</item>
+        <item quantity="other">%1$s · %2$d files</item>
+    </plurals>
+    <string name="archive_unreadable">Can\'t read this archive</string>
+    <string name="archive_rar5">RAR 5 isn\'t supported: use “Open with…”</string>
+    <string name="archive_password">Password-protected archive</string>
+    <string name="archive_rar_unreadable">Can\'t read this RAR archive</string>
+    <string name="archive_unknown_format">Unknown archive format</string>
+
+    <!-- Deletion -->
+    <string name="delete_confirm">Delete “%1$s”?</string>
+    <string name="delete_folder_warning">The folder and everything in it will be permanently deleted.</string>
+    <string name="delete_file_warning">The file will be permanently deleted.</string>
+
+    <!-- Running jobs -->
+    <string name="job_copy">Copying</string>
+    <string name="job_move">Moving</string>
+    <string name="job_extract">Extracting</string>
+    <string name="job_delete">Deleting</string>
+    <string name="job_progress">%1$s of %2$s · %3$d%%</string>
+    <string name="job_running">In progress…</string>
+
+    <!-- Messages -->
+    <string name="cancelled">Cancelled</string>
+    <string name="failed">Failed: %1$s</string>
+    <string name="error_generic">error</string>
+    <string name="cannot_create">Can\'t create %1$s</string>
+    <string name="delete_failed">Can\'t delete</string>
+    <string name="paste_into_itself">Can\'t paste a folder into itself</string>
+    <string name="not_enough_space">Not enough space: %1$s needed, %2$s free</string>
+    <string name="not_enough_space_short">Not enough space: %1$s needed</string>
+    <string name="invalid_name">Invalid name</string>
+    <string name="already_exists">“%1$s” already exists</string>
+    <string name="create_failed">Can\'t create a folder here</string>
+    <string name="rename_failed">Can\'t rename</string>
+    <string name="file_inaccessible">File not accessible</string>
+    <string name="no_app_to_open">No app can open this file</string>
+    <string name="choose_a_file">Choose a file (not a folder)</string>
+    <string name="install_send">Install Kairo Send Files to send to your phone</string>
+</resources>
