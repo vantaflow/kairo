@@ -92,6 +92,20 @@ class HomeViewModelTest {
     } }
 
     @Test
+    fun hiddenFavoriteLeavesTheHomeButStaysSaved() = runTest(UnconfinedTestDispatcher()) { withVm {
+        val prefs = prefs()
+        prefs.setFavorites(listOf("c", "a"))
+        val vm = vm(prefs)
+        vm.state.first { it.favorites.size == 2 }
+        prefs.setHidden("c", true)
+        val state = vm.state.first { it.favorites.size == 1 }
+        assertEquals(listOf("a"), state.favorites.map { it.packageName })
+        assertEquals(listOf("c", "a"), prefs.favorites.first())
+        prefs.setHidden("c", false)
+        assertEquals(listOf("c", "a"), vm.state.first { it.favorites.size == 2 }.favorites.map { it.packageName })
+    } }
+
+    @Test
     fun firstLaunchPersistsDefaultFavorites() = runTest(UnconfinedTestDispatcher()) { withVm {
         val prefs = prefs()
         vm(prefs).state.first { it.favorites.isNotEmpty() }

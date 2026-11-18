@@ -159,12 +159,13 @@ class HomeViewModel(
         merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
 
     private val favorites: Flow<List<AppInfo>> =
-        combine(prefs.favorites, prefs.favoritesInitialized, installed, prefs.currentProfile) { saved, initialized, apps, profile ->
+        combine(prefs.favorites, prefs.favoritesInitialized, installed, prefs.currentProfile, prefs.hidden) { saved, initialized, apps, profile, hidden ->
             val resolved = resolveFavorites(saved, apps, initialized)
             if (!initialized && resolved.isNotEmpty()) {
                 viewModelScope.launch { prefs.initializeFavorites(profile.id, resolved.map { it.packageName }) }
             }
-            resolved
+            // Une appli masquée quitte aussi la rangée des favoris ; elle y revient à sa place si on la réaffiche.
+            resolved.filterNot { it.packageName in hidden }
         }
 
     private val clockText: Flow<Pair<String, String>> =
