@@ -66,7 +66,7 @@ class AppContainer(val app: Application) {
     /** Langue des titres : celle de l'appli (Réglages › Langue, par défaut celle de la box : « fr-FR », « ar-MA »…). */
     private fun catalogLanguage(): String = com.vantaflow.kairo.i18n.AppLocale.catalogLanguage()
     /** Nos applis (Kairo Player, Ultra TV) : installation et mises à jour depuis GitHub. */
-    val ourApps = OurAppsStore(app)
+    val ourApps = OurAppsStore(app, autoUpdate = { prefs.autoUpdate.first() })
 
     private val weatherRepo = WeatherRepository(http)
     @Volatile private var placeCache: Pair<String, Place>? = null

@@ -82,7 +82,8 @@ fun AppsScreen(
                         if (isHidden) stringResource(R.string.apps_hidden_label, app.label) else app.label,
                         color = if (isHidden) OnBackgroundMuted.copy(alpha = 0.6f) else OnBackgroundMuted,
                         maxLines = 1,
-                        modifier = Modifier.padding(top = 8.dp),
+                        // Écart suffisant pour le cadre de la tuile sélectionnée, qui grossit.
+                        modifier = Modifier.padding(top = 18.dp),
                     )
                 }
             }

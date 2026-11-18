@@ -98,6 +98,7 @@ private val Checked: List<OurApp> get() = OurApps + KairoSelf
 
 /** Écart entre deux vérifications au retour sur l'accueil (la box reste allumée des jours). */
 private const val CHECK_EVERY_MS = 12 * 60 * 60 * 1000L
+private const val PENDING_CHECK_EVERY_MS = 30 * 60 * 1000L
 
 /** APK trouvé dans les publications GitHub d'une appli. */
 data class RemoteApk(val version: String, val assetUrl: String, val size: Long)
@@ -130,7 +131,11 @@ sealed interface InstallState {
 }
 
 /** Installe et met à jour nos applis depuis leurs publications GitHub. */
-class OurAppsStore(private val context: Context) {
+class OurAppsStore(
+    private val context: Context,
+    /** Réglage « Mise à jour automatique ». */
+    private val autoUpdate: suspend () -> Boolean = { false },
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val updater = Updater(context)
     private val _states = MutableStateFlow<Map<String, InstallState>>(emptyMap())
@@ -144,7 +149,49 @@ class OurAppsStore(private val context: Context) {
         lastCheckMs = System.currentTimeMillis()
         scope.launch {
             kotlinx.coroutines.delay(delayMs)
-            _updates.value = Checked.filter { isInstalled(it) && hasUpdate(it, latest(it)) }.map { it.id }.toSet()
+            val results = Checked.filter(::isInstalled).map { it to latest(it) }
+            val found = results.mapNotNull { (app, remote) -> remote?.takeIf { hasUpdate(app, it) }?.let { app to it } }
+            // GitHub injoignable pour une appli : on garde ce qu'on savait, la mise à jour ne « disparaît » pas.
+            val unknown = results.filter { (app, remote) -> remote == null && app.id in _updates.value }.map { it.first.id }
+            _updates.value = (found.map { it.first.id } + unknown).toSet()
+            if (found.isNotEmpty() && runCatching { autoUpdate() }.getOrDefault(false)) autoInstall(found.toMap())
+        }
+    }
+
+    /** L'accueil de Kairo est à l'écran : sa propre mise à jour attend qu'il ne le soit plus. */
+    @Volatile var homeVisible = false
+    private val autoMutex = kotlinx.coroutines.sync.Mutex()
+
+    /**
+     * Installe sans rien demander les mises à jour trouvées. Si Android exige une confirmation
+     * (box trop ancienne, source non autorisée), rien ne s'affiche : la mise à jour reste proposée.
+     */
+    private suspend fun autoInstall(found: Map<OurApp, RemoteApk>) {
+        if (!autoMutex.tryLock()) return
+        try {
+            val byId = found.mapKeys { it.key.id }
+            val apps = found.keys.associateBy { it.id }
+            val plan = com.vantaflow.kairo.update.autoInstallPlan(
+                byId.mapValues { it.value.version }, com.vantaflow.kairo.update.AutoUpdateLog(context).refused(), KairoSelf.id,
+            )
+            for (step in plan) {
+                val app = apps.getValue(step.appId)
+                if (_states.value[app.id] is InstallState.Downloading) continue
+                // Kairo se relance en s'installant : on attend que l'utilisateur soit ailleurs (autre appli, veille).
+                if (app.id == KairoSelf.id) while (homeVisible) kotlinx.coroutines.delay(30_000)
+                val before = installedVersion(app)
+                val sent = runCatching { updater.installAsset(byId.getValue(step.appId).assetUrl, app.packages.first(), auto = step) }.getOrDefault(false)
+                // Installée : elle n'est plus proposée sur l'accueil (une minute au plus pour le constater).
+                if (sent) repeat(30) {
+                    if (installedVersion(app) != before) {
+                        _updates.update { it - app.id }
+                        return@repeat
+                    }
+                    kotlinx.coroutines.delay(2000)
+                }
+            }
+        } finally {
+            autoMutex.unlock()
         }
     }
 
@@ -202,7 +249,7 @@ class OurAppsStore(private val context: Context) {
                 Toast.makeText(context, context.getString(R.string.apps_downloading_toast, app.name, (remote.size / 1_048_576).toInt()), Toast.LENGTH_SHORT).show()
             }
             val ok = runCatching {
-                updater.installAsset(remote.assetUrl, app.packages.first()) { bytes ->
+                updater.installAsset(remote.assetUrl, app.packages.first()) { bytes: Long ->
                     if (remote.size > 0) set(app, InstallState.Downloading((bytes * 100 / remote.size).toInt().coerceIn(0, 100)))
                 }
             }.getOrDefault(false)
@@ -228,7 +275,9 @@ class OurAppsStore(private val context: Context) {
         _states.update { states -> states.filterNot { (id, s) -> s is InstallState.Confirm && id != KairoSelf.id && OurApps.firstOrNull { it.id == id }?.let(::isInstalled) == true } }
         // Mise à jour installée : la version ne dépasse plus celle publiée, on la retire au prochain contrôle.
         // Sinon, nouvelle vérification toutes les 12 h : la box reste allumée et Kairo n'est pas relancé.
-        if (_updates.value.isNotEmpty() || System.currentTimeMillis() - lastCheckMs > CHECK_EVERY_MS) checkUpdates(delayMs = 0)
+        // Mise à jour en attente : contrôle plus rapproché, mais pas à chaque retour (GitHub limite à 60 requêtes par heure).
+        val every = if (_updates.value.isEmpty()) CHECK_EVERY_MS else PENDING_CHECK_EVERY_MS
+        if (System.currentTimeMillis() - lastCheckMs > every) checkUpdates(delayMs = 0)
     }
 
     private fun set(app: OurApp, state: InstallState) = _states.update { it + (app.id to state) }

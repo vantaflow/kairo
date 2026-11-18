@@ -31,6 +31,9 @@
     <string name="settings_layout_show_row_titles">Afficher les titres des rangées</string>
     <string name="settings_layout_show_recent">Afficher les applis récentes</string>
     <string name="settings_layout_show_live_tv">Afficher les chaînes TV et entrées (box avec tuner ou HDMI)</string>
+    <string name="settings_layout_tab_movies">Onglet Films</string>
+    <string name="settings_layout_tab_shows">Onglet Séries</string>
+    <string name="settings_layout_tab_apps">Onglet Applis</string>
     <string name="settings_layout_show_tools">Rangée Outils sur l\'accueil (radio, météo, minuteur, nettoyeur)</string>
     <string name="settings_layout_show_our_apps">Proposer nos applications (Kairo Player, Files, Send Files, Cast, Ultra TV)</string>
     <string name="settings_layout_show_update">Signaler les mises à jour de Kairo sur l\'accueil</string>
@@ -110,6 +113,8 @@
     <string name="settings_update_download_failed">Échec du téléchargement.</string>
     <string name="settings_update_install_tag">Installer %1$s</string>
     <string name="settings_update_footer">Les versions sont publiées sur github.com/vantaflow/kairo. Sur une autre box, installez Kairo avec le code Downloader 5568887.</string>
+    <string name="settings_update_auto">Mise à jour automatique</string>
+    <string name="settings_update_auto_desc">Kairo et ses applis se mettent à jour seuls, sans rien demander, quand vous n\'êtes pas sur l\'accueil.</string>
     <string name="settings_ourapps_title">Nos applications</string>
     <string name="settings_ourapps_not_installed">Non installée</string>
     <string name="settings_ourapps_not_installed_available">Non installée · %1$s disponible</string>

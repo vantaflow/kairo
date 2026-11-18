@@ -35,7 +35,7 @@ Les box Android TV d'entrée de gamme (2 Go de RAM, processeur 32 bits) rament s
 **Accueil**
 - Comme Google TV : favoris en tête, puis **À suivre**, puis une rangée de recommandations publiées par vos applis (YouTube, SmartTube, Ultra TV, TiviMate…) et une rangée d'applis (**Récentes**, « Toutes les applis », outils) en alternance.
 - **4 langues** : français, anglais, espagnol et arabe (affichage de droite à gauche). Kairo suit la langue de la box, ou celle choisie dans Réglages › Langue ; Kairo Player, Kairo Files et Kairo Send Files suivent la langue de la box. Les 418 citations de l'écran de veille existent dans chaque langue.
-- **Onglets comme Google TV** : *Pour vous*, *Films*, *Séries*, *Applis* en haut à gauche ; à droite, boutons en icônes, température et heure.
+- **Onglets comme Google TV** : *Pour vous*, *Films*, *Séries*, *Applis* en haut à gauche ; à droite, boutons en icônes, température et heure. Chaque onglet se masque dans Réglages › Affichage de l'accueil.
 - **Films et séries à voir** (TMDB), **dans tous les pays** : Kairo repère le pays de la box et les plateformes qui y sont proposées (Netflix, Prime Video, Apple TV, Disney+, Shahid, Max, Canal+…), les rapproche des applis installées, puis affiche seulement ce qui est **inclus dans vos abonnements** (pas de location ni d'achat) : tendances, mieux notés, et une rangée par plateforme quand il y en a plusieurs. Catalogue mis à jour une fois par jour et gardé sur la box (l'accueil n'attend jamais le réseau). Fiche avec résumé, note et **« Regarder sur »** chaque appli où le titre est disponible.
 - **Ma liste** : un clic sur « + Ma liste » dans la fiche ; la rangée apparaît dans *Pour vous*, *Films* et *Séries*.
 - **Reprendre** : les applis qui ne publient pas leur « À suivre » dans Android (Apple TV, Prime Video, Shahid…) ont une carte « Reprendre » quand vous les avez ouvertes récemment. Un titre lancé depuis la fiche de Kairo y garde son affiche, et **la vidéo en cours dans YouTube (ou toute appli qui l'annonce à Android) y apparaît avec son image et son titre**. Apple TV n'annonce rien : sa carte garde la bannière de l'appli.
@@ -147,6 +147,7 @@ Kairo met en avant et installe les autres applis Vantaflow, et les intègre part
 - **Accueil animé** : page facultative « Nos applications » au premier lancement.
 - **Réglages › Mise à jour** : version installée, version publiée, installation ou mise à jour.
 - **Kairo se signale tout seul** : une nouvelle version est cherchée au démarrage puis toutes les 12 h ; une carte « Mise à jour » apparaît en tête de « Nos applications », installation en un clic (désactivable : Réglages › Personnaliser).
+- **Mise à jour automatique** (activée par défaut, désactivable dans Réglages › Mise à jour) : Kairo et ses applis s'installent seuls, sans fenêtre de confirmation, quand vous n'êtes pas sur l'accueil. Si Android exige une confirmation, rien ne s'affiche par-dessus votre film : la mise à jour reste proposée sur l'accueil.
 - **Recherche** : « Chercher dans Ultra TV » et « Chercher dans Kairo Player » en tête des suggestions.
 - **Accueil** : « À suivre » et rangées publiées par Ultra TV et Kairo Player (vidéos récentes, reprise de lecture).
 - **Kairo Remote** : une vidéo ou une musique envoyée du téléphone s'ouvre directement dans Kairo Player.

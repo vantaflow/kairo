@@ -66,6 +66,10 @@ data class HomeLayout(
     val showKairoUpdate: Boolean = true,
     /** Rangée « Outils » : radio, météo, minuteur, nettoyeur. */
     val showTools: Boolean = true,
+    /** Onglets du haut de l'accueil (« Pour vous » reste toujours ; sans aucun autre, la barre disparaît). */
+    val showTabMovies: Boolean = true,
+    val showTabShows: Boolean = true,
+    val showTabApps: Boolean = true,
     val clockSizeSp: Int = 72,
     val tileWidthDp: Int = 192,
     /** Transition du fond « héros » d'un contenu à l'autre : fade, zoom, slide ou none. */

@@ -205,6 +205,11 @@ fun UpdateSettings() {
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(stringResource(R.string.settings_update_installed, BuildConfig.VERSION_NAME), color = OnBackground, fontSize = 20.sp)
+        val auto by c.prefs.autoUpdate.collectAsStateWithLifecycle(true)
+        SwitchRow(
+            stringResource(R.string.settings_update_auto), auto, { v -> scope.launch { c.prefs.setAutoUpdate(v) } },
+            stringResource(R.string.settings_update_auto_desc),
+        )
         Button(onClick = {
             scope.launch {
                 message = context.getString(R.string.settings_update_searching)

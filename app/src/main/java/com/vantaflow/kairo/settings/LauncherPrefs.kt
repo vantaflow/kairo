@@ -163,7 +163,11 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val showOurApps = booleanPreferencesKey("show_our_apps")
         val showKairoUpdate = booleanPreferencesKey("show_kairo_update")
         val showTools = booleanPreferencesKey("show_tools")
+        val showTabMovies = booleanPreferencesKey("show_tab_movies")
+        val showTabShows = booleanPreferencesKey("show_tab_shows")
+        val showTabApps = booleanPreferencesKey("show_tab_apps")
         val autoClean = booleanPreferencesKey("auto_clean")
+        val autoUpdate = booleanPreferencesKey("auto_update")
         val adBlockEnabled = booleanPreferencesKey("adblock_enabled")
         val adBlockFilter = stringPreferencesKey("adblock_filter")
         val idleCloseMin = intPreferencesKey("idle_close_min")
@@ -291,6 +295,13 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val autoClean: Flow<Boolean> = pref { it[Keys.autoClean] ?: true }
     val idleCloseMin: Flow<Int> = pref { it[Keys.idleCloseMin] ?: 30 }
 
+    /** Mise à jour automatique de Kairo et de nos applis (active par défaut). */
+    val autoUpdate: Flow<Boolean> = pref { it[Keys.autoUpdate] ?: true }
+
+    suspend fun setAutoUpdate(on: Boolean) {
+        store.edit { it[Keys.autoUpdate] = on }
+    }
+
     suspend fun setAutoClean(on: Boolean) {
         store.edit { it[Keys.autoClean] = on }
     }
@@ -415,6 +426,9 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             showOurApps = it[Keys.showOurApps] ?: d.showOurApps,
             showKairoUpdate = it[Keys.showKairoUpdate] ?: d.showKairoUpdate,
             showTools = it[Keys.showTools] ?: d.showTools,
+            showTabMovies = it[Keys.showTabMovies] ?: d.showTabMovies,
+            showTabShows = it[Keys.showTabShows] ?: d.showTabShows,
+            showTabApps = it[Keys.showTabApps] ?: d.showTabApps,
             clockSizeSp = it[Keys.clockSize] ?: d.clockSizeSp,
             tileWidthDp = it[Keys.tileWidth] ?: d.tileWidthDp,
             heroTransition = it[Keys.heroTransition] ?: d.heroTransition,
@@ -433,6 +447,9 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
             it[Keys.showOurApps] = layout.showOurApps
             it[Keys.showKairoUpdate] = layout.showKairoUpdate
             it[Keys.showTools] = layout.showTools
+            it[Keys.showTabMovies] = layout.showTabMovies
+            it[Keys.showTabShows] = layout.showTabShows
+            it[Keys.showTabApps] = layout.showTabApps
             it[Keys.clockSize] = layout.clockSizeSp
             it[Keys.tileWidth] = layout.tileWidthDp
             it[Keys.heroTransition] = layout.heroTransition

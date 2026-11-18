@@ -139,17 +139,19 @@ class HomeViewModel(
 
     private val reco: Flow<RecoState> = combine(
         combine(
-            epgSnapshot, prefs.showWatchNext, prefs.recoAppOrder, prefs.hiddenChannels, prefs.hiddenRecoApps,
+            epgSnapshot, prefs.showWatchNext, prefs.recoAppOrder, prefs.hiddenChannels,
+            // Une appli masquée (appui long › Masquer) ne propose plus rien non plus.
+            combine(prefs.hiddenRecoApps, prefs.hidden) { reco, apps -> reco + apps },
         ) { snap, showWatchNext, order, hiddenChannels, hiddenApps ->
             val watchNext = if (showWatchNext) snap.watchNext.filter { it.packageName !in hiddenApps } else emptyList()
             Triple(RecoState(watchNext, orderRows(snap.channels, order, hiddenChannels, hiddenApps), snap.live, snap.inputs), showWatchNext, hiddenApps)
         },
         prefs.appUsage,
-    ) { (state, showWatchNext, _), usage ->
+    ) { (state, showWatchNext, hiddenApps), usage ->
         // « À suivre » complété par « Reprendre » pour les applis qui ne publient rien (Apple TV, Prime Video…) ;
         // celles qui publient leur propre « À suivre » n'en ont pas (une rangée de suggestions ne suffit pas).
         val resume = if (showWatchNext) {
-            resumePrograms?.let { build -> runCatching { build(usage, state.watchNext.map { it.packageName }.toSet()) }.getOrNull() }.orEmpty()
+            resumePrograms?.let { build -> runCatching { build(usage, state.watchNext.map { it.packageName }.toSet() + hiddenApps) }.getOrNull() }.orEmpty()
         } else emptyList()
         if (resume.isEmpty()) state
         else RecoState((state.watchNext + resume).sortedByDescending { it.engagedAt }, state.rows, state.live, state.inputs)

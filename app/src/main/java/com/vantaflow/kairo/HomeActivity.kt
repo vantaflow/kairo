@@ -311,6 +311,7 @@ class HomeActivity : ComponentActivity() {
             runCatching { container.autoCleaner.check() }
         }
         homeViewModel.setForeground(true)
+        container.ourApps.homeVisible = true
     }
 
     override fun onStop() {
@@ -318,6 +319,7 @@ class HomeActivity : ComponentActivity() {
         // Écran éteint ou autre appli : les réglages du profil enfant se reverrouillent.
         settingsUnlocked = false
         super.onStop()
+        container.ourApps.homeVisible = false
     }
 
     override fun onResume() {
@@ -364,12 +366,16 @@ class HomeActivity : ComponentActivity() {
         when (if (destination == Destination.Settings) settingsReturn else destination) {
             Destination.Home, Destination.Settings -> {
                 val state by homeViewModel.state.collectAsStateWithLifecycle()
-                val apps by appsViewModel.apps.collectAsStateWithLifecycle()
+                val apps by appsViewModel.visibleApps.collectAsStateWithLifecycle()
                 val net by networkMonitor.state.collectAsStateWithLifecycle(networkMonitor.current())
                 val recent by container.prefs.recentApps.collectAsStateWithLifecycle(emptyList())
                 val ourUpdates by container.ourApps.updates.collectAsStateWithLifecycle()
                 val showRecent = LocalHomeLayout.current.showRecentApps && !profile.kids
                 val tools = if (LocalHomeLayout.current.showTools) toolsFor(profile.kids) else emptyList()
+                val tabsShown = LocalHomeLayout.current.let { l ->
+                    remember(l.showTabMovies, l.showTabShows, l.showTabApps) { com.vantaflow.kairo.home.shownTabs(l.showTabMovies, l.showTabShows, l.showTabApps) }
+                }
+                if (homeTab !in tabsShown) homeTab = HomeTab.ForYou
                 // Pastille « ♪ » : la radio de Kairo, sinon ce que joue une autre appli.
                 val radioName = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
                     .let { r -> r.station?.name?.takeIf { r.active } }
@@ -425,7 +431,9 @@ class HomeActivity : ComponentActivity() {
                     movingFavorite = movingFavorite,
                     onMoveFavorite = appsViewModel::moveFavoriteBy,
                     onMoveDone = { movingFavorite = null },
-                    tab = homeTab.takeIf { catalogRows.isNotEmpty() && !profile.kids },
+                    // Un onglet décoché dans les réglages disparaît ; s'il ne reste que « Pour vous », plus de barre d'onglets.
+                    tab = homeTab.takeIf { catalogRows.isNotEmpty() && !profile.kids && tabsShown.size > 1 },
+                    tabsShown = tabsShown,
                     onTab = { homeTab = it },
                     catalog = if (profile.kids) emptyList() else remember(catalogRows, homeTab) { catalogFor(homeTab, catalogRows) },
                     myList = if (profile.kids) emptyList() else remember(myList, homeTab) {
@@ -451,7 +459,7 @@ class HomeActivity : ComponentActivity() {
                 )
             }
             Destination.Search -> {
-                val apps by appsViewModel.apps.collectAsStateWithLifecycle()
+                val apps by appsViewModel.visibleApps.collectAsStateWithLifecycle()
                 val home by homeViewModel.state.collectAsStateWithLifecycle()
                 SearchScreen(
                     apps = if (profile.kids) home.favorites else apps,
@@ -562,12 +570,23 @@ class HomeActivity : ComponentActivity() {
                     // Ajoutée aux favoris : elle quitte sa rangée, le focus la suit dans les favoris.
                     // Retirée : le focus passe au favori voisin.
                     if (destination == Destination.Home) {
-                        val i = favorites.indexOf(app.packageName)
-                        homeFocus.followFavorite = if (i < 0) app.packageName else favorites.getOrNull(i + 1) ?: favorites.getOrNull(i - 1)
+                        // Voisin pris parmi les favoris affichés (la liste enregistrée garde les applis masquées).
+                        val shown = homeViewModel.state.value.favorites.map { it.packageName }
+                        val i = shown.indexOf(app.packageName)
+                        homeFocus.followFavorite =
+                            if (app.packageName !in favorites) app.packageName else shown.getOrNull(i + 1) ?: shown.getOrNull(i - 1)
                     }
                     appsViewModel.toggleFavorite(app.packageName)
                 },
-                onToggleHidden = { appsViewModel.toggleHidden(app.packageName) },
+                onToggleHidden = {
+                    // Favori masqué : sa tuile disparaît, le focus passe au favori voisin.
+                    if (destination == Destination.Home && app.packageName !in hidden) {
+                        val shown = homeViewModel.state.value.favorites.map { it.packageName }
+                        val i = shown.indexOf(app.packageName)
+                        if (i >= 0) homeFocus.followFavorite = shown.getOrNull(i + 1) ?: shown.getOrNull(i - 1)
+                    }
+                    appsViewModel.toggleHidden(app.packageName)
+                },
                 onAppInfo = {
                     startSafely(
                         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.packageName}")),

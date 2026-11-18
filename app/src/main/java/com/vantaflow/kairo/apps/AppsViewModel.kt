@@ -39,6 +39,11 @@ class AppsViewModel(
             if (show) all else all.filterNot { it.packageName in hiddenSet }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Applis non masquées, pour l'accueil et la recherche : l'interrupteur de l'écran Applis n'y change rien. */
+    val visibleApps: StateFlow<List<AppInfo>> =
+        combine(installed, prefs.hidden) { all, hiddenSet -> all.filterNot { it.packageName in hiddenSet } }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     fun toggleFavorite(pkg: String) {
         viewModelScope.launch {
             if (pkg in prefs.favorites.first()) prefs.removeFavorite(pkg) else prefs.addFavorite(pkg)

@@ -29,10 +29,22 @@ class Updater(private val context: Context) {
      * Télécharge un APK publié sur GitHub ([assetUrl] : URL API de l'asset) et lance son
      * installation pour [packageName]. [onProgress] reçoit les octets reçus.
      */
-    fun installAsset(assetUrl: String, packageName: String, token: String = "", onProgress: (Long) -> Unit = {}): Boolean {
+    fun installAsset(
+        assetUrl: String,
+        packageName: String,
+        token: String = "",
+        /** Mise à jour automatique : installée sans fenêtre de confirmation, ou pas du tout. */
+        auto: AutoInstall? = null,
+        onProgress: (Long) -> Unit = {},
+    ): Boolean {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-            .apply { setAppPackageName(packageName) }
+            .apply {
+                setAppPackageName(packageName)
+                if (auto != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+                }
+            }
         val sessionId = installer.createSession(params)
         val ok = installer.openSession(sessionId).use { session ->
             val written = request(assetUrl, token, accept = "application/octet-stream") { input ->
@@ -52,6 +64,7 @@ class Updater(private val context: Context) {
             } ?: false
             if (written) {
                 val intent = Intent(context, UpdateReceiver::class.java)
+                if (auto != null) intent.putExtra(EXTRA_AUTO_APP, auto.appId).putExtra(EXTRA_AUTO_VERSION, auto.version)
                 val pending = PendingIntent.getBroadcast(context, sessionId, intent, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
                 session.commit(pending.intentSender)
             } else {
@@ -97,17 +110,30 @@ class Updater(private val context: Context) {
     }.getOrNull()
 }
 
+private const val EXTRA_AUTO_APP = "auto_app"
+private const val EXTRA_AUTO_VERSION = "auto_version"
+
 /** Reçoit le résultat d'une installation (mise à jour ou APK envoyé du téléphone) ; affiche la confirmation d'Android si nécessaire. */
 class UpdateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                val autoApp = intent.getStringExtra(EXTRA_AUTO_APP)
+                if (autoApp != null) {
+                    // Mise à jour automatique : jamais de fenêtre d'Android par-dessus un film. On abandonne
+                    // et on retient la version : elle reste proposée sur l'accueil et dans les réglages.
+                    AutoUpdateLog(context).refuse(autoApp, intent.getStringExtra(EXTRA_AUTO_VERSION).orEmpty())
+                    val id = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+                    if (id != -1) runCatching { context.packageManager.packageInstaller.abandonSession(id) }
+                    return
+                }
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
                 context.startSafely(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
-            else -> {
+            // Mise à jour automatique en échec : silencieuse, on réessaiera à la prochaine vérification.
+            else -> if (intent.hasExtra(EXTRA_AUTO_APP)) Unit else {
                 val reason = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: context.getString(R.string.updater_unknown_error)
                 Toast.makeText(context, context.getString(R.string.updater_install_failed, reason), Toast.LENGTH_LONG).show()
             }

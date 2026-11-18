@@ -123,6 +123,8 @@ fun HomeScreen(
     onMoveDone: () -> Unit = {},
     /** Onglet affiché (Pour vous, Films, Séries, Applis) ; null = pas d'onglets (catalogue indisponible). */
     tab: HomeTab? = null,
+    /** Onglets affichés (Réglages › Personnaliser). */
+    tabsShown: List<HomeTab> = HomeTab.entries,
     onTab: (HomeTab) -> Unit = {},
     /** Rangées du catalogue (TMDB) déjà choisies pour l'onglet, et « Ma liste ». */
     catalog: List<Channel> = emptyList(),
@@ -174,7 +176,7 @@ fun HomeScreen(
                 tabs = tab?.let { current ->
                     {
                         HomeTabs(
-                            current, onTab, tabRequesters,
+                            current, tabsShown, onTab, tabRequesters,
                             Modifier.focusProperties { enter = { tabRequesters.getValue(current) } },
                         )
                     }
@@ -395,19 +397,29 @@ fun HomeScreen(
 }
 
 /** Onglets de l'accueil, comme Google TV. */
+/** Onglets à afficher selon les réglages : « Pour vous » toujours, les autres au choix. */
+fun shownTabs(movies: Boolean, shows: Boolean, apps: Boolean): List<HomeTab> = HomeTab.entries.filter {
+    when (it) {
+        HomeTab.ForYou -> true
+        HomeTab.Movies -> movies
+        HomeTab.Shows -> shows
+        HomeTab.Apps -> apps
+    }
+}
+
 enum class HomeTab(@StringRes val label: Int) {
     ForYou(R.string.home_tab_for_you), Movies(R.string.home_tab_movies), Shows(R.string.home_tab_shows), Apps(R.string.home_tab_apps),
 }
 
 /** Rangée d'onglets : l'onglet qui reçoit le focus s'affiche aussitôt (comme Google TV). */
 @Composable
-private fun HomeTabs(current: HomeTab, onTab: (HomeTab) -> Unit, requesters: Map<HomeTab, FocusRequester>, modifier: Modifier) {
+private fun HomeTabs(current: HomeTab, shown: List<HomeTab>, onTab: (HomeTab) -> Unit, requesters: Map<HomeTab, FocusRequester>, modifier: Modifier) {
     androidx.compose.foundation.layout.Row(
         // Texte du 1er onglet aligné sur le bord des tuiles (la pilule déborde à gauche, comme Google TV).
         modifier.offset(x = (-22).dp).focusGroup(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        HomeTab.entries.forEach { t ->
+        shown.forEach { t ->
             val selected = t == current
             androidx.tv.material3.Surface(
                 onClick = { onTab(t) },

@@ -114,11 +114,20 @@ class PhoneRemoteActions(private val context: Context) {
         return HttpResponse.json("{\"ok\":true,\"where\":\"search\"}")
     }
 
+    /** Applis que le téléphone peut voir et lancer : non masquées ; en profil enfant, ses favoris seulement. */
+    private fun allowedApps(): List<com.vantaflow.kairo.apps.AppInfo> {
+        val (hidden, kidsFavorites) = runBlocking {
+            container.prefs.hidden.first() to
+                if (container.prefs.currentProfile.first().kids) container.prefs.favorites.first().toSet() else null
+        }
+        return container.appRepository.installedApps().filter {
+            it.packageName !in hidden && it.packageName != context.packageName && (kidsFavorites == null || it.packageName in kidsFavorites)
+        }
+    }
+
     private fun apps(): HttpResponse {
-        val hidden = runBlocking { container.prefs.hidden.first() }
         val list = JSONArray()
-        container.appRepository.installedApps()
-            .filter { it.packageName !in hidden && it.packageName != context.packageName }
+        allowedApps()
             .sortedBy { it.label.lowercase() }
             .forEach { list.put(JSONObject().put("p", it.packageName).put("l", it.label)) }
         return HttpResponse.json(list.toString())
@@ -132,6 +141,7 @@ class PhoneRemoteActions(private val context: Context) {
     }
 
     private fun launch(pkg: String): HttpResponse {
+        if (allowedApps().none { it.packageName == pkg.trim() }) return HttpResponse.text(404, str(R.string.phoneremote_app_not_found))
         val intent = container.appRepository.launchIntent(pkg.trim()) ?: return HttpResponse.text(404, str(R.string.phoneremote_app_not_found))
         context.startSafely(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
         runBlocking { container.prefs.recordLaunch(pkg.trim()) }

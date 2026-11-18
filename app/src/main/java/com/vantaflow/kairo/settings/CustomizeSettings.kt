@@ -122,6 +122,9 @@ fun LayoutSettings(vm: SettingsViewModel) {
         item { Toggle(stringResource(R.string.settings_layout_show_row_titles), layout.showRowTitles) { vm.setHomeLayout(layout.copy(showRowTitles = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_show_recent), layout.showRecentApps) { vm.setHomeLayout(layout.copy(showRecentApps = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_show_live_tv), layout.showLiveTv) { vm.setHomeLayout(layout.copy(showLiveTv = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_tab_movies), layout.showTabMovies) { vm.setHomeLayout(layout.copy(showTabMovies = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_tab_shows), layout.showTabShows) { vm.setHomeLayout(layout.copy(showTabShows = it)) } }
+        item { Toggle(stringResource(R.string.settings_layout_tab_apps), layout.showTabApps) { vm.setHomeLayout(layout.copy(showTabApps = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_show_tools), layout.showTools) { vm.setHomeLayout(layout.copy(showTools = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_show_our_apps), layout.showOurApps) { vm.setHomeLayout(layout.copy(showOurApps = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_show_update), layout.showKairoUpdate) { vm.setHomeLayout(layout.copy(showKairoUpdate = it)) } }
