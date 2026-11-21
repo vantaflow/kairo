@@ -32,13 +32,60 @@ class BannerTest {
         assertEquals(listOf(1L, 9L, 2L), ids(items))
     }
 
+    private fun movies(range: LongRange) = range.map { movie(it) }
+
+    private fun resumes(range: LongRange) = range.map { resume(it) }
+
+    private fun catalogRow(range: LongRange) = row(*movies(range).toTypedArray())
+
     @Test
-    fun limitIsFive() {
-        val myList = (1L..4L).map { movie(it) }
-        val catalog = row(*(11L..14L).map { movie(it) }.toTypedArray())
-        val items = bannerItems(null, all, myList, emptyList(), listOf(catalog))
+    fun limitIsFiveWithTwoFromMyListFirst() {
+        val items = bannerItems(null, all, movies(1L..4L), emptyList(), listOf(catalogRow(11L..14L)))
         assertEquals(BANNER_LIMIT, items.size)
-        assertEquals(listOf(1L, 2L, 3L, 4L, 11L), ids(items))
+        assertEquals(listOf(1L, 2L, 11L, 12L, 13L), ids(items))
+    }
+
+    @Test
+    fun emptyMyListGivesOneWatchNextThenCatalog() {
+        val items = bannerItems(HomeTab.ForYou, all, emptyList(), resumes(21L..26L), listOf(catalogRow(11L..16L)))
+        assertEquals(listOf(21L, 11L, 12L, 13L, 14L), ids(items))
+    }
+
+    @Test
+    fun quotasThenCatalogFillsUpToFive() {
+        val items = bannerItems(HomeTab.ForYou, all, movies(1L..4L), resumes(21L..23L), listOf(catalogRow(11L..16L)))
+        assertEquals(listOf(1L, 2L, 21L, 11L, 12L), ids(items))
+    }
+
+    @Test
+    fun emptyCatalogIsFilledWithRestOfMyList() {
+        val items = bannerItems(HomeTab.ForYou, all, movies(1L..4L), resumes(21L..23L), emptyList())
+        assertEquals(listOf(1L, 2L, 21L, 3L, 4L), ids(items))
+    }
+
+    @Test
+    fun disabledCatalogIsFilledWithRestOfWatchNext() {
+        val sources = setOf(BannerSource.MyList, BannerSource.WatchNext)
+        val items = bannerItems(HomeTab.ForYou, sources, movies(1L..1L), resumes(21L..26L), listOf(catalogRow(11L..16L)))
+        assertEquals(listOf(1L, 21L, 22L, 23L, 24L), ids(items))
+    }
+
+    @Test
+    fun moviesTabTakesTwoFromMyListThenCatalog() {
+        val items = bannerItems(HomeTab.Movies, all, movies(1L..4L), resumes(21L..23L), listOf(catalogRow(11L..16L)))
+        assertEquals(listOf(1L, 2L, 11L, 12L, 13L), ids(items))
+    }
+
+    @Test
+    fun moviesTabFillsWithRestOfMyListWhenCatalogIsShort() {
+        val items = bannerItems(HomeTab.Movies, all, movies(1L..4L), resumes(21L..23L), listOf(catalogRow(11L..11L)))
+        assertEquals(listOf(1L, 2L, 11L, 3L, 4L), ids(items))
+    }
+
+    @Test
+    fun catalogDuplicateOfMyListRestIsShownOnce() {
+        val items = bannerItems(HomeTab.ForYou, all, movies(1L..3L), emptyList(), listOf(row(movie(3))))
+        assertEquals(listOf(1L, 2L, 3L), ids(items))
     }
 
     @Test

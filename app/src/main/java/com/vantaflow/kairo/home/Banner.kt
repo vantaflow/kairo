@@ -22,10 +22,19 @@ const val BANNER_LIMIT = 5
 /** Délai avant de passer au contenu suivant. */
 const val BANNER_ADVANCE_MS = 8_000L
 
+/** Contenus de Ma liste pris en tête, avant À suivre et le catalogue. */
+const val BANNER_MY_LIST_FIRST = 2
+
+/** Contenus « À suivre » pris après Ma liste, avant le catalogue. */
+const val BANNER_WATCH_NEXT_FIRST = 1
+
 /**
- * Contenus de la bannière pour l'onglet [tab] : Ma liste, puis À suivre, puis la première rangée
- * du catalogue qui convient à l'onglet. Films et Séries ne gardent que leur type et pas d'À suivre ;
- * Applis n'a pas de bannière. Sans doublon, sans contenu du catalogue dépourvu d'image de fond.
+ * Contenus de la bannière pour l'onglet [tab], [BANNER_LIMIT] au plus : d'abord
+ * [BANNER_MY_LIST_FIRST] de Ma liste et [BANNER_WATCH_NEXT_FIRST] d'À suivre, puis la première
+ * rangée du catalogue qui convient à l'onglet pour compléter ; s'il reste de la place (catalogue
+ * trop court ou coupé), le reste de Ma liste puis le reste d'À suivre, dans leur ordre. Films et
+ * Séries ne gardent que leur type et pas d'À suivre ; Applis n'a pas de bannière. Une source
+ * coupée est sautée. Sans doublon, sans contenu du catalogue dépourvu d'image de fond.
  */
 fun bannerItems(
     tab: HomeTab?,
@@ -40,26 +49,37 @@ fun bannerItems(
         HomeTab.Shows -> MediaType.Tv
         else -> null
     }
+
+    fun catalogItems(items: List<CatalogItem>) = items.mapNotNull { item ->
+        val backdrop = item.backdrop
+        if (backdrop == null || (type != null && item.type != type)) null
+        else BannerItem(item.toProgram(), item, tmdbImage(backdrop, "w1280"))
+    }
+
+    val mine = if (BannerSource.MyList in sources) catalogItems(myList) else emptyList()
+    val next = if (BannerSource.WatchNext in sources && type == null) watchNext.map { BannerItem(it, null, null) } else emptyList()
+    val catalog = if (BannerSource.Catalog in sources) catalogItems(catalogRowFor(type, rows)) else emptyList()
+
     val seen = mutableSetOf<String>()
     val result = mutableListOf<BannerItem>()
 
-    fun addCatalog(items: List<CatalogItem>) {
+    /** Ajoute les contenus nouveaux de [items], [quota] au plus, sans dépasser la limite. */
+    fun take(items: List<BannerItem>, quota: Int = BANNER_LIMIT) {
+        var added = 0
         for (item in items) {
-            if (result.size >= BANNER_LIMIT) return
-            if (type != null && item.type != type) continue
-            val backdrop = tmdbImage(item.backdrop ?: continue, "w1280")
-            if (seen.add(catalogUri(item))) result += BannerItem(item.toProgram(), item, backdrop)
+            if (result.size >= BANNER_LIMIT || added >= quota) return
+            if (seen.add(bannerKey(item))) {
+                result += item
+                added++
+            }
         }
     }
 
-    if (BannerSource.MyList in sources) addCatalog(myList)
-    if (BannerSource.WatchNext in sources && type == null) {
-        for (program in watchNext) {
-            if (result.size >= BANNER_LIMIT) break
-            if (seen.add("watch-next:${program.id}")) result += BannerItem(program, null, null)
-        }
-    }
-    if (BannerSource.Catalog in sources) addCatalog(catalogRowFor(type, rows))
+    take(mine, BANNER_MY_LIST_FIRST)
+    take(next, BANNER_WATCH_NEXT_FIRST)
+    take(catalog)
+    take(mine)
+    take(next)
     return result
 }
 
