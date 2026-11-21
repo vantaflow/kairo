@@ -244,4 +244,7 @@
     </plurals>
     <string name="settings_wallpaper_gradients">تدرّجات</string>
     <string name="settings_wallpaper_solids">ألوان سادة</string>
+    <string name="setup_keep_fallback_home">أبقِ واجهة Google TV مثبتة ومفعّلة: فهي الواجهة الاحتياطية إذا توقف Kairo عن العمل.</string>
+    <string name="setup_fallback_home_ok">الواجهة الاحتياطية: متوفرة</string>
+    <string name="setup_fallback_home_missing">الواجهة الاحتياطية: غير موجودة — أعد تفعيل واجهة Google TV</string>
 </resources>

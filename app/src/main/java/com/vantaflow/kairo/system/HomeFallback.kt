@@ -195,6 +195,12 @@ class HomeFallback(private val context: Context) {
         if (forgetsSafeModeCrashes(safeMode, previousExitWasCrash)) resetCrashes()
     }
 
+    /**
+     * Accueil de secours disponible (un autre accueil activé) ; null si la requête a échoué.
+     * Appel au PackageManager : hors du fil principal.
+     */
+    fun fallbackHomeAvailable(): Boolean? = otherHomeAvailable()
+
     /** Mode sans échec imposé par une remise en place automatique (voir [StartupOutcome.Restored]). */
     fun isSafeModeForced(): Boolean = runCatching { prefs.getBoolean(KEY_FORCED_SAFE_MODE, false) }.getOrDefault(false)
 

@@ -232,4 +232,7 @@
     </plurals>
     <string name="settings_wallpaper_gradients">Gradients</string>
     <string name="settings_wallpaper_solids">Solid colors</string>
+    <string name="setup_keep_fallback_home">Keep the Google TV home installed and enabled: it is the fallback home if Kairo no longer starts.</string>
+    <string name="setup_fallback_home_ok">Fallback home: available</string>
+    <string name="setup_fallback_home_missing">Fallback home: missing — re-enable the Google TV home</string>
 </resources>

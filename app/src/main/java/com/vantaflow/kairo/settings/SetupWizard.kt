@@ -54,6 +54,8 @@ private class SetupStep(
     val optional: Boolean = false,
     /** Section des réglages citée dans la description (« Réglages › … »), le cas échéant. */
     @StringRes val descriptionSection: Int? = null,
+    /** Remarque affichée sous la description, que l'étape soit faite ou non. */
+    @StringRes val note: Int? = null,
 )
 
 fun recoAccessGranted(context: Context): Boolean =
@@ -93,7 +95,8 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
                 isDefaultHome(context),
                 R.string.settings_setup_choose,
                 { openHomeSettings(context) },
-                adb = "adb shell pm disable-user --user 0 $GOOGLE_TV_LAUNCHER\n(pour revenir : adb shell pm enable $GOOGLE_TV_LAUNCHER)",
+                // Jamais de commande qui désactive l'accueil Google TV : c'est l'accueil de secours.
+                note = R.string.setup_keep_fallback_home,
             ),
             SetupStep(
                 R.string.settings_setup_updates,
@@ -148,6 +151,7 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
             )
         }
         steps.forEach { step -> item(key = step.title) { StepRow(step) } }
+        item { FallbackHomeRow(refresh) }
         // Toujours un élément focalisable, même quand tout est prêt (sinon le focus quitte le panneau).
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -159,6 +163,26 @@ fun SetupWizard(onDone: () -> Unit, onReplay: () -> Unit) {
             SettingHint(stringResource(R.string.settings_setup_adb_hint))
         }
     }
+}
+
+/**
+ * État de l'accueil de secours (un autre accueil activé, vers lequel Kairo se retire s'il plante
+ * même en mode sans échec), lu hors du fil principal ; rien tant qu'il n'est pas connu.
+ */
+@Composable
+private fun FallbackHomeRow(refresh: Int) {
+    val context = LocalContext.current
+    val available by androidx.compose.runtime.produceState<Boolean?>(null, refresh) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            com.vantaflow.kairo.system.HomeFallback(context.applicationContext).fallbackHomeAvailable()
+        }
+    }
+    val ok = available ?: return
+    Text(
+        stringResource(if (ok) R.string.setup_fallback_home_ok else R.string.setup_fallback_home_missing),
+        color = if (ok) OnBackgroundMuted else Color(0xFFFFB74D),
+        fontSize = 16.sp,
+    )
 }
 
 @Composable
@@ -174,6 +198,7 @@ private fun StepRow(step: SetupStep) {
             Text(stringResource(step.title).let { if (step.optional) stringResource(R.string.settings_optional_suffix, it) else it }, color = OnBackground, fontSize = 18.sp)
         }
         Text(step.descriptionSection?.let { stringResource(step.description, settingsPath(it)) } ?: stringResource(step.description), color = OnBackgroundMuted, modifier = Modifier.padding(start = 24.dp))
+        step.note?.let { Text(stringResource(it), color = OnBackgroundMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp)) }
         if (step.done != true) {
             Row(Modifier.padding(start = 24.dp)) { SmallButton(stringResource(step.action), step.onAction) }
             step.adb?.let { cmd ->

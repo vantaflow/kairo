@@ -232,4 +232,7 @@
     </plurals>
     <string name="settings_wallpaper_gradients">Dégradés</string>
     <string name="settings_wallpaper_solids">Couleurs unies</string>
+    <string name="setup_keep_fallback_home">Gardez l\'accueil Google TV installé et activé : c\'est l\'accueil de secours si Kairo ne démarre plus.</string>
+    <string name="setup_fallback_home_ok">Accueil de secours : disponible</string>
+    <string name="setup_fallback_home_missing">Accueil de secours : absent — réactivez l\'accueil Google TV</string>
 </resources>

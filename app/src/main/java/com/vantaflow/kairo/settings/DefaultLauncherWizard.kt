@@ -7,8 +7,6 @@ import android.content.pm.PackageManager
 import android.provider.Settings
 
 
-/** Package du launcher Google TV à désactiver (à confirmer sur la KM7 Plus, session du soir n°1). */
-const val GOOGLE_TV_LAUNCHER = "com.google.android.apps.tv.launcherx"
 
 fun isDefaultHome(resolvedHomePackage: String?, ownPackage: String): Boolean =
     resolvedHomePackage != null && resolvedHomePackage == ownPackage

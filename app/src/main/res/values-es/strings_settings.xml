@@ -232,4 +232,7 @@
     </plurals>
     <string name="settings_wallpaper_gradients">Degradados</string>
     <string name="settings_wallpaper_solids">Colores lisos</string>
+    <string name="setup_keep_fallback_home">Mantén el inicio de Google TV instalado y activado: es el inicio de reserva si Kairo deja de arrancar.</string>
+    <string name="setup_fallback_home_ok">Inicio de reserva: disponible</string>
+    <string name="setup_fallback_home_missing">Inicio de reserva: ausente — vuelve a activar el inicio de Google TV</string>
 </resources>

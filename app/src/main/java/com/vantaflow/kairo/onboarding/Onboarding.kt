@@ -82,7 +82,6 @@ import androidx.tv.material3.Text
 import com.vantaflow.kairo.R
 import com.vantaflow.kairo.TvHomeApp
 import com.vantaflow.kairo.reco.EPG_PERMISSIONS
-import com.vantaflow.kairo.settings.GOOGLE_TV_LAUNCHER
 import com.vantaflow.kairo.settings.dreamEnabled
 import com.vantaflow.kairo.settings.isDefaultHome
 import com.vantaflow.kairo.settings.keyServiceRunning
@@ -119,6 +118,8 @@ private class Step(
     val run: () -> Unit,
     /** Section des réglages citée dans le texte (« Réglages › … »), le cas échéant. */
     @StringRes val textSection: Int? = null,
+    /** Remarque affichée sous le texte. */
+    @StringRes val note: Int? = null,
 )
 
 private sealed interface Page {
@@ -158,9 +159,11 @@ fun Onboarding(onFinish: () -> Unit) {
                 TvIcon.Home, R.string.onboarding_home_title,
                 R.string.onboarding_home_text,
                 R.string.onboarding_home_action, optional = false,
-                adb = "adb shell pm disable-user --user 0 $GOOGLE_TV_LAUNCHER",
+                // Jamais de commande qui désactive l'accueil Google TV : c'est l'accueil de secours.
+                adb = null,
                 isDone = { isDefaultHome(context) },
                 run = { openHomeSettings(context) },
+                note = R.string.setup_keep_fallback_home,
             ),
             Step(
                 TvIcon.Remote, R.string.onboarding_keys_title,
@@ -364,6 +367,7 @@ private fun SetupPage(step: Step, refresh: Int, onNext: () -> Unit) {
             }
             Text(stringResource(step.title), fontSize = 38.sp, lineHeight = 46.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(1))
             Text(step.textSection?.let { stringResource(step.text, settingsPath(it)) } ?: stringResource(step.text), fontSize = 19.sp, lineHeight = 28.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(2))
+            step.note?.let { Text(stringResource(it), fontSize = 15.sp, lineHeight = 22.sp, color = OnBackgroundMuted, modifier = Modifier.reveal(2)) }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.reveal(3)) {
                 if (done) {
