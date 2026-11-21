@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onEach
@@ -32,6 +33,25 @@ fun <T> Flow<T>.resilient(tag: String, log: (String, Throwable) -> Unit = ::logR
                 true
             }
         }
+        .collect { emit(it) }
+}
+
+/**
+ * Comme [resilient], mais si la source échoue avant sa première valeur, [default] est émis tout de
+ * suite : l'écran qui en dépend s'affiche toujours, puis les vraies valeurs arrivent dès qu'un essai
+ * réussit. Après une première valeur, un échec ne fait que relancer la lecture.
+ */
+fun <T> Flow<T>.orDefaultOnError(default: T, tag: String, log: (String, Throwable) -> Unit = ::logRetry): Flow<T> = flow {
+    var emitted = false
+    onEach { emitted = true }
+        .catch { e ->
+            if (!emitted && e !is CancellationException) {
+                emitted = true
+                emit(default)
+            }
+            throw e
+        }
+        .resilient(tag, log)
         .collect { emit(it) }
 }
 

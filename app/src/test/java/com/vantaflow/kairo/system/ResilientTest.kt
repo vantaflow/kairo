@@ -4,6 +4,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -65,6 +66,31 @@ class ResilientTest {
         // Échec à 0, 1 s ; succès puis échec à 1 s : de nouveau 1 s (et non 2 s) ; puis 2 s.
         assertEquals(listOf(0L, 1_000L, 2_000L), failedAt)
         assertEquals(4_000L, currentTime)
+    }
+
+    @Test
+    fun sourceThatFailsAtOnceGivesTheDefault() = runTest {
+        val source = flow<String> { throw IllegalArgumentException("préférences illisibles") }
+        assertEquals("défaut", source.orDefaultOnError("défaut", "test", log).first())
+        assertEquals(0L, currentTime)
+    }
+
+    @Test
+    fun defaultOnlyBeforeTheFirstRealValueAndThenRetries() = runTest {
+        var calls = 0
+        val source = flow {
+            calls++
+            when (calls) {
+                1 -> throw IllegalStateException("échec")
+                2 -> {
+                    emit("lu")
+                    throw IllegalStateException("échec après lecture")
+                }
+                else -> emit("relu")
+            }
+        }
+        val values = source.orDefaultOnError("défaut", "test", log).toList()
+        assertEquals(listOf("défaut", "lu", "relu"), values)
     }
 
     @Test

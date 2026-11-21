@@ -29,6 +29,7 @@ import com.vantaflow.kairo.onboarding.Onboarding
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import com.vantaflow.kairo.system.orDefaultAfter
+import com.vantaflow.kairo.system.orDefaultOnError
 import com.vantaflow.kairo.settings.setupNeeded
 import com.vantaflow.kairo.reco.passthroughInputs
 import com.vantaflow.kairo.reco.LiveChannel
@@ -206,7 +207,10 @@ class HomeActivity : ComponentActivity() {
     private val lookFlow by lazy {
         combine(container.prefs.themeId, container.prefs.customTheme, container.prefs.homeLayout) { id, custom, layout ->
             themeFor(id, custom) to layout
-        }.orDefaultAfter(com.vantaflow.kairo.home.LOOK_TIMEOUT_MS, themeById(null) to HomeLayout())
+        }
+            // Préférences illisibles : thème et affichage par défaut tout de suite, puis nouvel essai.
+            .orDefaultOnError(themeById(null) to HomeLayout(), "thème")
+            .orDefaultAfter(com.vantaflow.kairo.home.LOOK_TIMEOUT_MS, themeById(null) to HomeLayout())
             .stateIn(kotlinx.coroutines.CoroutineScope(lifecycleScope.coroutineContext + SafeHandler), kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
     }
 
