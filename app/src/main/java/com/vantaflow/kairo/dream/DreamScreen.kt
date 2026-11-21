@@ -81,7 +81,9 @@ fun DreamScreen(override: DreamConfig? = null) {
     var weather by remember { mutableStateOf<String?>(null) }
     val zone = ZoneId.systemDefault()
 
-    LaunchedEffect(Unit) {
+    // Mode sans échec : aucun appel réseau (ni météo ni photos du web).
+    val safeMode = (context.applicationContext as TvHomeApp).safeMode
+    if (!safeMode) LaunchedEffect(Unit) {
         val city = container.prefs.weatherCity.first()
         val fahrenheit = container.prefs.useFahrenheit.first()
         weather = if (container.prefs.weatherEnabled.first()) {
@@ -142,6 +144,7 @@ private fun Slideshow(c: DreamConfig) {
                 delay(c.intervalSec * 1000L)
             }
         } else {
+            if ((context.applicationContext as TvHomeApp).safeMode) return@LaunchedEffect
             while (true) {
                 withContext(Dispatchers.IO) { container.nextWallpaper(c.query) }?.let { image = it }
                 delay(c.intervalSec * 1000L)

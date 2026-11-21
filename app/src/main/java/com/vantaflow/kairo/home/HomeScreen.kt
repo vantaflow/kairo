@@ -1,6 +1,7 @@
 package com.vantaflow.kairo.home
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -441,6 +442,45 @@ fun HomeScreen(
         withFrameNanos { }
         runCatching { requesters[target].requestFocus() }
     }
+}
+
+/**
+ * Accueil du mode sans échec : le même écran, réduit à l'en-tête (applications, réglages), aux favoris
+ * et à « Toutes les applis » ([otherApps]), sur le fond uni du thème, avec le bandeau du mode sans échec.
+ */
+@Composable
+fun SafeModeHomeScreen(
+    state: HomeUiState,
+    focus: HomeFocus,
+    onLaunch: (AppInfo) -> Unit,
+    onFavoriteLongClick: (AppInfo) -> Unit,
+    onOpenApps: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onRestart: () -> Unit,
+    onAndroidSettings: () -> Unit,
+    otherApps: List<AppInfo> = emptyList(),
+    appLabels: Map<String, String> = emptyMap(),
+    movingFavorite: String? = null,
+    onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
+    onMoveDone: () -> Unit = {},
+) {
+    val background = com.vantaflow.kairo.ui.theme.Background.toArgb().toLong() and 0xFFFFFFFFL
+    HomeScreen(
+        state = safeModeState(state, background),
+        focus = focus,
+        onLaunch = onLaunch,
+        onFavoriteLongClick = onFavoriteLongClick,
+        onOpenApps = onOpenApps,
+        onOpenSettings = onOpenSettings,
+        appLabels = appLabels,
+        onOpenSearch = null,
+        otherApps = otherApps,
+        movingFavorite = movingFavorite,
+        onMoveFavorite = onMoveFavorite,
+        onMoveDone = onMoveDone,
+        onSafeModeRestart = onRestart,
+        onAndroidSettings = onAndroidSettings,
+    )
 }
 
 /** Bandeau du mode sans échec : explication, puis « Redémarrer Kairo normalement » et « Réglages Android ». */

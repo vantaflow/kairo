@@ -66,6 +66,12 @@ class AdBlockVpn : VpnService() {
     private val workers = Executors.newFixedThreadPool(4)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Mode sans échec : le système peut relancer ce service (START_STICKY) sans passer par l'accueil.
+        if ((application as? com.vantaflow.kairo.TvHomeApp)?.safeMode == true) {
+            shutdown()
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (intent?.action == ACTION_STOP) {
             shutdown()
             stopSelf()
@@ -98,7 +104,8 @@ class AdBlockVpn : VpnService() {
             while (tunnel != null) {
                 val n = runCatching { input.read(buf) }.getOrDefault(-1)
                 if (n < 0) break
-                val q = parseDnsQuery(buf, n) ?: continue
+                // Paquet malformé : ignoré, le fil de lecture ne doit jamais tomber.
+                val q = runCatching { parseDnsQuery(buf, n) }.getOrNull() ?: continue
                 workers.execute { answer(q, output) }
             }
         }, "kairo-adblock").apply { start() }
@@ -106,6 +113,11 @@ class AdBlockVpn : VpnService() {
 
     /** Transmet la requête au serveur filtrant (principal, puis secours) et renvoie sa réponse. */
     private fun answer(q: DnsQuery, output: FileOutputStream) {
+        // Fil de l'exécuteur : une exception non attrapée ici ferait tomber tout Kairo.
+        runCatching { forward(q, output) }
+    }
+
+    private fun forward(q: DnsQuery, output: FileOutputStream) {
         AdBlock.queries.incrementAndGet()
         for (server in AdBlock.filter.servers) {
             val response = runCatching {

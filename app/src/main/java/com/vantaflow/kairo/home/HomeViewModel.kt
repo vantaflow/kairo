@@ -55,6 +55,20 @@ data class HomeUiState(
     val loaded: Boolean = false,
 )
 
+/**
+ * État de l'accueil en mode sans échec : heure, date et favoris seulement ; ni recommandations,
+ * « À suivre », chaînes TV, entrées, météo ni fond en ligne. Le fond est la couleur unie [backgroundArgb].
+ */
+fun safeModeState(state: HomeUiState, backgroundArgb: Long): HomeUiState = state.copy(
+    watchNext = emptyList(),
+    recoRows = emptyList(),
+    liveChannels = emptyList(),
+    tvInputs = emptyList(),
+    weatherText = null,
+    wallpaper = WallpaperConfig.Solid(backgroundArgb),
+    wallpaperImageUrl = null,
+)
+
 /** Données brutes lues dans le TvProvider. */
 private class EpgSnapshot(
     val channels: List<Channel>,

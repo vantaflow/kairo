@@ -83,8 +83,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import com.vantaflow.kairo.ui.theme.Background
-import com.vantaflow.kairo.settings.WallpaperConfig
-import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.flow.combine
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.themeFor
@@ -647,36 +645,28 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Accueil du mode sans échec : le même écran, réduit à l'en-tête (applications, réglages), aux favoris
-     * et à « Toutes les applis », sur le fond uni du thème, avec le bandeau du mode sans échec.
-     */
+    /** Accueil du mode sans échec (voir [com.vantaflow.kairo.home.SafeModeHomeScreen]). */
     @Composable
     private fun SafeModeHome(launch: (AppInfo) -> Unit, kids: Boolean) {
         val state by homeViewModel.state.collectAsStateWithLifecycle()
         val apps by appsViewModel.visibleApps.collectAsStateWithLifecycle()
-        val solid = Background.toArgb().toLong() and 0xFFFFFFFFL
-        HomeScreen(
-            state = state.copy(
-                watchNext = emptyList(), recoRows = emptyList(), liveChannels = emptyList(), tvInputs = emptyList(),
-                weatherText = null, wallpaper = WallpaperConfig.Solid(solid), wallpaperImageUrl = null,
-            ),
+        com.vantaflow.kairo.home.SafeModeHomeScreen(
+            state = state,
             focus = homeFocus,
             onLaunch = launch,
             onFavoriteLongClick = { if (!kids) actionsFor = it },
             onOpenApps = { destination = Destination.Apps },
             onOpenSettings = { openSettingsPanel() },
-            appLabels = remember(apps) { apps.associate { it.packageName to it.label } },
-            onOpenSearch = null,
+            onRestart = ::restartNormally,
+            onAndroidSettings = { startSafely(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
             otherApps = if (kids) emptyList() else remember(apps, state.favorites) {
                 val favs = state.favorites.map { it.packageName }.toSet()
                 apps.filterNot { it.packageName in favs }
             },
+            appLabels = remember(apps) { apps.associate { it.packageName to it.label } },
             movingFavorite = movingFavorite,
             onMoveFavorite = appsViewModel::moveFavoriteBy,
             onMoveDone = { movingFavorite = null },
-            onSafeModeRestart = ::restartNormally,
-            onAndroidSettings = { startSafely(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
         )
     }
 
@@ -686,7 +676,12 @@ class HomeActivity : ComponentActivity() {
      */
     private fun restartNormally() {
         (application as TvHomeApp).crashGuard.reset()
-        startActivity(Intent.makeRestartActivityTask(android.content.ComponentName(this, HomeActivity::class.java)))
+        // Intention d'accueil (pas LAUNCHER) : l'activité singleTask est reprise, pas ouverte dans une seconde tâche.
+        startActivity(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                .setComponent(android.content.ComponentName(this, HomeActivity::class.java))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
         Runtime.getRuntime().exit(0)
     }
 
