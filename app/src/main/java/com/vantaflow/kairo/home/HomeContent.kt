@@ -1,6 +1,7 @@
 package com.vantaflow.kairo.home
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import com.vantaflow.kairo.apps.AppInfo
 import com.vantaflow.kairo.apps.InstallState
 import com.vantaflow.kairo.apps.OurApp
@@ -12,7 +13,11 @@ import com.vantaflow.kairo.remote.HomeFocus
 import com.vantaflow.kairo.tools.Tool
 import com.vantaflow.kairo.ui.theme.HomeStyle
 
-/** Ce que montre l'accueil, quel que soit son style. */
+/**
+ * Ce que montre l'accueil, quel que soit son style.
+ * Listes et tables jamais modifiées en place : comparé champ à champ, l'accueil n'est pas redessiné si rien n'a changé.
+ */
+@Immutable
 data class HomeData(
     val state: HomeUiState,
     val appLabels: Map<String, String> = emptyMap(),
@@ -41,8 +46,9 @@ data class HomeData(
     val myList: List<Program> = emptyList(),
 )
 
-/** Ce que l'accueil peut demander, quel que soit son style. */
-class HomeActions(
+/** Ce que l'accueil peut demander, quel que soit son style. Égal tant que les mêmes rappels sont passés. */
+@Immutable
+data class HomeActions(
     val onLaunch: (AppInfo) -> Unit = {},
     val onFavoriteLongClick: (AppInfo) -> Unit = {},
     val onOpenApps: () -> Unit = {},
