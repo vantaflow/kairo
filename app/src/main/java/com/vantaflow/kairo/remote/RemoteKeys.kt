@@ -16,7 +16,8 @@ fun remoteActionFor(keyCode: Int): RemoteAction? = when (keyCode) {
 
 /**
  * Tuile focalisée de l'accueil, tenue par l'activité : elle survit au passage
- * Accueil → Applications → Accueil. [reset] (touche Home) ramène sur la 1re tuile.
+ * Accueil → Applications → Accueil. [reset] (touche Home) ramène sur la 1re tuile, ou sur la
+ * bannière du style Cinéma quand elle est affichée.
  */
 class HomeFocus {
     var index by mutableIntStateOf(0)
@@ -26,6 +27,7 @@ class HomeFocus {
     fun reset() {
         index = 0
         onBanner = true
+        keyPressed = false
         resetToken++
     }
 
@@ -35,13 +37,19 @@ class HomeFocus {
      */
     var onBanner = true
 
+    /** Touche appuyée sur l'accueil depuis son affichage ou depuis [reset] : une bannière apparue après coup ne prend plus le focus. */
+    var keyPressed = false
+
     /** Demande de focus sur les onglets (la carte focalisée a disparu, ex. retirée de Ma liste). */
     var tabsToken by mutableIntStateOf(0)
 
     /** Favori à focaliser dès qu'il apparaît (appli ajoutée aux favoris par l'appui long). */
     var followFavorite by mutableStateOf<String?>(null)
 
-    /** Redonne le focus à la même tuile (ex. à la fermeture du panneau de réglages). */
+    /**
+     * Redonne le focus à la même tuile (ex. à la fermeture du panneau de réglages). Sur la bannière,
+     * c'est son bouton principal, même si le focus était sur « + Ma liste ».
+     */
     fun refocus() {
         resetToken++
     }

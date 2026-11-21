@@ -57,6 +57,8 @@ import com.vantaflow.kairo.apps.AppsScreen
 import com.vantaflow.kairo.apps.AppsViewModel
 import com.vantaflow.kairo.home.HomeActions
 import com.vantaflow.kairo.home.HomeData
+import com.vantaflow.kairo.home.bannerItems
+import com.vantaflow.kairo.ui.theme.BannerSource
 import com.vantaflow.kairo.home.HomeHost
 import com.vantaflow.kairo.home.HomeViewModel
 import com.vantaflow.kairo.network.NetworkMonitor
@@ -356,8 +358,8 @@ class HomeActivity : ComponentActivity() {
         }
         val profile by container.prefs.currentProfile.collectAsStateWithLifecycle(DefaultProfile)
         val myList by container.prefs.myList.collectAsStateWithLifecycle(emptyList())
-        // Sources de la bannière Cinéma ; vide tant qu'elles ne sont pas lues (bannière apparue après coup).
-        val bannerSources by container.prefs.bannerSources.collectAsStateWithLifecycle(emptySet())
+        // Sources de la bannière Cinéma ; null tant qu'elles ne sont pas lues (pas de bannière d'ici là).
+        val bannerSources by container.prefs.bannerSources.collectAsStateWithLifecycle<Set<BannerSource>?>(null)
         val programClick: (Program) -> Unit = click@{ program ->
             // Carte du catalogue : fiche dans Kairo (où le regarder, Ma liste).
             program.intentUri?.takeIf { it.startsWith(CATALOG_SCHEME) }?.let { uri ->
@@ -435,10 +437,13 @@ class HomeActivity : ComponentActivity() {
                             myList.filter { homeTab.mediaType().let { t -> t == null || it.type == t } }.map { it.toProgram() }
                         },
                         // Bannière du style Cinéma : pas de bannière pour le profil enfant (comme les recommandations).
-                        banner = if (profile.kids) emptyList() else remember(homeTab, bannerSources, myList, state.watchNext, catalogRows) {
-                            com.vantaflow.kairo.home.bannerItems(homeTab, bannerSources, myList, state.watchNext, catalogRows)
+                        banner = bannerSources.let { sources ->
+                            if (profile.kids || sources == null) emptyList() else remember(homeTab, sources, myList, state.watchNext, catalogRows) {
+                                bannerItems(homeTab, sources, myList, state.watchNext, catalogRows)
+                            }
                         },
                         myListIds = if (profile.kids) emptySet() else remember(myList) { myList.map(::catalogUri).toSet() },
+                        behindPanel = destination == Destination.Settings,
                     ),
                     // Références de méthode retenues : même rappel d'une recomposition à l'autre.
                     actions = HomeActions(

@@ -5,7 +5,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -104,18 +116,41 @@ class CinemaHomeTest {
 
     @Test
     fun refocusReturnsWhereFocusWas() {
+        lateinit var focusManager: FocusManager
         rule.setContent {
+            focusManager = LocalFocusManager.current
             TvHomeTheme { HomeHost(HomeStyle.Cinema, HomeData(state = state, banner = listOf(catalog(1))), HomeActions(), focus) }
         }
-        // Sur un favori (fermeture des réglages) : le même favori, pas la bannière.
+        // Sur un favori, focus parti ailleurs (panneau des réglages) : refocus rend le même favori, pas la bannière.
         rule.onNodeWithTag("favorite-2").requestFocus()
         rule.onNodeWithTag("favorite-2").assertIsFocused()
+        rule.runOnIdle { focusManager.clearFocus() }
+        rule.onNode(isFocused()).assertDoesNotExist()
         rule.runOnIdle { focus.refocus() }
         rule.onNodeWithTag("favorite-2").assertIsFocused()
+        rule.onNodeWithTag("favorite-2").assertIsDisplayed()
         // Sur la bannière : la bannière, même si le favori retenu n'est pas le 1er.
         press(Key.DirectionUp)
         rule.onNodeWithTag("banner-primary").assertIsFocused()
+        rule.runOnIdle { focusManager.clearFocus() }
+        rule.onNode(isFocused()).assertDoesNotExist()
         rule.runOnIdle { focus.refocus() }
+        rule.onNodeWithTag("banner-primary").assertIsFocused()
+    }
+
+    @Test
+    fun downFromHeaderReachesBanner() {
+        rule.setContent {
+            TvHomeTheme { HomeHost(HomeStyle.Cinema, HomeData(state = state, banner = listOf(catalog(1))), HomeActions(), focus) }
+        }
+        rule.onNodeWithTag("banner-primary").assertIsFocused()
+        // Haut depuis la bannière : l'en-tête.
+        press(Key.DirectionUp)
+        rule.onNode(isFocused()).assertExists()
+        rule.onNodeWithTag("banner-primary").assertIsNotFocused()
+        rule.onNodeWithTag("favorite-0").assertIsNotFocused()
+        // Bas depuis l'en-tête : la bannière, pas le favori retenu.
+        press(Key.DirectionDown)
         rule.onNodeWithTag("banner-primary").assertIsFocused()
     }
 
@@ -125,13 +160,67 @@ class CinemaHomeTest {
         rule.setContent {
             TvHomeTheme { HomeHost(HomeStyle.Cinema, HomeData(state = state, banner = banner), HomeActions(), focus) }
         }
-        rule.onNodeWithTag("favorite-1").requestFocus()
+        rule.onNodeWithTag("favorite-0").assertIsFocused()
+        // L'utilisateur a déjà bougé : droite vers le 2e favori.
+        press(Key.DirectionRight)
         rule.onNodeWithTag("favorite-1").assertIsFocused()
-        // Catalogue chargé après coup : la bannière apparaît sans prendre le focus.
+        // Catalogue chargé après coup : la bannière apparaît sans prendre le focus, et le favori reste visible.
         rule.runOnIdle { banner = listOf(catalog(1), catalog(2)) }
         rule.waitForIdle()
         rule.onNodeWithTag("banner").assertExists()
         rule.onNodeWithTag("favorite-1").assertIsFocused()
+        rule.onNodeWithTag("favorite-1").assertIsDisplayed()
+    }
+
+    @Test
+    fun lateBannerTakesFocusWhenUserHasNotMoved() {
+        var banner by mutableStateOf(emptyList<BannerItem>())
+        rule.setContent {
+            TvHomeTheme { HomeHost(HomeStyle.Cinema, HomeData(state = state, banner = banner), HomeActions(), focus) }
+        }
+        rule.onNodeWithTag("favorite-0").assertIsFocused()
+        // Démarrage à froid : aucune touche appuyée, le catalogue arrive → la bannière prend le focus.
+        rule.runOnIdle { banner = listOf(catalog(1)) }
+        rule.waitForIdle()
+        rule.onNodeWithTag("banner-primary").assertIsFocused()
+        rule.onNodeWithTag("banner-primary").assertIsDisplayed()
+    }
+
+    @Test
+    fun emptiedBannerWithoutFavoritesOrTabsKeepsFocusSomewhere() {
+        var banner by mutableStateOf(listOf(catalog(1)))
+        val noFavorites = state.copy(favorites = emptyList(), loaded = true)
+        rule.setContent {
+            TvHomeTheme { HomeHost(HomeStyle.Cinema, HomeData(state = noFavorites, banner = banner, tab = null), HomeActions(), focus) }
+        }
+        rule.onNodeWithTag("banner-primary").assertIsFocused()
+        rule.runOnIdle { banner = emptyList() }
+        rule.waitForIdle()
+        rule.onNodeWithTag("banner").assertDoesNotExist()
+        // Ni favori ni onglet : le focus va sur l'en-tête, il ne reste jamais nulle part.
+        rule.onNode(isFocused()).assertExists()
+    }
+
+    @Test
+    fun homeBehindSettingsNeverRequestsFocus() {
+        var style by mutableStateOf(HomeStyle.Classic)
+        rule.setContent {
+            TvHomeTheme {
+                Column {
+                    // Tient lieu du panneau des réglages, qui a le focus.
+                    Box(Modifier.size(40.dp).testTag("panel").focusable())
+                    HomeHost(style, HomeData(state = state, banner = listOf(catalog(1)), behindPanel = true), HomeActions(), focus)
+                }
+            }
+        }
+        rule.onNodeWithTag("panel").requestFocus()
+        rule.onNodeWithTag("panel").assertIsFocused()
+        // Style changé dans le panneau : l'accueil est recréé derrière, sans prendre le focus.
+        rule.runOnIdle { style = HomeStyle.Cinema }
+        rule.waitForIdle()
+        rule.onNodeWithTag("banner").assertExists()
+        rule.onNodeWithTag("panel").assertIsFocused()
+        rule.onNodeWithTag("banner-primary").assertIsNotFocused()
     }
 
     @Test

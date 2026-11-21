@@ -49,6 +49,8 @@ data class HomeData(
     val banner: List<BannerItem> = emptyList(),
     /** Adresses ([com.vantaflow.kairo.catalog.catalogUri]) des contenus de Ma liste. */
     val myListIds: Set<String> = emptySet(),
+    /** Accueil affiché derrière le panneau des réglages : il ne demande jamais le focus. */
+    val behindPanel: Boolean = false,
 )
 
 /** Ce que l'accueil peut demander, quel que soit son style. Égal tant que les mêmes rappels sont passés. */
