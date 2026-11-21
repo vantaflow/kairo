@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -26,19 +27,24 @@ import kotlinx.coroutines.flow.stateIn
 
 /**
  * Inventaire des applis partagé par tous les écrans : un seul parcours du PackageManager au lancement,
- * puis un par installation, suppression ou mise à jour. Null tant que le premier n'est pas fini.
+ * puis un par installation, suppression ou mise à jour (une rafale d'événements, comme ceux d'une
+ * seule installation, n'en donne qu'un). Null tant que le premier n'est pas fini.
  * Démarré au premier lecteur, il vit ensuite autant que [scope].
  */
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 fun sharedApps(
     scope: CoroutineScope,
     load: () -> List<AppInfo>,
     changes: Flow<Unit>,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ): StateFlow<List<AppInfo>?> =
-    merge(flowOf(Unit), changes).map { load() }.flowOn(ioDispatcher)
+    merge(flowOf(Unit), changes.debounce(PACKAGE_EVENTS_DEBOUNCE_MS)).map { load() }.flowOn(ioDispatcher)
         // Lecture en échec : nouvel essai (délai croissant), la dernière liste reste affichée en attendant.
         .resilient("liste des applis")
         .stateIn(scope, SharingStarted.Lazily, null)
+
+/** Événements de paquets regroupés sur cette durée avant un nouvel inventaire. */
+const val PACKAGE_EVENTS_DEBOUNCE_MS = 300L
 
 /** Applis lanceables installées (leanback prioritaire sur launcher classique). */
 class AppRepository(

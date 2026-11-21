@@ -103,8 +103,9 @@ class HomeStateTest {
         runCurrent()
         assertEquals(1, calls.get())
         got.forEach { assertEquals(listOf(installed), it) }
-        // Une installation : un seul nouvel inventaire, vu par les trois.
+        // Une installation : un seul nouvel inventaire (après le regroupement des événements), vu par les trois.
         changes.emit(Unit)
+        advanceTimeBy(com.vantaflow.kairo.apps.PACKAGE_EVENTS_DEBOUNCE_MS)
         runCurrent()
         assertEquals(2, calls.get())
     }

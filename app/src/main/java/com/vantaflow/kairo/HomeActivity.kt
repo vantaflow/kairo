@@ -86,6 +86,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import com.vantaflow.kairo.ui.theme.Background
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.themeFor
 import com.vantaflow.kairo.ui.theme.themeById
@@ -184,9 +185,13 @@ class HomeActivity : ComponentActivity() {
     private var catalogRows by mutableStateOf<List<CatalogRow>>(emptyList())
     private var catalogDetail by mutableStateOf<CatalogItem?>(null)
 
+    /** Lecture du catalogue en cours : une seule à la fois, même après plusieurs retours sur l'accueil. */
+    private var catalogJob: kotlinx.coroutines.Job? = null
+
     /** Catalogue relu (fichier de la box) ou téléchargé s'il date de plus d'un jour, sans bloquer l'affichage. */
     private fun refreshCatalog() {
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
+        if (catalogJob?.isActive == true) return
+        catalogJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
             // Inventaire partagé avec l'accueil : pas de nouveau parcours des applis à chaque retour.
             val installed = container.appRepository.apps.filterNotNull().first().associate { it.packageName to it.label }
             val rows = runCatching { container.catalog.rows(installed) }.getOrDefault(emptyList())
@@ -194,6 +199,18 @@ class HomeActivity : ComponentActivity() {
             if (rows.isNotEmpty()) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { catalogRows = rows }
         }
     }
+    /**
+     * Thème et affichage, partagés pour toute la vie de l'activité : la valeur par défaut (après
+     * [com.vantaflow.kairo.home.LOOK_TIMEOUT_MS]) n'est donnée que si rien n'a encore été lu ; un
+     * retour sur l'accueil ne relance pas ce minuteur.
+     */
+    private val lookFlow by lazy {
+        combine(container.prefs.themeId, container.prefs.customTheme, container.prefs.homeLayout) { id, custom, layout ->
+            themeFor(id, custom) to layout
+        }.orDefaultAfter(com.vantaflow.kairo.home.LOOK_TIMEOUT_MS, themeById(null) to HomeLayout())
+            .stateIn(kotlinx.coroutines.CoroutineScope(lifecycleScope.coroutineContext + SafeHandler), kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
+    }
+
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
     private var movingFavorite by mutableStateOf<String?>(null)
     private var searchWithVoice by mutableStateOf(false)
@@ -257,11 +274,7 @@ class HomeActivity : ComponentActivity() {
             // Rien n'est dessiné (fond uni) tant que le thème et l'affichage ne sont pas lus : pas de flash.
             // Lecture lente (disque encore occupé par le démarrage de la box) : thème et affichage par
             // défaut après 700 ms, puis les vrais dès qu'ils arrivent ; jamais d'écran noir prolongé.
-            val look by remember {
-                combine(container.prefs.themeId, container.prefs.customTheme, container.prefs.homeLayout) { id, custom, layout ->
-                    themeFor(id, custom) to layout
-                }.orDefaultAfter(com.vantaflow.kairo.home.LOOK_TIMEOUT_MS, themeById(null) to HomeLayout())
-            }.collectAsStateWithLifecycle(null)
+            val look by lookFlow.collectAsStateWithLifecycle()
             val current = look
             if (current == null) {
                 Box(Modifier.fillMaxSize().background(Background))

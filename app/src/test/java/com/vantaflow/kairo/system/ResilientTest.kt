@@ -44,6 +44,30 @@ class ResilientTest {
     }
 
     @Test
+    fun delayStartsOverAfterASuccessfulEmission() = runTest {
+        var calls = 0
+        val failedAt = mutableListOf<Long>()
+        val source = flow {
+            calls++
+            when (calls) {
+                1 -> throw IllegalStateException("échec 1")
+                2 -> {
+                    emit(1)
+                    throw IllegalStateException("échec 2")
+                }
+                3 -> throw IllegalStateException("échec 3")
+                else -> emit(2)
+            }
+        }
+        val values = mutableListOf<Int>()
+        source.resilient("test") { _, _ -> failedAt += currentTime }.collect { values += it; if (it == 2) return@collect }
+        assertEquals(listOf(1, 2), values)
+        // Échec à 0, 1 s ; succès puis échec à 1 s : de nouveau 1 s (et non 2 s) ; puis 2 s.
+        assertEquals(listOf(0L, 1_000L, 2_000L), failedAt)
+        assertEquals(4_000L, currentTime)
+    }
+
+    @Test
     fun delayDoublesUpToThirtySeconds() {
         assertEquals(listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L, 30_000L, 30_000L, 30_000L), (0L..7L).map(::retryDelayMs))
         assertEquals(30_000L, retryDelayMs(1_000L))

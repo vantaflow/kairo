@@ -4,6 +4,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,7 +52,9 @@ class StartupGate(
             val blocks = synchronized(lock) { pending.orEmpty().also { pending = null } }
             openedAt = now()
             mutableOpen.value = true
-            blocks.forEach { run(it) }
+            // Chaque travail dans sa propre coroutine, démarrés dans l'ordre : un travail qui suspend
+            // (collecte sans fin, attente réseau) ne retient pas les suivants.
+            blocks.forEach { block -> scope.launch(start = CoroutineStart.UNDISPATCHED) { run(block) } }
         }
     }
 

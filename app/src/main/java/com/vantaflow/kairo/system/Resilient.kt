@@ -5,6 +5,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -17,16 +19,21 @@ fun retryDelayMs(attempt: Long): Long = minOf(30_000L, 1_000L shl attempt.coerce
  * Flux d'état qui reprend après une exception au lieu de mourir : sans cela, l'état de l'écran
  * resterait figé (heure arrêtée, favoris jamais mis à jour). L'annulation n'est jamais réessayée.
  * À placer en amont du `stateIn` ; en aval, la dernière valeur reste affichée pendant les essais.
+ * Le délai repart de 1 s après chaque valeur reçue : seuls les échecs d'affilée l'allongent.
  */
-fun <T> Flow<T>.resilient(tag: String, log: (String, Throwable) -> Unit = ::logRetry): Flow<T> =
-    retryWhen { e, attempt ->
-        if (e is CancellationException) false
-        else {
-            log(tag, e)
-            delay(retryDelayMs(attempt))
-            true
+fun <T> Flow<T>.resilient(tag: String, log: (String, Throwable) -> Unit = ::logRetry): Flow<T> = flow {
+    var attempt = 0L
+    onEach { attempt = 0L }
+        .retryWhen { e, _ ->
+            if (e is CancellationException) false
+            else {
+                log(tag, e)
+                delay(retryDelayMs(attempt++))
+                true
+            }
         }
-    }
+        .collect { emit(it) }
+}
 
 private fun logRetry(tag: String, e: Throwable) {
     // Tests JVM sans Android : le journal est facultatif.

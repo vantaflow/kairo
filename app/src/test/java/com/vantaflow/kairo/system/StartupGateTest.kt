@@ -86,6 +86,36 @@ class StartupGateTest {
         assertEquals(listOf("panne"), errors.map { it.message })
     }
 
+    @Test fun blockThatNeverEndsDoesNotHoldBackTheNext() = runTest {
+        val gate = StartupGate(backgroundScope)
+        val ran = mutableListOf<Int>()
+        gate.whenOpen { ran += 1; kotlinx.coroutines.awaitCancellation() }
+        gate.whenOpen { ran += 2 }
+        at(120_000)
+        assertEquals(listOf(1, 2), ran)
+    }
+
+    @Test fun whenOpenDuringOpeningRuns() = runTest {
+        val gate = StartupGate(backgroundScope)
+        val ran = mutableListOf<Int>()
+        gate.whenOpen {
+            ran += 1
+            gate.whenOpen { ran += 2 }
+        }
+        at(120_000)
+        assertEquals(listOf(1, 2), ran)
+    }
+
+    @Test fun homeShownLateStillWaitsThirtySeconds() = runTest {
+        val gate = StartupGate(backgroundScope)
+        at(110_000)
+        gate.homeShown()
+        at(139_999)
+        assertFalse(gate.open.value)
+        at(140_000)
+        assertTrue(gate.open.value)
+    }
+
     @Test fun openDurationIsMeasuredFromOpening() = runTest {
         val gate = StartupGate(backgroundScope, now = { testScheduler.currentTime })
         at(119_999)

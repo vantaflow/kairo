@@ -157,7 +157,9 @@ class OurAppsStore(
             if (found.isEmpty()) return@launch
             // Box allumée depuis peu : les applis démarrent encore, l'installation automatique attend.
             while (com.vantaflow.kairo.system.bootIsRecent(android.os.SystemClock.elapsedRealtime())) kotlinx.coroutines.delay(60_000)
-            if (runCatching { autoUpdate() }.getOrDefault(false)) autoInstall(found.toMap())
+            // Après l'attente : seulement celles encore à faire (installée entre-temps, ou retirée de la liste).
+            val pending = found.filter { (app, remote) -> app.id in _updates.value && hasUpdate(app, remote) }
+            if (pending.isNotEmpty() && runCatching { autoUpdate() }.getOrDefault(false)) autoInstall(pending.toMap())
         }
     }
 
