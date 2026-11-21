@@ -178,7 +178,7 @@ class HomeFallback(private val context: Context) {
     fun previousExit(): PreviousExit = runCatching {
         val current = exitTraces(context) ?: return NO_EXIT
         val seen = decodeSeenExitKeys(prefs.getString(KEY_SEEN_EXITS, null))
-        prefs.edit().putString(KEY_SEEN_EXITS, encodeSeenExitKeys(current)).commit()
+        prefs.edit().putString(KEY_SEEN_EXITS, encodeSeenExitKeys(rememberExitKeys(seen, current))).commit()
         previousExit(seen, current, bootIsRecent(android.os.SystemClock.elapsedRealtime()))
     }.getOrDefault(NO_EXIT)
 
