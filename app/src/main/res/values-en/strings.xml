@@ -50,4 +50,8 @@
     <string name="section_android_desc">Shortcuts to the box settings.</string>
     <string name="language_system">Box language</string>
     <string name="language_hint">Applies right away to all of Kairo, screensaver included.</string>
+    <string name="recovery_label">Kairo (repair)</string>
+    <string name="recovery_text">Kairo stopped several times, even in safe mode. It stepped down as home screen so the box stays usable.</string>
+    <string name="recovery_restore">Set Kairo as home again</string>
+    <string name="recovery_keep">Leave it as is</string>
 </resources>

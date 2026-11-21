@@ -96,6 +96,8 @@ class HomeActivity : ComponentActivity() {
     private val container by lazy { (application as TvHomeApp).container }
     /** Mode sans échec (démarrages répétés) : accueil réduit, aucun travail de fond. */
     private val safeMode by lazy { (application as TvHomeApp).safeMode }
+    /** Kairo retiré de l'accueil (son mode sans échec plantait) : l'activité ne fait rien. */
+    private val withdrawn by lazy { (application as TvHomeApp).withdrawn }
     /** Porte de démarrage (null en mode sans échec). */
     private val gate get() = (application as TvHomeApp).gate
     /** Première image de l'accueil déjà signalée à la porte. */
@@ -210,6 +212,11 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Kairo vient de se retirer de l'accueil (lancement déjà en route) : pas de conteneur, on s'efface.
+        if (withdrawn) {
+            finish()
+            return
+        }
         // Écran recréé par un changement de langue : le ViewModel survit, sa météo est encore dans l'ancienne.
         if (savedInstanceState != null) homeViewModel.reloadWeather()
         val restoredSettings = savedInstanceState?.getString(STATE_SETTINGS)
@@ -374,7 +381,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        if (!safeMode) getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback)
+        if (!safeMode && !withdrawn) getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback)
         super.onDestroy()
     }
 
@@ -676,6 +683,7 @@ class HomeActivity : ComponentActivity() {
      */
     private fun restartNormally() {
         (application as TvHomeApp).crashGuard.reset()
+        com.vantaflow.kairo.system.HomeFallback(this).resetCrashes()
         // Intention d'accueil (pas LAUNCHER) : l'activité singleTask est reprise, pas ouverte dans une seconde tâche.
         startActivity(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)

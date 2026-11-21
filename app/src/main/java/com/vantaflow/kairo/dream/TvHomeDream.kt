@@ -38,6 +38,11 @@ class TvHomeDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
         // Interactif : quand la radio joue, ← → changent de radio et OK l'arrête (voir dispatchKeyEvent).
         isInteractive = true
         isFullscreen = true
+        // Kairo retiré de l'accueil : pas de conteneur, écran noir sans Compose ; une touche réveille.
+        if ((application as? com.vantaflow.kairo.TvHomeApp)?.withdrawn == true) {
+            setContentView(android.view.View(this).apply { setBackgroundColor(android.graphics.Color.BLACK) })
+            return
+        }
         val view = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@TvHomeDream)
             setViewTreeSavedStateRegistryOwner(this@TvHomeDream)

@@ -66,8 +66,10 @@ class AdBlockVpn : VpnService() {
     private val workers = Executors.newFixedThreadPool(4)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Mode sans échec : le système peut relancer ce service (START_STICKY) sans passer par l'accueil.
-        if ((application as? com.vantaflow.kairo.TvHomeApp)?.safeMode == true) {
+        // Mode sans échec ou Kairo retiré de l'accueil : le système peut relancer ce service (START_STICKY)
+        // sans passer par l'accueil.
+        val app = application as? com.vantaflow.kairo.TvHomeApp
+        if (app?.safeMode == true || app?.withdrawn == true) {
             shutdown()
             stopSelf()
             return START_NOT_STICKY

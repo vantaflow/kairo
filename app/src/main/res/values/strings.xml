@@ -51,4 +51,8 @@
     <string name="section_android_desc">Raccourcis vers les paramètres de la box.</string>
     <string name="language_system">Langue de la box</string>
     <string name="language_hint">S\'applique tout de suite à tout Kairo, écran de veille compris.</string>
+    <string name="recovery_label">Kairo (réparation)</string>
+    <string name="recovery_text">Kairo s\'est arrêté plusieurs fois, même en mode sans échec. Il s\'est retiré de l\'accueil pour que la box reste utilisable.</string>
+    <string name="recovery_restore">Remettre Kairo comme accueil</string>
+    <string name="recovery_keep">Laisser comme ça</string>
 </resources>

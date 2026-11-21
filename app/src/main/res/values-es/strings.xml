@@ -50,4 +50,8 @@
     <string name="section_android_desc">Accesos directos a los ajustes del dispositivo.</string>
     <string name="language_system">Idioma del dispositivo</string>
     <string name="language_hint">Se aplica al instante a todo Kairo, salvapantallas incluido.</string>
+    <string name="recovery_label">Kairo (reparación)</string>
+    <string name="recovery_text">Kairo se ha detenido varias veces, incluso en modo seguro. Se ha retirado de la pantalla de inicio para que el dispositivo siga siendo utilizable.</string>
+    <string name="recovery_restore">Volver a usar Kairo como inicio</string>
+    <string name="recovery_keep">Dejarlo así</string>
 </resources>

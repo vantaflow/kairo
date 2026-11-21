@@ -50,4 +50,8 @@
     <string name="section_android_desc">اختصارات إلى إعدادات الجهاز.</string>
     <string name="language_system">لغة الجهاز</string>
     <string name="language_hint">تُطبَّق فورًا على Kairo بالكامل، بما في ذلك شاشة التوقف.</string>
+    <string name="recovery_label">Kairo (إصلاح)</string>
+    <string name="recovery_text">توقف Kairo عدة مرات حتى في الوضع الآمن. انسحب من الشاشة الرئيسية ليبقى الجهاز قابلاً للاستخدام.</string>
+    <string name="recovery_restore">إعادة Kairo كشاشة رئيسية</string>
+    <string name="recovery_keep">تركه كما هو</string>
 </resources>

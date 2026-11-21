@@ -23,8 +23,11 @@ import kotlinx.coroutines.flow.StateFlow
 class MediaListener : NotificationListenerService() {
     override fun onListenerConnected() {
         // Suivi lancé à l'ouverture de la porte de démarrage ; mode sans échec (pas de porte) : jamais.
+        // Kairo retiré de l'accueil : rien du tout.
+        val app = application as? com.vantaflow.kairo.TvHomeApp ?: return
+        if (app.withdrawn) return
         val context = applicationContext
-        (application as? com.vantaflow.kairo.TvHomeApp)?.gate?.whenOpen { NowPlaying.start(context) }
+        app.gate?.whenOpen { NowPlaying.start(context) }
     }
 }
 

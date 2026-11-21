@@ -28,7 +28,20 @@ class KeyRemapService : AccessibilityService() {
     /** Touches dont l'appui a été consommé : on consomme aussi leur relâchement. */
     private val consumed = mutableSetOf<Int>()
 
+    /** Kairo retiré de l'accueil : pas de conteneur, le service laisse tout passer (voir [TvHomeApp.withdrawn]). */
+    private val withdrawn get() = (application as? TvHomeApp)?.withdrawn == true
+
     override fun onServiceConnected() {
+        if (withdrawn) {
+            // Plus aucune touche ni aucun évènement ne passe par le service : rien n'est retardé.
+            runCatching {
+                serviceInfo = serviceInfo.apply {
+                    flags = flags and android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS.inv()
+                    eventTypes = 0
+                }
+            }
+            return
+        }
         instance = this
         val container = (application as TvHomeApp).container
         scope.launch {
@@ -115,6 +128,7 @@ class KeyRemapService : AccessibilityService() {
     fun sleep(): Boolean = performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (withdrawn) return false
         val code = event.keyCode
         if (event.action == KeyEvent.ACTION_UP) return consumed.remove(code)
         // Touche pressée après l'allumage : quelqu'un est là.
@@ -160,7 +174,7 @@ class KeyRemapService : AccessibilityService() {
 
     /** Appli passée à l'écran : sert au nettoyage automatique (applis inutilisées). */
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || withdrawn) return
         val pkg = event.packageName?.toString() ?: return
         // Seulement les applis (pas le clavier, les menus système ou les bulles).
         val app = launchable.getOrPut(pkg) {

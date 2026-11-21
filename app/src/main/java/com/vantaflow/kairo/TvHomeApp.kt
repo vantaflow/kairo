@@ -170,7 +170,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
 
     /** Démarrages notés dans un fichier à part, écrit aussitôt (le process peut mourir juste après). */
     val crashGuard by lazy {
-        val prefs = getSharedPreferences(CRASH_GUARD_PREFS, MODE_PRIVATE)
+        val prefs = getSharedPreferences(com.vantaflow.kairo.system.CRASH_GUARD_PREFS, MODE_PRIVATE)
         CrashGuard(
             load = { prefs.getString(CRASH_GUARD_STARTS, "").orEmpty().split(',').filter { it.isNotBlank() }.map { it.toLong() } },
             save = { starts -> prefs.edit().putString(CRASH_GUARD_STARTS, starts.joinToString(",")).commit() },
@@ -186,6 +186,16 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         private set
 
     /**
+     * Kairo s'est retiré de l'accueil (son mode sans échec plantait aussi) : le process ne démarre rien,
+     * pas même le conteneur. Services, écran de veille et réparation doivent le vérifier avant tout.
+     */
+    var withdrawn = false
+        private set
+
+    /** Dernier filet : retrait de l'accueil (seulement préférences et PackageManager, jamais d'exception). */
+    private val homeFallback by lazy { com.vantaflow.kairo.system.HomeFallback(this) }
+
+    /**
      * Porte de démarrage : les fonctions de fond attendent que la box et l'accueil aient démarré.
      * Null en mode sans échec : rien ne part.
      */
@@ -195,20 +205,32 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     /** Vrai une fois l'accueil resté au premier plan assez longtemps dans ce process. */
     @Volatile private var stable = false
 
-    /** Accueil stable : les démarrages précédents sont oubliés (une seule écriture par process). */
+    /** Accueil stable : démarrages et plantages en mode sans échec précédents oubliés (une seule fois par process). */
     fun markStable() {
         if (stable) return
         stable = true
         crashGuard.markStable()
+        homeFallback.resetCrashes()
     }
 
     override fun onCreate() {
         super.onCreate()
-        // En tout premier : une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
+        // Dernier filet, avant la langue, le conteneur et tout le reste : Kairo retiré de l'accueil ne
+        // démarre plus rien jusqu'à « Remettre Kairo comme accueil ».
+        if (homeFallback.isWithdrawn()) {
+            withdrawn = true
+            return
+        }
         // Seule une sortie précédente plantée compte : un arrêt pour manque de mémoire ou une mise à jour non.
-        safeMode = crashGuard.recordStart(
-            previousExitWasCrash = com.vantaflow.kairo.system.isCrashExit(com.vantaflow.kairo.system.lastExitReason(this)),
-        )
+        val previousExitWasCrash = com.vantaflow.kairo.system.isCrashExit(com.vantaflow.kairo.system.lastExitReason(this))
+        // Le mode sans échec plante encore : Kairo se retire et la box retombe sur l'autre accueil.
+        if (homeFallback.withdrawIfSafeModeKeepsCrashing(previousExitWasCrash)) {
+            withdrawn = true
+            return
+        }
+        // Une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
+        safeMode = crashGuard.recordStart(previousExitWasCrash)
+        homeFallback.recordRun(safeMode)
         // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)
@@ -230,6 +252,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     /** Un changement de configuration de la box remet sa langue : on réapplique celle de Kairo. */
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (withdrawn) return
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
     }
 
@@ -242,6 +265,8 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     /** Box à 2 Go : Kairo en arrière-plan rend la mémoire des tuiles et des images à l'appli lancée. */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        // Kairo retiré : ni conteneur ni images en mémoire.
+        if (withdrawn) return
         if (level >= TRIM_MEMORY_BACKGROUND) {
             container.tileImages.clear()
             coil.Coil.imageLoader(this).memoryCache?.clear()
@@ -250,7 +275,6 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
 
     private companion object {
         const val IMAGE_CACHE_BYTES = 24 * 1024 * 1024
-        const val CRASH_GUARD_PREFS = "crash_guard"
         const val CRASH_GUARD_STARTS = "starts"
     }
 }
