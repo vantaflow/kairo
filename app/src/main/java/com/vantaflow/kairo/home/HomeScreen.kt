@@ -82,7 +82,7 @@ import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.wallpaper.WallpaperLayer
 
 /**
- * Accueil « Épuré » (maquette C2) : heure, favoris, « À suivre » puis une rangée par chaîne.
+ * Accueil « Classique » (maquette C2) : heure, favoris, « À suivre » puis une rangée par chaîne.
  * Quand un contenu recommandé a le focus, son image remplit le fond (style Google TV).
  */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
@@ -136,6 +136,11 @@ fun HomeRowsScreen(
         if (!r.isAttached || !v.isAttached) return null
         val delta = r.positionInRoot().y - v.positionInRoot().y - rowMargin
         return (columnState.value + delta).toInt().coerceIn(0, columnState.maxValue)
+    }
+    // Défilement immédiat de la colonne, à la même priorité que celui de alignRowOnFocus : une
+    // animation en cours ne l'annule plus sans bruit, c'est lui qui l'interrompt.
+    suspend fun scrollColumnTo(target: Int) {
+        columnState.scroll(MutatePriority.PreventUserInput) { scrollBy((target - columnState.value).toFloat()) }
     }
     // La bannière ([isBanner]) se cale tout en haut, entière sous l'en-tête ; chaque rangée note
     // aussi si le focus est sur la bannière ou dans les rangées (pour le lui rendre au retour).
@@ -214,10 +219,10 @@ fun HomeRowsScreen(
         withFrameNanos { }
         if (behindPanel) return@LaunchedEffect
         if (!focus.keyPressed) {
-            columnState.scrollTo(0)
+            scrollColumnTo(0)
             runCatching { bannerFocus.requestFocus() }
         } else {
-            focusedRow.value?.let(::rowTarget)?.let { columnState.scrollTo(it) }
+            focusedRow.value?.let(::rowTarget)?.let { scrollColumnTo(it) }
         }
     }
 
@@ -491,9 +496,10 @@ fun HomeRowsScreen(
         val index = focus.index.coerceIn(0, requesters.lastIndex.coerceAtLeast(0))
         if (requesters.isNotEmpty()) rowState.scrollToItem(index)
         // Favori sous une bannière : sa rangée est recalée sous l'en-tête (même s'il a gardé le focus).
-        if (toBanner || !bannerShown) columnState.scrollTo(0)
+        // Sans bannière (Classique), le même défilement qu'avant.
+        if (!bannerShown) columnState.scrollTo(0) else if (toBanner) scrollColumnTo(0)
         withFrameNanos { }
-        if (!toBanner && bannerShown) favoritesRow.value?.let(::rowTarget)?.let { columnState.scrollTo(it) }
+        if (!toBanner && bannerShown) favoritesRow.value?.let(::rowTarget)?.let { scrollColumnTo(it) }
         runCatching { if (toBanner) bannerFocus.requestFocus() else requesters[index].requestFocus() }
     }
 }

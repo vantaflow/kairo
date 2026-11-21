@@ -2,6 +2,7 @@ package com.vantaflow.kairo.settings
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.vantaflow.kairo.apps.AppInfo
+import com.vantaflow.kairo.ui.theme.BannerSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -111,6 +112,21 @@ class LauncherPrefsTest {
         val prefs = prefs()
         prefs.setWallpaper(WallpaperConfig.Solid(0xFF202124))
         assertEquals(WallpaperConfig.Solid(0xFF202124), prefs.wallpaper.first())
+    }
+
+    @Test
+    fun toggleBannerSourceReadsAndWritesInOneEdit() = runTest(UnconfinedTestDispatcher()) {
+        val prefs = prefs()
+        prefs.toggleBannerSource(BannerSource.WatchNext, false)
+        assertEquals(setOf(BannerSource.MyList, BannerSource.Catalog), prefs.bannerSources.first())
+        prefs.toggleBannerSource(BannerSource.WatchNext, true)
+        assertEquals(BannerSource.entries.toSet(), prefs.bannerSources.first())
+        // Deux cases décochées coup sur coup : aucune des deux modifications n'est perdue.
+        val a = launch { prefs.toggleBannerSource(BannerSource.MyList, false) }
+        val b = launch { prefs.toggleBannerSource(BannerSource.Catalog, false) }
+        a.join()
+        b.join()
+        assertEquals(setOf(BannerSource.WatchNext), prefs.bannerSources.first())
     }
 
     @Test

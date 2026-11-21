@@ -404,6 +404,14 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         store.edit { it[Keys.bannerSources(it.sfx)] = sources.map { s -> s.id }.toSet() }
     }
 
+    /** Ajoute ou retire une source, lue et écrite dans la même modification (deux appuis rapides ne s'écrasent pas). */
+    suspend fun toggleBannerSource(source: BannerSource, enabled: Boolean) {
+        store.edit {
+            val current = bannerSourcesOf(it[Keys.bannerSources(it.sfx)])
+            it[Keys.bannerSources(it.sfx)] = (if (enabled) current + source else current - source).map { s -> s.id }.toSet()
+        }
+    }
+
     val themeId: Flow<String> = pref { it[Keys.themeId] ?: "google-tv" }
     val weatherEnabled: Flow<Boolean> = pref { it[Keys.weatherEnabled] ?: true }
 

@@ -240,6 +240,5 @@
     <string name="home_style_cinema">Cine</string>
     <string name="home_style_cinema_desc">Un gran banner de películas y series arriba</string>
     <string name="banner_sources_title">Contenido del banner</string>
-    <string name="banner_source_watch_next">Seguir viendo</string>
     <string name="banner_source_catalog">Películas y series del momento</string>
 </resources>

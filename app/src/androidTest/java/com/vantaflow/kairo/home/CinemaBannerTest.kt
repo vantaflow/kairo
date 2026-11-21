@@ -184,6 +184,23 @@ class CinemaBannerTest {
     }
 
     @Test
+    fun heldKeyChangesItemOnce() {
+        rule.mainClock.autoAdvance = false
+        rule.setContent { Banner(listOf(catalog(1), catalog(2), catalog(3), catalog(4))) }
+        rule.onNodeWithTag("banner-primary").requestFocus()
+        frame()
+        // Touche maintenue bien au-delà du délai de répétition : les répétitions sont ignorées.
+        rule.onRoot().performKeyInput {
+            keyDown(Key.DirectionLeft)
+            advanceEventTime(2_000)
+            keyUp(Key.DirectionLeft)
+        }
+        frame()
+        assertTitle("Film 4")
+        rule.onNodeWithTag("banner-primary").assertIsFocused()
+    }
+
+    @Test
     fun myListFocusPausesAutoAdvance() {
         rule.mainClock.autoAdvance = false
         rule.setContent { Banner(listOf(catalog(1), catalog(2), catalog(3))) }

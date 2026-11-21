@@ -62,7 +62,7 @@ private val HomeStyle.description: Int
 private val BannerSource.label: Int
     get() = when (this) {
         BannerSource.MyList -> R.string.home_my_list
-        BannerSource.WatchNext -> R.string.banner_source_watch_next
+        BannerSource.WatchNext -> R.string.home_watch_next
         BannerSource.Catalog -> R.string.banner_source_catalog
     }
 

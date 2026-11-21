@@ -148,7 +148,7 @@ class ProfilesTest {
     }
 
     @Test
-    fun removingProfileDeletesItsSettings()= runTest(UnconfinedTestDispatcher()) {
+    fun removingProfileDeletesItsSettings() = runTest(UnconfinedTestDispatcher()) {
         val prefs = prefs()
         val guest = prefs.addProfile("Invité", kids = false, pin = null)
         prefs.switchProfile(guest.id)

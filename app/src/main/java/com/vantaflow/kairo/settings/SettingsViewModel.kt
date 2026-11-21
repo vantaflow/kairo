@@ -62,10 +62,7 @@ class SettingsViewModel(
 
     /** Ajoute ou retire une origine des contenus de la bannière (relue dans les préférences). */
     fun setBannerSource(source: BannerSource, enabled: Boolean) {
-        viewModelScope.launch {
-            val current = prefs.bannerSources.first()
-            prefs.setBannerSources(if (enabled) current + source else current - source)
-        }
+        viewModelScope.launch { prefs.toggleBannerSource(source, enabled) }
     }
 
     fun setWeatherEnabled(value: Boolean) {

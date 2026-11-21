@@ -54,6 +54,19 @@ class BannerTest {
     }
 
     @Test
+    fun moviesTabSkipsShowRowAndFiltersUntypedRow() {
+        val rows = listOf(row(show(5), type = MediaType.Tv), row(movie(6), show(7)))
+        val items = bannerItems(HomeTab.Movies, all, emptyList(), emptyList(), rows)
+        assertEquals(listOf(6L), ids(items))
+    }
+
+    @Test
+    fun showsTabKeepsShowsFromMyList() {
+        val items = bannerItems(HomeTab.Shows, all, listOf(movie(1), show(2)), emptyList(), emptyList())
+        assertEquals(listOf(2L), ids(items))
+    }
+
+    @Test
     fun appsTabIsEmpty() {
         val items = bannerItems(HomeTab.Apps, all, listOf(movie(1)), listOf(resume(9)), listOf(row(movie(2))))
         assertTrue(items.isEmpty())

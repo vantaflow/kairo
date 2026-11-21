@@ -441,12 +441,13 @@ class HomeActivity : ComponentActivity() {
                             myList.filter { homeTab.mediaType().let { t -> t == null || it.type == t } }.map { it.toProgram() }
                         },
                         // Bannière du style Cinéma : pas de bannière pour le profil enfant (comme les recommandations).
+                        // Rien n'est calculé pour un autre style.
                         banner = bannerSources.let { sources ->
-                            if (profile.kids || sources == null) emptyList() else remember(homeTab, sources, myList, state.watchNext, catalogRows) {
+                            if (homeStyle != HomeStyle.Cinema || profile.kids || sources == null) emptyList() else remember(homeTab, sources, myList, state.watchNext, catalogRows) {
                                 bannerItems(homeTab, sources, myList, state.watchNext, catalogRows)
                             }
                         },
-                        myListIds = if (profile.kids) emptySet() else remember(myList) { myList.map(::catalogUri).toSet() },
+                        myListIds = if (homeStyle != HomeStyle.Cinema || profile.kids) emptySet() else remember(myList) { myList.map(::catalogUri).toSet() },
                         // Recouvert dans la même fenêtre (réglages, assistant du premier lancement, menu
                         // Outils, petits lecteurs) : l'accueil ne leur prend jamais le focus.
                         behindPanel = destination == Destination.Settings || onboarding || toolsMenu || miniPlayer || mediaPlayer,

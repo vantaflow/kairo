@@ -81,7 +81,7 @@ fun ClassicHome(data: HomeData, actions: HomeActions, focus: HomeFocus) {
     HomeRowsScreen(data, actions, focus)
 }
 
-/** Accueil du style choisi (Réglages › Personnaliser). */
+/** Accueil du style choisi (Réglages › Thème). */
 @Composable
 fun HomeHost(style: HomeStyle, data: HomeData, actions: HomeActions, focus: HomeFocus) {
     when (style) {
