@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsFocused
@@ -211,6 +213,31 @@ class CinemaBannerTest {
         assertTitle("Film 1")
         // De retour au premier plan : l'avance reprend.
         rule.runOnIdle { owner.registry.currentState = Lifecycle.State.RESUMED }
+        frame()
+        rule.mainClock.advanceTimeBy(BANNER_ADVANCE_MS + 500)
+        assertTitle("Film 2")
+    }
+
+    @Test
+    fun noAutoAdvanceWhileWindowNotFocused() {
+        rule.mainClock.autoAdvance = false
+        // Fiche du catalogue ouverte par-dessus (autre fenêtre) : celle de l'accueil n'a plus le focus.
+        var windowFocused by mutableStateOf(false)
+        val window = object : WindowInfo {
+            override val isWindowFocused: Boolean get() = windowFocused
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalWindowInfo provides window) {
+                Banner(listOf(catalog(1), catalog(2), catalog(3)))
+            }
+        }
+        rule.onNodeWithTag("banner-primary").requestFocus()
+        frame()
+        rule.mainClock.advanceTimeBy(20_000)
+        assertTitle("Film 1")
+        rule.onNodeWithTag("banner-primary").assertIsFocused()
+        // Fiche fermée : l'avance reprend.
+        rule.runOnIdle { windowFocused = true }
         frame()
         rule.mainClock.advanceTimeBy(BANNER_ADVANCE_MS + 500)
         assertTitle("Film 2")

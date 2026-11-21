@@ -46,6 +46,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -84,7 +85,7 @@ private const val BACKDROP_FADE_MS = 450
  * son bouton principal (fiche ou reprise) et, pour un contenu du catalogue, « Ma liste ».
  * L'image de fond est dessinée à part par [CinemaBackdrop] ; un contenu À suivre montre sa carte
  * côté fin. Les flèches changent de contenu (sens de lecture respecté) et la bannière avance seule
- * toutes les [BANNER_ADVANCE_MS] tant qu'elle a le focus, sans changement fait à la main.
+ * toutes les [BANNER_ADVANCE_MS] tant qu'elle a le focus dans une fenêtre active, sans changement fait à la main.
  * [onCurrent] reçoit le contenu affiché quand la bannière a le focus, null quand elle le perd.
  * Le contenu affiché est retenu par son identité ([bannerKey]) : il reste le même quand la liste se
  * réordonne (ajout à Ma liste, catalogue relu). Une autre [listId] (l'onglet) ramène au premier.
@@ -127,6 +128,9 @@ fun CinemaBanner(
     var myListCatalog by remember { mutableStateOf<CatalogItem?>(null) }
     val myListFocus = remember { FocusRequester() }
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    // Fenêtre recouverte par une autre (fiche du catalogue, menu d'appui long…) : l'activité reste
+    // au premier plan et la bannière garde le focus, mais elle ne doit pas avancer derrière.
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
 
     // Changement de contenu : le focus passe d'abord au bouton principal, présent pour tout contenu,
     // pour ne pas le perdre avec un bouton Ma liste qui disparaît.
@@ -139,8 +143,8 @@ fun CinemaBanner(
     }
 
     // Pas d'avance non plus sur Ma liste : un appui sur OK ne doit pas viser le contenu suivant.
-    LaunchedEffect(focused, manual, myListFocused, lifecycleState, items, current) {
-        if (!focused || manual || myListFocused || !lifecycleState.isAtLeast(Lifecycle.State.RESUMED) || items.size <= 1) return@LaunchedEffect
+    LaunchedEffect(focused, manual, myListFocused, lifecycleState, windowFocused, items, current) {
+        if (!focused || manual || myListFocused || !windowFocused || !lifecycleState.isAtLeast(Lifecycle.State.RESUMED) || items.size <= 1) return@LaunchedEffect
         delay(BANNER_ADVANCE_MS)
         show(1)
     }
