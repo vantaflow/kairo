@@ -25,12 +25,14 @@ fun bootIsRecent(elapsedRealtimeMs: Long, minMs: Long = BOOT_QUIET_MS): Boolean 
  * cours, mises à jour) attendent qu'elle s'ouvre, pour laisser la box et l'accueil démarrer d'abord.
  * Elle s'ouvre [delayAfterHomeMs] après la première image de l'accueil ([homeShown]), ou
  * [delayWithoutHomeMs] après sa création si l'accueil n'est pas apparu entre-temps (process lancé
- * par un service) ; elle ne se referme jamais. Sans dépendance Android.
+ * par un service) ; elle ne se referme jamais. Sans dépendance Android ; [now] : horloge monotone
+ * en millisecondes, qui sert à mesurer depuis quand elle est ouverte ([openForMs]).
  */
 class StartupGate(
     private val scope: CoroutineScope,
     private val delayAfterHomeMs: Long = 30_000,
     private val delayWithoutHomeMs: Long = 120_000,
+    private val now: () -> Long = { System.nanoTime() / 1_000_000 },
 ) {
     private val mutableOpen = MutableStateFlow(false)
     val open: StateFlow<Boolean> = mutableOpen.asStateFlow()
@@ -39,16 +41,22 @@ class StartupGate(
     private val lock = Any()
     /** Travaux en attente, dans l'ordre de leur demande ; null une fois la porte ouverte. */
     private var pending: MutableList<suspend () -> Unit>? = mutableListOf()
+    /** Moment de l'ouverture selon [now] ; null tant qu'elle est fermée. */
+    @Volatile private var openedAt: Long? = null
 
     init {
         scope.launch {
             // Accueil apparu à temps : on lui laisse encore le temps de s'installer.
             if (withTimeoutOrNull(delayWithoutHomeMs) { home.await() } != null) delay(delayAfterHomeMs)
             val blocks = synchronized(lock) { pending.orEmpty().also { pending = null } }
+            openedAt = now()
             mutableOpen.value = true
             blocks.forEach { run(it) }
         }
     }
+
+    /** Temps depuis l'ouverture de la porte ; null si elle est encore fermée. */
+    fun openForMs(): Long? = openedAt?.let { now() - it }
 
     /** Première image de l'accueil dessinée ; les appels suivants sont sans effet. */
     fun homeShown() {

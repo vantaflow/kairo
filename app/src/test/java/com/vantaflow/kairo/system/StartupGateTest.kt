@@ -86,6 +86,21 @@ class StartupGateTest {
         assertEquals(listOf("panne"), errors.map { it.message })
     }
 
+    @Test fun openDurationIsMeasuredFromOpening() = runTest {
+        val gate = StartupGate(backgroundScope, now = { testScheduler.currentTime })
+        at(119_999)
+        assertEquals(null, gate.openForMs())
+        at(150_000)
+        assertEquals(30_000L, gate.openForMs())
+    }
+
+    @Test fun stableOnlyWhenGateAndHomeHaveLastedThirtySeconds() {
+        assertFalse(isStable(gateOpenForMs = 29_999, homeForegroundForMs = 60_000))
+        assertTrue(isStable(gateOpenForMs = 30_000, homeForegroundForMs = 30_000))
+        assertFalse(isStable(gateOpenForMs = 60_000, homeForegroundForMs = 29_999))
+        assertFalse(isStable(gateOpenForMs = null, homeForegroundForMs = 600_000))
+    }
+
     @Test fun bootIsRecentBelowTenMinutes() {
         assertTrue(bootIsRecent(599_999))
         assertFalse(bootIsRecent(600_000))

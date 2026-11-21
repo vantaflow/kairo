@@ -359,9 +359,19 @@ class HomeActivity : ComponentActivity() {
                 }
             }
             refreshCatalog()
-            // Accueil resté au premier plan assez longtemps : le démarrage est réussi (recompté s'il le quitte avant).
-            stableJob = lifecycleScope.launch(SafeHandler) {
-                kotlinx.coroutines.delay(STABLE_AFTER_MS)
+            // Accueil resté au premier plan assez longtemps ET porte ouverte depuis assez longtemps (les
+            // fonctions de fond lancées à l'ouverture ont pu planter) : le démarrage est réussi. Recompté
+            // si l'accueil quitte le premier plan avant.
+            val gate = gate
+            val foregroundSince = android.os.SystemClock.elapsedRealtime()
+            if (gate != null) stableJob = lifecycleScope.launch(SafeHandler) {
+                while (true) {
+                    val gateOpenFor = gate.openForMs()
+                    val homeFor = android.os.SystemClock.elapsedRealtime() - foregroundSince
+                    if (com.vantaflow.kairo.system.isStable(gateOpenFor, homeFor)) break
+                    if (gateOpenFor == null) gate.open.first { it }
+                    else kotlinx.coroutines.delay(maxOf(STABLE_AFTER_MS - gateOpenFor, STABLE_AFTER_MS - homeFor, 1L))
+                }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { (application as TvHomeApp).markStable() }
             }
         }

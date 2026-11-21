@@ -21,8 +21,19 @@ fun inSameLoop(earlier: BootTime, now: BootTime): Boolean =
     (earlier.boot == now.boot && now.elapsedMs - earlier.elapsedMs in 0 until SAFE_MODE_WINDOW_MS) ||
         (now.boot > 0 && earlier.boot == now.boot - 1)
 
-/** Temps d'accueil au premier plan, d'affilée, après lequel le démarrage est jugé réussi. */
+/**
+ * Temps d'accueil au premier plan, d'affilée, ET de porte de démarrage ouverte, après lequel le
+ * démarrage est jugé réussi.
+ */
 const val STABLE_AFTER_MS = 30_000L
+
+/**
+ * Démarrage réussi : la porte est ouverte depuis [STABLE_AFTER_MS] (les fonctions de fond lancées à
+ * son ouverture ont eu le temps de planter) et l'accueil est au premier plan depuis [STABLE_AFTER_MS].
+ * Porte jamais ouverte ([gateOpenForMs] null) : pas encore.
+ */
+fun isStable(gateOpenForMs: Long?, homeForegroundForMs: Long): Boolean =
+    gateOpenForMs != null && gateOpenForMs >= STABLE_AFTER_MS && homeForegroundForMs >= STABLE_AFTER_MS
 
 /**
  * Garde anti-boucle de plantage : chaque démarrage qui suit un plantage est noté ; s'il y en a
