@@ -153,14 +153,17 @@ class HomeFallback(private val context: Context) {
     }.getOrDefault(false)
 
     /**
-     * Note l'heure de ce démarrage, à chaque démarrage (retiré compris) ; rend celle du démarrage
-     * précédent (0 si inconnue). Sert à écarter une trace de sortie périmée (voir [previousExitReason]).
+     * À chaque démarrage (retiré compris), en tout premier : le process précédent a-t-il planté ?
+     * Les traces de sortie jamais vues au démarrage précédent sont celles des sorties survenues depuis,
+     * sans se fier à leur date (voir [newExitTraces]) ; les traces actuelles sont mémorisées pour le
+     * démarrage suivant. Traces illisibles : rien n'est compté ni mémorisé.
      */
-    fun noteStart(now: Long): Long = runCatching {
-        val previous = prefs.getLong(KEY_LAST_START, 0L)
-        prefs.edit().putLong(KEY_LAST_START, now).commit()
-        previous
-    }.getOrDefault(0L)
+    fun previousExitWasCrash(): Boolean = runCatching {
+        val current = exitTraces(context) ?: return false
+        val seen = decodeSeenExitKeys(prefs.getString(KEY_SEEN_EXITS, null))
+        prefs.edit().putString(KEY_SEEN_EXITS, encodeSeenExitKeys(current)).commit()
+        previousExitWasCrash(seen, current)
+    }.getOrDefault(false)
 
     /**
      * Mode du lancement en cours, relu au démarrage suivant (écrit seulement s'il change). Un démarrage
@@ -184,15 +187,15 @@ class HomeFallback(private val context: Context) {
 
     /**
      * « Remettre Kairo comme accueil » : accueil de Kairo réactivé, toute la garde remise à zéro
-     * (démarrages notés, compteurs, indicateur de retrait ; seule l'heure du dernier démarrage est
-     * gardée), activité de réparation désactivée.
+     * (démarrages notés, compteurs, indicateur de retrait ; seules les traces de sortie déjà vues
+     * sont gardées), activité de réparation désactivée.
      * Faux si l'accueil n'a pas pu être réactivé (rien d'autre n'est alors changé).
      */
     fun restore(): Boolean = runCatching {
         setEnabled(HOME_ACTIVITY, true)
-        val lastStart = prefs.getLong(KEY_LAST_START, 0L)
-        // Sur un éditeur, clear() passe avant les écritures : l'heure du dernier démarrage reste.
-        prefs.edit().clear().putLong(KEY_LAST_START, lastStart).commit()
+        val seenExits = prefs.getString(KEY_SEEN_EXITS, null)
+        // Sur un éditeur, clear() passe avant les écritures : les traces vues restent.
+        prefs.edit().clear().apply { if (seenExits != null) putString(KEY_SEEN_EXITS, seenExits) }.commit()
         runCatching { setEnabled(RECOVERY_ACTIVITY, false) }
         true
     }.getOrDefault(false)
@@ -241,7 +244,7 @@ class HomeFallback(private val context: Context) {
         const val KEY_WITHDRAWN = "withdrawn"
         const val KEY_LAST_RUN_SAFE_MODE = "last_run_safe_mode"
         const val KEY_SAFE_MODE_CRASHES = "safe_mode_crashes"
-        const val KEY_LAST_START = "last_start"
+        const val KEY_SEEN_EXITS = "seen_exits"
         const val RECOVERY_ACTIVITY = "com.vantaflow.kairo.system.RecoveryActivity"
         val HOME_ACTIVITY: String = HomeActivity::class.java.name
     }

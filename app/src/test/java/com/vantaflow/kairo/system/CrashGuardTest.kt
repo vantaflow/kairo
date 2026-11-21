@@ -7,14 +7,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CrashGuardTest {
-    /** Stockage en mémoire et horloge réglable. */
-    private var stored: List<Long> = emptyList()
-    private var time = 0L
+    /** Stockage en mémoire, numéro de démarrage de la box et temps depuis ce démarrage réglables. */
+    private var stored: List<BootTime> = emptyList()
+    private var time = BootTime(1, 0L)
     private val guard = CrashGuard(load = { stored }, save = { stored = it }, now = { time })
 
-    /** Démarrage à [ms] après une sortie plantée ([crash]) ou non. */
-    private fun startAt(ms: Long, crash: Boolean = true): Boolean {
-        time = ms
+    /** Démarrage à [ms] depuis le démarrage [boot] de la box, après une sortie plantée ([crash]) ou non. */
+    private fun startAt(ms: Long, crash: Boolean = true, boot: Int = 1): Boolean {
+        time = BootTime(boot, ms)
         return guard.recordStart(previousExitWasCrash = crash)
     }
 
@@ -30,7 +30,7 @@ class CrashGuardTest {
         assertFalse(startAt(0))
         assertFalse(startAt(30_000))
         assertFalse(startAt(200_000))
-        assertEquals(listOf(200_000L), stored)
+        assertEquals(listOf(BootTime(1, 200_000L)), stored)
     }
 
     @Test
@@ -53,9 +53,9 @@ class CrashGuardTest {
 
     @Test
     fun corruptedHistoryIsIgnored() {
-        val broken = CrashGuard(load = { throw NumberFormatException("abc") }, save = { stored = it }, now = { 5_000L })
+        val broken = CrashGuard(load = { throw NumberFormatException("abc") }, save = { stored = it }, now = { BootTime(1, 5_000L) })
         assertFalse(broken.recordStart(previousExitWasCrash = true))
-        assertEquals(listOf(5_000L), stored)
+        assertEquals(listOf(BootTime(1, 5_000L)), stored)
     }
 
     @Test
@@ -64,7 +64,7 @@ class CrashGuardTest {
         assertFalse(startAt(10_000, crash = false))
         assertFalse(startAt(20_000, crash = false))
         assertFalse(startAt(30_000, crash = false))
-        assertEquals(emptyList<Long>(), stored)
+        assertEquals(emptyList<BootTime>(), stored)
     }
 
     @Test
@@ -72,7 +72,7 @@ class CrashGuardTest {
         assertFalse(startAt(0))
         assertFalse(startAt(10_000))
         assertFalse(startAt(20_000, crash = false))
-        assertEquals(listOf(0L, 10_000L), stored)
+        assertEquals(listOf(BootTime(1, 0L), BootTime(1, 10_000L)), stored)
         assertTrue(startAt(30_000))
     }
 
@@ -85,6 +85,30 @@ class CrashGuardTest {
         assertTrue(startAt(30_000, crash = false))
         // Hors de la fenêtre : mode normal.
         assertFalse(startAt(200_000, crash = false))
+    }
+
+    @Test
+    fun crashBeforeARebootCountsInTheSameLoop() {
+        // Plantage, redémarrage de la box, nouveaux plantages : c'est la même boucle.
+        assertFalse(startAt(90_000, boot = 1))
+        assertFalse(startAt(5_000, boot = 2))
+        assertTrue(startAt(10_000, boot = 2))
+    }
+
+    @Test
+    fun crashTwoRebootsAgoIsForgotten() {
+        assertFalse(startAt(5_000, boot = 1))
+        assertFalse(startAt(5_000, boot = 3))
+        assertFalse(startAt(6_000, boot = 3))
+    }
+
+    @Test
+    fun earlierBootWithBiggerElapsedTimeDoesNotCountAsSameBoot() {
+        // Numéro de démarrage indisponible (0) : le temps depuis le démarrage repart de zéro au redémarrage.
+        assertFalse(startAt(500_000, boot = 0))
+        assertFalse(startAt(1_000, boot = 0))
+        assertFalse(startAt(2_000, boot = 0))
+        assertTrue(startAt(3_000, boot = 0))
     }
 
     @Test

@@ -16,26 +16,55 @@ fun isCrashExit(reason: Int?): Boolean = when (reason) {
     else -> false
 }
 
-/** Trace de sortie d'un process laissée par Android : moment (horloge murale) et raison. */
-data class ExitTrace(val timestamp: Long, val reason: Int)
+/** Traces de sortie mémorisées au plus (les plus récentes de la liste rendue par Android). */
+const val MAX_SEEN_EXITS = 32
 
 /**
- * Raison de la sortie du process précédent : la trace la plus récente, seulement si elle est
- * postérieure au démarrage précédent ([previousStart], 0 = inconnu). Après une coupure de courant,
- * Android n'a écrit aucune trace pour le process précédent : la dernière trace est alors plus
- * ancienne et ne doit pas être recomptée.
+ * Trace de sortie d'un process laissée par Android : [key] l'identifie (`"<pid>:<timestamp>"`), sans
+ * que sa date serve à quoi que ce soit (l'horloge de la box peut être fausse), et [reason] sa raison.
  */
-fun previousExitReason(traces: List<ExitTrace>, previousStart: Long): Int? =
-    traces.maxByOrNull { it.timestamp }?.takeIf { it.timestamp > previousStart }?.reason
+data class ExitTrace(val key: String, val reason: Int)
+
+private val EXIT_KEY = Regex("""\d+:-?\d+""")
 
 /**
- * Raison de la sortie du process principal de Kairo qui a suivi le démarrage [previousStart]
- * (null si inconnue, illisible ou trace périmée, voir [previousExitReason]).
+ * Clés des traces vues au démarrage précédent ; null si rien n'a été mémorisé ou si la valeur est
+ * illisible (traité comme un premier démarrage : rien à compter).
  */
-fun lastExitReason(context: Context, previousStart: Long): Int? = runCatching {
-    val traces = context.getSystemService(ActivityManager::class.java)
-        .getHistoricalProcessExitReasons(context.packageName, 0, 5)
+fun decodeSeenExitKeys(stored: String?): Set<String>? {
+    if (stored == null) return null
+    if (stored.isEmpty()) return emptySet()
+    val keys = stored.split(',')
+    return if (keys.all { EXIT_KEY.matches(it) }) keys.toSet() else null
+}
+
+/** Clés à mémoriser : les [MAX_SEEN_EXITS] premières traces de la liste. */
+fun encodeSeenExitKeys(current: List<ExitTrace>): String = current.take(MAX_SEEN_EXITS).joinToString(",") { it.key }
+
+/**
+ * Raisons des sorties survenues depuis le démarrage précédent : les traces dont la clé n'avait pas
+ * été vue, quelle que soit leur date. Aucune (coupure de courant, aucune trace écrite) : liste vide.
+ * Premier démarrage ([seenKeys] null) : rien à compter. Seules les [MAX_SEEN_EXITS] premières traces
+ * sont comparées, comme celles qui sont mémorisées.
+ */
+fun newExitTraces(seenKeys: Set<String>?, current: List<ExitTrace>): List<Int> {
+    if (seenKeys == null) return emptyList()
+    return current.take(MAX_SEEN_EXITS).filter { it.key !in seenKeys }.map { it.reason }
+}
+
+/** Le process précédent a planté : au moins une des sorties nouvelles est un plantage. */
+fun previousExitWasCrash(seenKeys: Set<String>?, current: List<ExitTrace>): Boolean =
+    newExitTraces(seenKeys, current).any(::isCrashExit)
+
+/** Toutes les traces de sortie du process principal de Kairo ; null si illisibles. */
+fun exitTraces(context: Context): List<ExitTrace>? = runCatching {
+    context.getSystemService(ActivityManager::class.java)
+        .getHistoricalProcessExitReasons(context.packageName, 0, 0)
         .filter { it.processName == context.packageName }
-        .map { ExitTrace(it.timestamp, it.reason) }
-    previousExitReason(traces, previousStart)
+        .map { ExitTrace("${it.pid}:${it.timestamp}", it.reason) }
 }.getOrNull()
+
+/** Numéro du démarrage de la box (0 si indisponible) : compte les redémarrages sans dépendre de l'horloge. */
+fun bootCount(context: Context): Int = runCatching {
+    android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT)
+}.getOrDefault(0)
