@@ -65,11 +65,12 @@ data class StartupPlan(val stop: Boolean, val restore: Boolean, val homeEnabled:
  * disque que quelques secondes après le changement, une coupure de courant peut donc laisser les
  * composants en retard sur l'indicateur ; ils sont réalignés à chaque démarrage. Sans indicateur,
  * l'accueil de Kairo est toujours rendu (retrait ou remise en place interrompus). Retiré mais sans
- * autre accueil ([otherHomeAvailable], ignoré hors retrait) : remise en place, la box ne reste
- * jamais sans accueil.
+ * autre accueil ([otherHomeAvailable] faux, ignoré hors retrait) : remise en place, la box ne reste
+ * jamais sans accueil. [otherHomeAvailable] null (requête au PackageManager en échec) : on n'en
+ * conclut rien, Kairo reste retiré.
  */
-fun planStartup(withdrawn: Boolean, homeEnabled: Boolean, recoveryEnabled: Boolean, otherHomeAvailable: Boolean): StartupPlan = when {
-    withdrawn && otherHomeAvailable -> StartupPlan(
+fun planStartup(withdrawn: Boolean, homeEnabled: Boolean, recoveryEnabled: Boolean, otherHomeAvailable: Boolean?): StartupPlan = when {
+    withdrawn && otherHomeAvailable != false -> StartupPlan(
         stop = true, restore = false,
         homeEnabled = false.takeIf { homeEnabled },
         recoveryEnabled = true.takeIf { !recoveryEnabled },
@@ -82,13 +83,32 @@ fun planStartup(withdrawn: Boolean, homeEnabled: Boolean, recoveryEnabled: Boole
     )
 }
 
+/**
+ * Issue du démarrage une fois le [plan] appliqué ([homeApplied] : l'état voulu de l'accueil a pu
+ * être écrit). L'accueil ne peut pas être désactivé : remise en place ([restore]) ; si elle échoue
+ * aussi, Kairo reste retiré (un autre accueil existe). Plus d'autre accueil : remise en place,
+ * réessayée une fois, puis démarrage en mode sans échec quoi qu'il arrive.
+ */
+fun resolveStartup(plan: StartupPlan, homeApplied: Boolean, restore: () -> Boolean): StartupOutcome = when {
+    plan.stop && homeApplied -> StartupOutcome.Withdrawn
+    plan.stop -> if (restore()) StartupOutcome.Restored else StartupOutcome.Withdrawn
+    plan.restore -> {
+        restore() || restore()
+        StartupOutcome.Restored
+    }
+    else -> StartupOutcome.Normal
+}
+
 /** Issue de la vérification de démarrage. */
 enum class StartupOutcome {
     /** Rien de particulier : démarrage habituel. */
     Normal,
     /** Kairo reste retiré : le démarrage s'arrête là. */
     Withdrawn,
-    /** Kairo était retiré mais plus aucun autre accueil n'existe : il a repris l'accueil, mode sans échec. */
+    /**
+     * Kairo était retiré mais plus aucun autre accueil n'existe : il a repris l'accueil et reste en mode
+     * sans échec jusqu'à « Redémarrer Kairo normalement ».
+     */
     Restored,
 }
 
@@ -114,7 +134,7 @@ class HomeFallback(private val context: Context) {
             withdrawn = withdrawn,
             homeEnabled = isEnabled(HOME_ACTIVITY, enabledByDefault = true),
             recoveryEnabled = isEnabled(RECOVERY_ACTIVITY, enabledByDefault = false),
-            otherHomeAvailable = withdrawn && otherHomeAvailable(),
+            otherHomeAvailable = if (withdrawn) otherHomeAvailable() else false,
         )
         // Activations avant désactivations : il reste toujours une entrée vers Kairo.
         val changes = listOfNotNull(
@@ -126,13 +146,10 @@ class HomeFallback(private val context: Context) {
             val ok = runCatching { setEnabled(component, enabled) }.isSuccess
             if (component == HOME_ACTIVITY) homeApplied = ok
         }
-        when {
-            plan.stop && homeApplied -> StartupOutcome.Withdrawn
-            plan.stop || plan.restore -> {
-                restore()
-                StartupOutcome.Restored
-            }
-            else -> StartupOutcome.Normal
+        resolveStartup(plan, homeApplied, ::restore).also { outcome ->
+            // Remise en place automatique : le mode sans échec tient au-delà de ce process (restore()
+            // a effacé l'historique) ; « Redémarrer Kairo normalement » le lève.
+            if (outcome == StartupOutcome.Restored) runCatching { prefs.edit().putBoolean(KEY_FORCED_SAFE_MODE, true).commit() }
         }
     }.getOrElse { if (isWithdrawn()) StartupOutcome.Withdrawn else StartupOutcome.Normal }
 
@@ -148,7 +165,7 @@ class HomeFallback(private val context: Context) {
         // Les autres accueils (requête au PackageManager) ne sont cherchés qu'après un plantage du mode sans échec.
         val crashedInSafeMode = previousExitWasCrash && previousRunWasSafeMode
         crashedInSafeMode &&
-            shouldWithdrawFromHome(previousExitWasCrash, previousRunWasSafeMode, crashes, otherHomeAvailable()) &&
+            shouldWithdrawFromHome(previousExitWasCrash, previousRunWasSafeMode, crashes, otherHomeAvailable() == true) &&
             withdraw()
     }.getOrDefault(false)
 
@@ -178,10 +195,18 @@ class HomeFallback(private val context: Context) {
         if (forgetsSafeModeCrashes(safeMode, previousExitWasCrash)) resetCrashes()
     }
 
-    /** Accueil stable ou « Redémarrer Kairo normalement » : les plantages en mode sans échec sont oubliés. */
+    /** Mode sans échec imposé par une remise en place automatique (voir [StartupOutcome.Restored]). */
+    fun isSafeModeForced(): Boolean = runCatching { prefs.getBoolean(KEY_FORCED_SAFE_MODE, false) }.getOrDefault(false)
+
+    /**
+     * Accueil stable ou « Redémarrer Kairo normalement » : les plantages en mode sans échec sont
+     * oubliés, et le mode sans échec imposé par une remise en place automatique est levé.
+     */
     fun resetCrashes() {
         runCatching {
-            if (prefs.contains(KEY_SAFE_MODE_CRASHES)) prefs.edit().remove(KEY_SAFE_MODE_CRASHES).commit()
+            if (prefs.contains(KEY_SAFE_MODE_CRASHES) || prefs.contains(KEY_FORCED_SAFE_MODE)) {
+                prefs.edit().remove(KEY_SAFE_MODE_CRASHES).remove(KEY_FORCED_SAFE_MODE).commit()
+            }
         }
     }
 
@@ -216,13 +241,16 @@ class HomeFallback(private val context: Context) {
         return true
     }
 
-    /** Accueils activés de la box (requête visible grâce au bloc `<queries>` du manifeste). */
-    private fun otherHomeAvailable(): Boolean = runCatching {
+    /**
+     * Un autre accueil activé existe sur la box (requête visible grâce au bloc `<queries>` du
+     * manifeste) ; null si la requête a échoué : on ne sait pas.
+     */
+    private fun otherHomeAvailable(): Boolean? = runCatching {
         val homes = context.packageManager
             .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
             .map { HomeCandidate(it.activityInfo.packageName, it.activityInfo.name) }
         hasOtherHome(homes, context.packageName)
-    }.getOrDefault(false)
+    }.getOrNull()
 
     /** État réel du composant ; « par défaut » = celui du manifeste. */
     private fun isEnabled(className: String, enabledByDefault: Boolean): Boolean =
@@ -245,6 +273,7 @@ class HomeFallback(private val context: Context) {
         const val KEY_LAST_RUN_SAFE_MODE = "last_run_safe_mode"
         const val KEY_SAFE_MODE_CRASHES = "safe_mode_crashes"
         const val KEY_SEEN_EXITS = "seen_exits"
+        const val KEY_FORCED_SAFE_MODE = "forced_safe_mode"
         const val RECOVERY_ACTIVITY = "com.vantaflow.kairo.system.RecoveryActivity"
         val HOME_ACTIVITY: String = HomeActivity::class.java.name
     }

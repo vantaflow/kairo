@@ -147,6 +147,48 @@ class HomeFallbackTest {
         assertFalse(forgetsSafeModeCrashes(safeMode = true, previousExitWasCrash = true))
     }
 
+    @Test
+    fun withdrawnWithFailedHomeQueryStaysWithdrawn() {
+        // Requête des accueils en échec : rien ne dit que l'autre accueil a disparu.
+        assertEquals(
+            StartupPlan(stop = true, restore = false, homeEnabled = false, recoveryEnabled = null),
+            planStartup(withdrawn = true, homeEnabled = true, recoveryEnabled = true, otherHomeAvailable = null),
+        )
+    }
+
+    private val stay = StartupPlan(stop = true, restore = false, homeEnabled = null, recoveryEnabled = null)
+    private val giveBack = StartupPlan(stop = false, restore = true, homeEnabled = null, recoveryEnabled = null)
+    private val nothing = StartupPlan(stop = false, restore = false, homeEnabled = null, recoveryEnabled = null)
+
+    @Test
+    fun withdrawnAndHomeDisabledStaysWithdrawnWithoutRestoring() {
+        var calls = 0
+        assertEquals(StartupOutcome.Withdrawn, resolveStartup(stay, homeApplied = true) { calls++; true })
+        assertEquals(0, calls)
+    }
+
+    @Test
+    fun homeCannotBeDisabledRestoresOrStaysWithdrawnIfRestoreFails() {
+        assertEquals(StartupOutcome.Restored, resolveStartup(stay, homeApplied = false) { true })
+        // Un autre accueil existe : Kairo reste retiré plutôt que de prétendre avoir repris l'accueil.
+        assertEquals(StartupOutcome.Withdrawn, resolveStartup(stay, homeApplied = false) { false })
+    }
+
+    @Test
+    fun noOtherHomeRetriesRestoreOnceThenStartsInSafeMode() {
+        var calls = 0
+        assertEquals(StartupOutcome.Restored, resolveStartup(giveBack, homeApplied = true) { calls++; false })
+        assertEquals(2, calls)
+        calls = 0
+        assertEquals(StartupOutcome.Restored, resolveStartup(giveBack, homeApplied = true) { calls++; true })
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun notWithdrawnIsNormal() {
+        assertEquals(StartupOutcome.Normal, resolveStartup(nothing, homeApplied = true) { error("pas de remise en place") })
+    }
+
     private companion object {
         const val KAIRO = "com.vantaflow.kairo"
     }
