@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,12 +35,17 @@ import com.vantaflow.kairo.ui.theme.displayName
 import androidx.compose.ui.res.stringResource
 import com.vantaflow.kairo.R
 
-/** Choix du thème visuel. */
+/** Style d'accueil (et contenus de sa bannière), puis choix du thème visuel. */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun ThemeSettings(vm: SettingsViewModel) {
     val current by vm.themeId.collectAsStateWithLifecycle()
+    val homeStyle by vm.homeStyle.collectAsStateWithLifecycle()
     Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SettingLabel(stringResource(R.string.home_style_title))
+        HomeStylePicker(homeStyle, vm::setHomeStyle, Modifier.fillMaxWidth())
+        BannerSourcesSettings(vm)
+        SettingLabel(stringResource(R.string.home_style_colors))
         // Thème personnalisé : activé en modifiant une option plus bas (pas de 7e choix, la rangée tient sur une ligne).
         ChoiceRow {
             Themes.forEach { theme ->

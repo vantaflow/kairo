@@ -83,6 +83,7 @@ import com.vantaflow.kairo.R
 import com.vantaflow.kairo.TvHomeApp
 import com.vantaflow.kairo.reco.EPG_PERMISSIONS
 import com.vantaflow.kairo.settings.GOOGLE_TV_LAUNCHER
+import com.vantaflow.kairo.settings.HomeStylePicker
 import com.vantaflow.kairo.settings.dreamEnabled
 import com.vantaflow.kairo.settings.isDefaultHome
 import com.vantaflow.kairo.settings.keyServiceRunning
@@ -93,6 +94,7 @@ import com.vantaflow.kairo.ui.TvIcon
 import com.vantaflow.kairo.ui.TvIconImage
 import com.vantaflow.kairo.ui.theme.AccentColor
 import com.vantaflow.kairo.ui.theme.Background
+import com.vantaflow.kairo.ui.theme.HomeStyle
 import com.vantaflow.kairo.ui.theme.OnBackground
 import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.ui.theme.Themes
@@ -125,6 +127,7 @@ private sealed interface Page {
     data object Welcome : Page
     class Setup(val step: Step) : Page
     data object Theme : Page
+    data object Style : Page
     data object OurApps : Page
     data object Done : Page
 }
@@ -132,7 +135,7 @@ private sealed interface Page {
 /**
  * Accueil animé du premier lancement, en plein écran : bienvenue, uniquement les étapes qui
  * manquent sur cette box (chacune se coche et passe seule à la suivante une fois faite), choix
- * du thème appliqué en direct, puis l'écran final. Retour revient à la page précédente.
+ * du thème puis du style d'accueil appliqués en direct, puis l'écran final. Retour revient à la page précédente.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -189,7 +192,7 @@ fun Onboarding(onFinish: () -> Unit) {
         )
         val store = (context.applicationContext as TvHomeApp).container.ourApps
         val ourApps = if (com.vantaflow.kairo.apps.OurApps.any { !store.isInstalled(it) }) listOf(Page.OurApps) else emptyList()
-        listOf(Page.Welcome) + steps.filterNot { it.isDone() }.map { Page.Setup(it) } + ourApps + Page.Theme + Page.Done
+        listOf(Page.Welcome) + steps.filterNot { it.isDone() }.map { Page.Setup(it) } + ourApps + Page.Theme + Page.Style + Page.Done
     }
     var index by rememberSaveable { mutableIntStateOf(0) }
     var forward by remember { mutableStateOf(true) }
@@ -235,6 +238,7 @@ fun Onboarding(onFinish: () -> Unit) {
                 Page.Welcome -> WelcomePage(onStart = { go(1) })
                 is Page.Setup -> SetupPage(page.step, refresh, onNext = { go(1) })
                 Page.Theme -> ThemePage(onNext = { go(1) })
+                Page.Style -> StylePage(onNext = { go(1) })
                 Page.OurApps -> OurAppsPage(refresh, onNext = { go(1) })
                 Page.Done -> DonePage(onFinish)
             }
@@ -539,6 +543,31 @@ private fun ThemePage(onNext: () -> Unit) {
         }
         Spacer(Modifier.height(44.dp))
         Button(onClick = onNext, modifier = Modifier.reveal(3)) { Text(stringResource(R.string.onboarding_continue), fontSize = 17.sp) }
+    }
+}
+
+/** Choix du style d'accueil : enregistré tout de suite, l'accueil derrière change avec lui. */
+@Composable
+private fun StylePage(onNext: () -> Unit) {
+    val container = (LocalContext.current.applicationContext as TvHomeApp).container
+    val scope = rememberCoroutineScope()
+    val focus = rememberInitialFocus(Unit)
+    val current by container.prefs.homeStyle.collectAsStateWithLifecycle(HomeStyle.Classic)
+    Column(
+        Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(stringResource(R.string.home_style_title), fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = OnBackground, modifier = Modifier.reveal(0))
+        Spacer(Modifier.height(40.dp))
+        HomeStylePicker(
+            current = current,
+            onPick = { style -> scope.launch { container.prefs.setHomeStyle(style) } },
+            // Le focus initial va à la première carte du sélecteur.
+            modifier = Modifier.width(620.dp).reveal(1).focusRequester(focus),
+        )
+        Spacer(Modifier.height(44.dp))
+        Button(onClick = onNext, modifier = Modifier.reveal(2)) { Text(stringResource(R.string.onboarding_continue), fontSize = 17.sp) }
     }
 }
 

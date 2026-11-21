@@ -232,4 +232,14 @@
     </plurals>
     <string name="settings_wallpaper_gradients">Degradados</string>
     <string name="settings_wallpaper_solids">Colores lisos</string>
+    <!-- Style d'accueil (Réglages › Thème et assistant) ; « Ma liste » = home_my_list -->
+    <string name="home_style_title">Estilo de inicio</string>
+    <string name="home_style_colors">Colores</string>
+    <string name="home_style_classic">Clásico</string>
+    <string name="home_style_classic_desc">Filas, sin banner</string>
+    <string name="home_style_cinema">Cine</string>
+    <string name="home_style_cinema_desc">Un gran banner de películas y series arriba</string>
+    <string name="banner_sources_title">Contenido del banner</string>
+    <string name="banner_source_watch_next">Seguir viendo</string>
+    <string name="banner_source_catalog">Películas y series del momento</string>
 </resources>

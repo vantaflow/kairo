@@ -3,8 +3,10 @@ package com.vantaflow.kairo.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vantaflow.kairo.clock.TrustedClock
+import com.vantaflow.kairo.ui.theme.BannerSource
 import com.vantaflow.kairo.ui.theme.CUSTOM_THEME_ID
 import com.vantaflow.kairo.ui.theme.HomeLayout
+import com.vantaflow.kairo.ui.theme.HomeStyle
 import com.vantaflow.kairo.ui.theme.LauncherTheme
 import com.vantaflow.kairo.ui.theme.Themes
 import com.vantaflow.kairo.reco.Channel
@@ -47,6 +49,23 @@ class SettingsViewModel(
 
     fun setThemeId(id: String) {
         viewModelScope.launch { prefs.setThemeId(id) }
+    }
+
+    val homeStyle: StateFlow<HomeStyle> =
+        prefs.homeStyle.stateIn(viewModelScope, SharingStarted.Eagerly, HomeStyle.Classic)
+    val bannerSources: StateFlow<Set<BannerSource>> =
+        prefs.bannerSources.stateIn(viewModelScope, SharingStarted.Eagerly, BannerSource.entries.toSet())
+
+    fun setHomeStyle(style: HomeStyle) {
+        viewModelScope.launch { prefs.setHomeStyle(style) }
+    }
+
+    /** Ajoute ou retire une origine des contenus de la bannière (relue dans les préférences). */
+    fun setBannerSource(source: BannerSource, enabled: Boolean) {
+        viewModelScope.launch {
+            val current = prefs.bannerSources.first()
+            prefs.setBannerSources(if (enabled) current + source else current - source)
+        }
     }
 
     fun setWeatherEnabled(value: Boolean) {

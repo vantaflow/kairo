@@ -244,4 +244,14 @@
     </plurals>
     <string name="settings_wallpaper_gradients">تدرّجات</string>
     <string name="settings_wallpaper_solids">ألوان سادة</string>
+    <!-- Style d'accueil (Réglages › Thème et assistant) ; « Ma liste » = home_my_list -->
+    <string name="home_style_title">نمط الشاشة الرئيسية</string>
+    <string name="home_style_colors">الألوان</string>
+    <string name="home_style_classic">كلاسيكي</string>
+    <string name="home_style_classic_desc">صفوف بدون لافتة</string>
+    <string name="home_style_cinema">سينما</string>
+    <string name="home_style_cinema_desc">لافتة كبيرة للأفلام والمسلسلات في الأعلى</string>
+    <string name="banner_sources_title">محتوى اللافتة</string>
+    <string name="banner_source_watch_next">متابعة المشاهدة</string>
+    <string name="banner_source_catalog">الأفلام والمسلسلات الرائجة</string>
 </resources>
