@@ -88,6 +88,9 @@ import kotlinx.coroutines.flow.combine
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.themeFor
 
+/** Thème, affichage et style d'accueil, lus ensemble avant le premier dessin. */
+private data class Look(val theme: com.vantaflow.kairo.ui.theme.LauncherTheme, val layout: com.vantaflow.kairo.ui.theme.HomeLayout, val style: HomeStyle)
+
 /** Réglages ouverts au moment d'une recréation (changement de langue). */
 private const val STATE_SETTINGS = "kairo.settings"
 
@@ -226,20 +229,21 @@ class HomeActivity : ComponentActivity() {
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback, Handler(mainLooper))
         setContent {
             DesignScale {
-            // Rien n'est dessiné (fond uni) tant que le thème et l'affichage ne sont pas lus : pas de flash.
+            // Rien n'est dessiné (fond uni) tant que le thème, l'affichage et le style d'accueil ne sont
+            // pas lus : pas de flash, ni d'accueil Classique montré une image avant le style choisi.
             val look by remember {
-                combine(container.prefs.themeId, container.prefs.customTheme, container.prefs.homeLayout) { id, custom, layout ->
-                    themeFor(id, custom) to layout
+                combine(container.prefs.themeId, container.prefs.customTheme, container.prefs.homeLayout, container.prefs.homeStyle) { id, custom, layout, style ->
+                    Look(themeFor(id, custom), layout, style)
                 }
             }.collectAsStateWithLifecycle(null)
             val current = look
             if (current == null) {
                 Box(Modifier.fillMaxSize().background(Background))
             } else {
-                TvHomeTheme(current.first) {
-                    CompositionLocalProvider(LocalHomeLayout provides current.second) {
+                TvHomeTheme(current.theme) {
+                    CompositionLocalProvider(LocalHomeLayout provides current.layout) {
                         Box(Modifier.fillMaxSize()) {
-                            Root()
+                            Root(current.style)
                             if (onboarding) {
                                 Onboarding(onFinish = {
                                     onboarding = false
@@ -342,8 +346,9 @@ class HomeActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    /** [homeStyle] : style d'accueil du profil, déjà lu (jamais une valeur provisoire). */
     @Composable
-    private fun Root() {
+    private fun Root(homeStyle: HomeStyle) {
         val launch: (AppInfo) -> Unit = { homeViewModel.launch(it.packageName) }
 
         // Sur l'accueil, Retour ne doit jamais fermer le launcher.
@@ -389,7 +394,6 @@ class HomeActivity : ComponentActivity() {
                 val radioName = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
                     .let { r -> r.station?.name?.takeIf { r.active } }
                 val media by com.vantaflow.kairo.media.NowPlaying.state.collectAsStateWithLifecycle()
-                val homeStyle by container.prefs.homeStyle.collectAsStateWithLifecycle(HomeStyle.Classic)
                 HomeHost(
                     style = homeStyle,
                     data = HomeData(
