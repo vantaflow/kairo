@@ -356,6 +356,8 @@ class HomeActivity : ComponentActivity() {
         }
         val profile by container.prefs.currentProfile.collectAsStateWithLifecycle(DefaultProfile)
         val myList by container.prefs.myList.collectAsStateWithLifecycle(emptyList())
+        // Sources de la bannière Cinéma ; vide tant qu'elles ne sont pas lues (bannière apparue après coup).
+        val bannerSources by container.prefs.bannerSources.collectAsStateWithLifecycle(emptySet())
         val programClick: (Program) -> Unit = click@{ program ->
             // Carte du catalogue : fiche dans Kairo (où le regarder, Ma liste).
             program.intentUri?.takeIf { it.startsWith(CATALOG_SCHEME) }?.let { uri ->
@@ -432,6 +434,11 @@ class HomeActivity : ComponentActivity() {
                         myList = if (profile.kids) emptyList() else remember(myList, homeTab) {
                             myList.filter { homeTab.mediaType().let { t -> t == null || it.type == t } }.map { it.toProgram() }
                         },
+                        // Bannière du style Cinéma : pas de bannière pour le profil enfant (comme les recommandations).
+                        banner = if (profile.kids) emptyList() else remember(homeTab, bannerSources, myList, state.watchNext, catalogRows) {
+                            com.vantaflow.kairo.home.bannerItems(homeTab, bannerSources, myList, state.watchNext, catalogRows)
+                        },
+                        myListIds = if (profile.kids) emptySet() else remember(myList) { myList.map(::catalogUri).toSet() },
                     ),
                     // Références de méthode retenues : même rappel d'une recomposition à l'autre.
                     actions = HomeActions(
@@ -449,6 +456,7 @@ class HomeActivity : ComponentActivity() {
                         onMoveFavorite = remember { appsViewModel::moveFavoriteBy },
                         onMoveDone = { movingFavorite = null },
                         onTab = { homeTab = it },
+                        onToggleMyList = remember<(CatalogItem) -> Unit> { { item -> lifecycleScope.launch { container.prefs.toggleMyList(item) } } },
                     ),
                     focus = homeFocus,
                 )

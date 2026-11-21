@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import com.vantaflow.kairo.apps.AppInfo
 import com.vantaflow.kairo.apps.InstallState
 import com.vantaflow.kairo.apps.OurApp
+import com.vantaflow.kairo.catalog.CatalogItem
 import com.vantaflow.kairo.network.NetState
 import com.vantaflow.kairo.reco.Channel
 import com.vantaflow.kairo.reco.LiveChannel
@@ -44,6 +45,10 @@ data class HomeData(
     /** Rangées du catalogue (TMDB) déjà choisies pour l'onglet, et « Ma liste ». */
     val catalog: List<Channel> = emptyList(),
     val myList: List<Program> = emptyList(),
+    /** Contenus de la bannière du style Cinéma (vide = pas de bannière). */
+    val banner: List<BannerItem> = emptyList(),
+    /** Adresses ([com.vantaflow.kairo.catalog.catalogUri]) des contenus de Ma liste. */
+    val myListIds: Set<String> = emptySet(),
 )
 
 /** Ce que l'accueil peut demander, quel que soit son style. Égal tant que les mêmes rappels sont passés. */
@@ -64,6 +69,8 @@ data class HomeActions(
     val onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
     val onMoveDone: () -> Unit = {},
     val onTab: (HomeTab) -> Unit = {},
+    /** Ajout ou retrait de Ma liste (bannière du style Cinéma). */
+    val onToggleMyList: (CatalogItem) -> Unit = {},
 )
 
 /** Accueil « Classique » : les rangées, sans bannière. */
@@ -77,7 +84,6 @@ fun ClassicHome(data: HomeData, actions: HomeActions, focus: HomeFocus) {
 fun HomeHost(style: HomeStyle, data: HomeData, actions: HomeActions, focus: HomeFocus) {
     when (style) {
         HomeStyle.Classic -> ClassicHome(data, actions, focus)
-        // Pas encore de bannière : le style « Cinéma » montre l'accueil classique.
-        HomeStyle.Cinema -> ClassicHome(data, actions, focus)
+        HomeStyle.Cinema -> CinemaHome(data, actions, focus)
     }
 }

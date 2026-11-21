@@ -53,6 +53,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,12 +93,18 @@ fun HomeRowsScreen(
     banner: (@Composable (firstElement: FocusRequester) -> Unit)? = null,
     /** Dessiné entre le fond « héros » et le contenu (null = rien). */
     backdrop: (@Composable () -> Unit)? = null,
+    /** Contenu montré par la bannière focalisée (null sans focus) : un contenu À suivre remplit le fond « héros ». */
+    bannerCurrent: State<BannerItem?>? = null,
 ) {
     val forYou = data.tab == null || data.tab == HomeTab.ForYou
     val tabRequesters = remember { HomeTab.entries.associateWith { FocusRequester() } }
     val showApps = forYou || data.tab == HomeTab.Apps
-    // Premier élément focalisable de la bannière (pas encore relié au reste du focus).
+    // Premier élément focalisable de la bannière : il reçoit le focus à la place du 1er favori.
     val bannerFocus = remember { FocusRequester() }
+    val bannerShown = banner != null
+    // Bannière déjà affichée : si elle disparaît avec le focus, il peut revenir aux onglets.
+    var bannerSeen by remember { mutableStateOf(false) }
+    SideEffect { if (bannerShown) bannerSeen = true }
     val requesters = remember(data.state.favorites.size) { List(data.state.favorites.size) { FocusRequester() } }
     val rowState = rememberRowState()
     val columnState = rememberScrollState()
@@ -105,18 +114,34 @@ fun HomeRowsScreen(
     // En arabe la rangée est en miroir : ← déplace le favori vers la fin de la liste.
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
-    // Filet : la tuile sélectionnée a disparu (appli masquée ou désinstallée dans n'importe quelle rangée)
-    // et plus rien n'a le focus : il revient sur les favoris au lieu de rester perdu.
+    // Filet : la tuile sélectionnée a disparu (appli masquée ou désinstallée dans n'importe quelle rangée,
+    // bannière vidée) et plus rien n'a le focus : il revient sur la bannière si elle l'avait et est
+    // encore là, sinon sur les favoris (sur l'onglet affiché s'il n'y en a pas), au lieu de rester perdu.
+    // Il n'agit que sans focus : jamais il ne le prend à la bannière.
     var hasFocus by remember { mutableStateOf(true) }
     val lostFocusView = LocalView.current
-    LaunchedEffect(data.state.favorites.size, data.otherApps.size, data.recentApps.size) {
+    LaunchedEffect(data.state.favorites.size, data.otherApps.size, data.recentApps.size, bannerShown) {
         for (attempt in 1..120) {
             if (lostFocusView.hasWindowFocus()) break
             withFrameNanos { }
         }
         repeat(3) { withFrameNanos { } }
-        if (!hasFocus && focus.followFavorite == null && requesters.isNotEmpty()) {
-            runCatching { requesters[focus.index.coerceIn(0, requesters.lastIndex)].requestFocus() }
+        if (hasFocus || focus.followFavorite != null) return@LaunchedEffect
+        val target = when {
+            bannerShown && focus.onBanner -> bannerFocus
+            requesters.isNotEmpty() && (showApps || !bannerSeen) -> requesters[focus.index.coerceIn(0, requesters.lastIndex)]
+            bannerSeen && data.tab != null -> tabRequesters.getValue(data.tab)
+            else -> null
+        }
+        if (target != null) runCatching { target.requestFocus() }
+    }
+
+    // Contenu À suivre montré par la bannière : fond « héros » flouté habituel ; contenu du catalogue :
+    // son image nette est dessinée par le fond du style, le fond « héros » reprend le fond d'écran.
+    // Bannière quittée (null) : la tuile qui reçoit le focus règle elle-même le fond.
+    if (bannerCurrent != null) LaunchedEffect(bannerCurrent) {
+        snapshotFlow { bannerCurrent.value }.collect { item ->
+            if (item != null) heroProgram.value = item.program.takeIf { item.catalog == null }
         }
     }
 
@@ -140,11 +165,13 @@ fun HomeRowsScreen(
                 modifier = Modifier
                     .padding(horizontal = 72.dp)
                     .onFocusChanged { if (it.hasFocus) heroProgram.value = null }
-                    // Bas depuis l'en-tête : retour sur le favori quitté, pas sur le plus proche à l'écran.
+                    // Bas depuis l'en-tête : la bannière si elle est affichée, sinon retour sur le favori
+                    // quitté, pas sur le plus proche à l'écran.
                     .focusProperties {
                         exit = { direction ->
                             when {
                                 direction != FocusDirection.Down -> FocusRequester.Default
+                                bannerShown -> bannerFocus
                                 showApps && requesters.isNotEmpty() -> requesters[focus.index.coerceIn(0, requesters.lastIndex)]
                                 else -> FocusRequester.Default
                             }
@@ -171,14 +198,17 @@ fun HomeRowsScreen(
             val rowMargin = with(LocalDensity.current) { 14.dp.toPx() }
             val scrollScope = rememberCoroutineScope()
             var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
-            fun Modifier.alignRowOnFocus(): Modifier = composed {
+            // La bannière ([isBanner]) se cale tout en haut, entière sous l'en-tête ; chaque rangée note
+            // aussi si le focus est sur la bannière ou dans les rangées (pour le lui rendre au retour).
+            fun Modifier.alignRowOnFocus(isBanner: Boolean = false): Modifier = composed {
                 var row by remember { mutableStateOf<LayoutCoordinates?>(null) }
                 onPlaced { row = it }.onFocusChanged { state ->
+                    if (state.hasFocus) focus.onBanner = isBanner
                     val r = row ?: return@onFocusChanged
                     val v = viewport ?: return@onFocusChanged
                     if (!state.hasFocus || !r.isAttached || !v.isAttached) return@onFocusChanged
                     val delta = r.positionInRoot().y - v.positionInRoot().y - rowMargin
-                    val target = (columnState.value + delta).toInt().coerceIn(0, columnState.maxValue)
+                    val target = if (isBanner) 0 else (columnState.value + delta).toInt().coerceIn(0, columnState.maxValue)
                     // Priorité haute : la demande de défilement automatique d'Android (qui arrive juste
                     // après et ne bouge rien) n'interrompt plus l'animation.
                     scrollScope.launch {
@@ -205,7 +235,25 @@ fun HomeRowsScreen(
                     .padding(top = 24.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                if (banner != null) key("banner") { banner(bannerFocus) }
+                if (banner != null) key("banner") {
+                    Box(
+                        Modifier
+                            .alignRowOnFocus(isBanner = true)
+                            .focusProperties {
+                                // Entrée par Haut depuis les rangées : toujours le bouton principal.
+                                enter = { bannerFocus }
+                                // Bas : le favori quitté, pas le plus proche à l'écran.
+                                exit = { direction ->
+                                    if (direction == FocusDirection.Down && showApps && requesters.isNotEmpty()) {
+                                        requesters[focus.index.coerceIn(0, requesters.lastIndex)]
+                                    } else {
+                                        FocusRequester.Default
+                                    }
+                                }
+                            }
+                            .focusGroup(),
+                    ) { banner(bannerFocus) }
+                }
                 if (showApps) key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                     Column(Modifier.alignRowOnFocus()) {
@@ -242,6 +290,8 @@ fun HomeRowsScreen(
                                         modifier = Modifier
                                             .testTag("favorite-$index")
                                             .focusRequester(requesters[index])
+                                            // Haut depuis un favori : la bannière si elle est affichée.
+                                            .focusProperties { if (bannerShown) up = bannerFocus }
                                             .onFocusChanged {
                                                 if (it.isFocused) {
                                                     focus.index = index
@@ -365,14 +415,18 @@ fun HomeRowsScreen(
 
     // Focus restauré à l'arrivée sur l'accueil, et ramené sur la 1re tuile par la touche Home.
     // Pas quand le nombre de favoris change (ajout / retrait par l'appui long) : le focus reste
-    // sur l'appli choisie au lieu de remonter aux favoris.
+    // sur l'appli choisie au lieu de remonter aux favoris. Bannière affichée : elle le reçoit à
+    // l'arrivée et après la touche Home, et le retrouve si elle l'avait ; pas quand elle apparaît
+    // après coup (catalogue chargé en retard), l'utilisateur étant déjà sur une tuile.
     LaunchedEffect(requesters.isNotEmpty(), focus.resetToken) {
-        if (requesters.isEmpty()) return@LaunchedEffect
-        val target = focus.index.coerceIn(0, requesters.lastIndex)
+        val toBanner = bannerShown && focus.onBanner
+        if (requesters.isEmpty() && !toBanner) return@LaunchedEffect
         columnState.scrollTo(0)
-        rowState.scrollToItem(target)
+        if (requesters.isNotEmpty()) rowState.scrollToItem(focus.index.coerceIn(0, requesters.lastIndex))
         withFrameNanos { }
-        runCatching { requesters[target].requestFocus() }
+        runCatching {
+            if (toBanner) bannerFocus.requestFocus() else requesters[focus.index.coerceIn(0, requesters.lastIndex)].requestFocus()
+        }
     }
 }
 

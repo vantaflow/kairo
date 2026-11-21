@@ -25,8 +25,15 @@ class HomeFocus {
 
     fun reset() {
         index = 0
+        onBanner = true
         resetToken++
     }
+
+    /**
+     * Le focus était sur la bannière (style Cinéma) plutôt que dans les rangées : [refocus] et le
+     * retour sur l'accueil l'y ramènent si elle est affichée ; [reset] et le premier affichage aussi.
+     */
+    var onBanner = true
 
     /** Demande de focus sur les onglets (la carte focalisée a disparu, ex. retirée de Ma liste). */
     var tabsToken by mutableIntStateOf(0)
