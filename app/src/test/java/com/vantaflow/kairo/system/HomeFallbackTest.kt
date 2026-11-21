@@ -72,6 +72,73 @@ class HomeFallbackTest {
         assertFalse(hasOtherHome(homes, KAIRO))
     }
 
+    // Démarrage : l'indicateur de retrait fait foi, l'état réel des composants est réaligné dessus.
+
+    @Test
+    fun withdrawnAndConsistentStaysWithdrawn() {
+        assertEquals(
+            StartupPlan(stop = true, restore = false, homeEnabled = null, recoveryEnabled = null),
+            planStartup(withdrawn = true, homeEnabled = false, recoveryEnabled = true, otherHomeAvailable = true),
+        )
+    }
+
+    @Test
+    fun withdrawnButComponentsNotWrittenReappliesThem() {
+        // Coupure de courant juste après le retrait : l'état des composants n'était pas encore sur disque.
+        assertEquals(
+            StartupPlan(stop = true, restore = false, homeEnabled = false, recoveryEnabled = true),
+            planStartup(withdrawn = true, homeEnabled = true, recoveryEnabled = false, otherHomeAvailable = true),
+        )
+        assertEquals(
+            StartupPlan(stop = true, restore = false, homeEnabled = false, recoveryEnabled = null),
+            planStartup(withdrawn = true, homeEnabled = true, recoveryEnabled = true, otherHomeAvailable = true),
+        )
+        assertEquals(
+            StartupPlan(stop = true, restore = false, homeEnabled = null, recoveryEnabled = true),
+            planStartup(withdrawn = true, homeEnabled = false, recoveryEnabled = false, otherHomeAvailable = true),
+        )
+    }
+
+    @Test
+    fun withdrawnWithoutAnotherHomeRestoresWhateverTheComponents() {
+        // L'autre accueil a disparu après le retrait : Kairo reprend l'accueil.
+        for (home in listOf(true, false)) for (recovery in listOf(true, false)) {
+            assertEquals(
+                StartupPlan(stop = false, restore = true, homeEnabled = null, recoveryEnabled = null),
+                planStartup(withdrawn = true, homeEnabled = home, recoveryEnabled = recovery, otherHomeAvailable = false),
+            )
+        }
+    }
+
+    @Test
+    fun notWithdrawnAndConsistentChangesNothing() {
+        for (other in listOf(true, false)) {
+            assertEquals(
+                StartupPlan(stop = false, restore = false, homeEnabled = null, recoveryEnabled = null),
+                planStartup(withdrawn = false, homeEnabled = true, recoveryEnabled = false, otherHomeAvailable = other),
+            )
+        }
+    }
+
+    @Test
+    fun notWithdrawnButHomeDisabledGivesKairoItsHomeBack() {
+        // Remise en place ou retrait interrompus : sans indicateur, l'accueil de Kairo est rendu.
+        for (other in listOf(true, false)) {
+            assertEquals(
+                StartupPlan(stop = false, restore = false, homeEnabled = true, recoveryEnabled = false),
+                planStartup(withdrawn = false, homeEnabled = false, recoveryEnabled = true, otherHomeAvailable = other),
+            )
+            assertEquals(
+                StartupPlan(stop = false, restore = false, homeEnabled = true, recoveryEnabled = null),
+                planStartup(withdrawn = false, homeEnabled = false, recoveryEnabled = false, otherHomeAvailable = other),
+            )
+            assertEquals(
+                StartupPlan(stop = false, restore = false, homeEnabled = null, recoveryEnabled = false),
+                planStartup(withdrawn = false, homeEnabled = true, recoveryEnabled = true, otherHomeAvailable = other),
+            )
+        }
+    }
+
     private companion object {
         const val KAIRO = "com.vantaflow.kairo"
     }

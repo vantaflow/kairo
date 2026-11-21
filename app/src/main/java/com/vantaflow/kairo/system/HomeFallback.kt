@@ -47,6 +47,46 @@ fun hasOtherHome(homes: List<HomeCandidate>, ownPackage: String): Boolean = home
 }
 
 /**
+ * Ce que fait un démarrage d'après l'indicateur de retrait et l'état réel des composants.
+ * [stop] : Kairo reste retiré, le démarrage s'arrête là. [restore] : retiré mais plus aucun autre
+ * accueil, Kairo reprend l'accueil (puis démarre en mode sans échec). [homeEnabled] et
+ * [recoveryEnabled] : état à réappliquer au composant, null s'il est déjà bon.
+ */
+data class StartupPlan(val stop: Boolean, val restore: Boolean, val homeEnabled: Boolean?, val recoveryEnabled: Boolean?)
+
+/**
+ * Plan de démarrage. L'indicateur de retrait fait foi : Android n'écrit l'état des composants sur
+ * disque que quelques secondes après le changement, une coupure de courant peut donc laisser les
+ * composants en retard sur l'indicateur ; ils sont réalignés à chaque démarrage. Sans indicateur,
+ * l'accueil de Kairo est toujours rendu (retrait ou remise en place interrompus). Retiré mais sans
+ * autre accueil ([otherHomeAvailable], ignoré hors retrait) : remise en place, la box ne reste
+ * jamais sans accueil.
+ */
+fun planStartup(withdrawn: Boolean, homeEnabled: Boolean, recoveryEnabled: Boolean, otherHomeAvailable: Boolean): StartupPlan = when {
+    withdrawn && otherHomeAvailable -> StartupPlan(
+        stop = true, restore = false,
+        homeEnabled = false.takeIf { homeEnabled },
+        recoveryEnabled = true.takeIf { !recoveryEnabled },
+    )
+    withdrawn -> StartupPlan(stop = false, restore = true, homeEnabled = null, recoveryEnabled = null)
+    else -> StartupPlan(
+        stop = false, restore = false,
+        homeEnabled = true.takeIf { !homeEnabled },
+        recoveryEnabled = false.takeIf { recoveryEnabled },
+    )
+}
+
+/** Issue de la vérification de démarrage. */
+enum class StartupOutcome {
+    /** Rien de particulier : démarrage habituel. */
+    Normal,
+    /** Kairo reste retiré : le démarrage s'arrête là. */
+    Withdrawn,
+    /** Kairo était retiré mais plus aucun autre accueil n'existe : il a repris l'accueil, mode sans échec. */
+    Restored,
+}
+
+/**
  * Façade Android du dernier filet. N'utilise que les `SharedPreferences` [CRASH_GUARD_PREFS] et le
  * `PackageManager` ; chaque appel est protégé et ne lève jamais d'exception (c'est le dernier recours).
  */
@@ -55,6 +95,33 @@ class HomeFallback(private val context: Context) {
 
     /** Kairo s'est retiré de l'accueil : rien d'autre ne doit tourner tant que l'utilisateur ne l'a pas remis. */
     fun isWithdrawn(): Boolean = runCatching { prefs.getBoolean(KEY_WITHDRAWN, false) }.getOrDefault(false)
+
+    /**
+     * À chaque démarrage, en tout premier : réaligne les composants sur l'indicateur de retrait (voir
+     * [planStartup]), à chaque fois, sans rien supposer de ce qui a été écrit avant une coupure.
+     * Si l'accueil de Kairo ne peut pas être désactivé, Kairo ne reste pas retiré (l'accueil, encore
+     * actif, se relancerait sans fin) : il reprend l'accueil.
+     */
+    fun repairAtStartup(): StartupOutcome = runCatching {
+        val withdrawn = prefs.getBoolean(KEY_WITHDRAWN, false)
+        val plan = planStartup(
+            withdrawn = withdrawn,
+            homeEnabled = isEnabled(HOME_ACTIVITY, enabledByDefault = true),
+            recoveryEnabled = isEnabled(RECOVERY_ACTIVITY, enabledByDefault = false),
+            otherHomeAvailable = withdrawn && otherHomeAvailable(),
+        )
+        // La réparation d'abord : il y a toujours une entrée vers Kairo.
+        plan.recoveryEnabled?.let { enabled -> runCatching { setEnabled(RECOVERY_ACTIVITY, enabled) } }
+        val homeApplied = plan.homeEnabled?.let { enabled -> runCatching { setEnabled(HOME_ACTIVITY, enabled) }.isSuccess } ?: true
+        when {
+            plan.stop && homeApplied -> StartupOutcome.Withdrawn
+            plan.stop || plan.restore -> {
+                restore()
+                StartupOutcome.Restored
+            }
+            else -> StartupOutcome.Normal
+        }
+    }.getOrElse { if (isWithdrawn()) StartupOutcome.Withdrawn else StartupOutcome.Normal }
 
     /**
      * À chaque démarrage, avant tout le reste : compte un plantage du mode sans échec et retire Kairo de
@@ -93,7 +160,7 @@ class HomeFallback(private val context: Context) {
      * Faux si l'accueil n'a pas pu être réactivé (rien d'autre n'est alors changé).
      */
     fun restore(): Boolean = runCatching {
-        setEnabled(HomeActivity::class.java.name, true)
+        setEnabled(HOME_ACTIVITY, true)
         prefs.edit().clear().commit()
         runCatching { setEnabled(RECOVERY_ACTIVITY, false) }
         true
@@ -106,7 +173,7 @@ class HomeFallback(private val context: Context) {
      */
     private fun withdraw(): Boolean {
         runCatching { setEnabled(RECOVERY_ACTIVITY, true) }
-        val disabled = runCatching { setEnabled(HomeActivity::class.java.name, false) }.isSuccess
+        val disabled = runCatching { setEnabled(HOME_ACTIVITY, false) }.isSuccess
         if (!disabled) {
             runCatching { setEnabled(RECOVERY_ACTIVITY, false) }
             return false
@@ -123,6 +190,14 @@ class HomeFallback(private val context: Context) {
         hasOtherHome(homes, context.packageName)
     }.getOrDefault(false)
 
+    /** État réel du composant ; « par défaut » = celui du manifeste. */
+    private fun isEnabled(className: String, enabledByDefault: Boolean): Boolean =
+        when (context.packageManager.getComponentEnabledSetting(ComponentName(context.packageName, className))) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED -> true
+            PackageManager.COMPONENT_ENABLED_STATE_DEFAULT -> enabledByDefault
+            else -> false
+        }
+
     private fun setEnabled(className: String, enabled: Boolean) {
         context.packageManager.setComponentEnabledSetting(
             ComponentName(context.packageName, className),
@@ -136,5 +211,6 @@ class HomeFallback(private val context: Context) {
         const val KEY_LAST_RUN_SAFE_MODE = "last_run_safe_mode"
         const val KEY_SAFE_MODE_CRASHES = "safe_mode_crashes"
         const val RECOVERY_ACTIVITY = "com.vantaflow.kairo.system.RecoveryActivity"
+        val HOME_ACTIVITY: String = HomeActivity::class.java.name
     }
 }

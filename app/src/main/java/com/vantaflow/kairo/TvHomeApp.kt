@@ -217,10 +217,15 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         // Dernier filet, avant la langue, le conteneur et tout le reste : Kairo retiré de l'accueil ne
-        // démarre plus rien jusqu'à « Remettre Kairo comme accueil ».
-        if (homeFallback.isWithdrawn()) {
-            withdrawn = true
-            return
+        // démarre plus rien jusqu'à « Remettre Kairo comme accueil ». Les composants sont réalignés sur
+        // l'indicateur à chaque démarrage ; plus d'autre accueil : Kairo le reprend, en mode sans échec.
+        val restored = when (homeFallback.repairAtStartup()) {
+            com.vantaflow.kairo.system.StartupOutcome.Withdrawn -> {
+                withdrawn = true
+                return
+            }
+            com.vantaflow.kairo.system.StartupOutcome.Restored -> true
+            com.vantaflow.kairo.system.StartupOutcome.Normal -> false
         }
         // Seule une sortie précédente plantée compte : un arrêt pour manque de mémoire ou une mise à jour non.
         val previousExitWasCrash = com.vantaflow.kairo.system.isCrashExit(com.vantaflow.kairo.system.lastExitReason(this))
@@ -230,7 +235,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
             return
         }
         // Une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
-        safeMode = crashGuard.recordStart(previousExitWasCrash)
+        safeMode = crashGuard.recordStart(previousExitWasCrash) || restored
         homeFallback.recordRun(safeMode)
         // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)

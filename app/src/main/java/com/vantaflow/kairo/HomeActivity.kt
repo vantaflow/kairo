@@ -218,8 +218,12 @@ class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Kairo vient de se retirer de l'accueil (lancement déjà en route) : pas de conteneur, on s'efface.
+        // L'accueil est désactivé à nouveau : un état de composant perdu à une coupure le relancerait sans fin.
         if (withdrawn) {
+            val outcome = com.vantaflow.kairo.system.HomeFallback(this).repairAtStartup()
             finish()
+            // Kairo a repris l'accueil (plus d'autre accueil) : nouveau process, avec son conteneur.
+            if (outcome != com.vantaflow.kairo.system.StartupOutcome.Withdrawn) Runtime.getRuntime().exit(0)
             return
         }
         // Écran recréé par un changement de langue : le ViewModel survit, sa météo est encore dans l'ancienne.
