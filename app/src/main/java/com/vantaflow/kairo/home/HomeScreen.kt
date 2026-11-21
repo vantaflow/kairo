@@ -6,10 +6,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import com.vantaflow.kairo.R
-import com.vantaflow.kairo.reco.Channel
-import com.vantaflow.kairo.apps.InstallState
-import com.vantaflow.kairo.apps.OurApp
-import com.vantaflow.kairo.reco.LiveChannel
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.MutatePriority
@@ -72,7 +68,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.vantaflow.kairo.apps.AppInfo
-import com.vantaflow.kairo.network.NetState
 import com.vantaflow.kairo.reco.HeroBackground
 import com.vantaflow.kairo.reco.Program
 import com.vantaflow.kairo.reco.RecoRow
@@ -87,53 +82,21 @@ import com.vantaflow.kairo.wallpaper.WallpaperLayer
  */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun HomeScreen(
-    state: HomeUiState,
+fun HomeRowsScreen(
+    data: HomeData,
+    actions: HomeActions,
     focus: HomeFocus,
-    onLaunch: (AppInfo) -> Unit,
-    onFavoriteLongClick: (AppInfo) -> Unit,
-    onOpenApps: () -> Unit,
-    onOpenSettings: () -> Unit,
-    appLabels: Map<String, String> = emptyMap(),
-    onProgramClick: (Program) -> Unit = {},
-    netState: NetState? = null,
-    onOpenSearch: () -> Unit = {},
-    /** Applis hors favoris, pour la rangée « Toutes les applis » (vide = rangée masquée). */
-    otherApps: List<AppInfo> = emptyList(),
-    /** Dernières applis ouvertes, pour la rangée « Récentes » (vide = rangée masquée). */
-    recentApps: List<AppInfo> = emptyList(),
-    onOpenTv: (LiveChannel) -> Unit = {},
-    /** Nos applis pas encore installées (vide = rangée masquée) et leur état d'installation. */
-    ourApps: List<OurApp> = emptyList(),
-    ourAppStates: Map<String, InstallState> = emptyMap(),
-    onInstallOurApp: (OurApp) -> Unit = {},
-    /** Parmi [ourApps], celles déjà installées qui ont une mise à jour. */
-    ourAppUpdates: Set<String> = emptySet(),
-    /** Bouton « Outils » de l'en-tête (null = masqué). */
-    onOpenTools: (() -> Unit)? = null,
-    nowPlaying: String? = null,
-    onOpenNowPlaying: () -> Unit = {},
-    /** Rangée « Outils » sous « Toutes les applis » et l'état de chaque outil ; vide = masquée. */
-    tools: List<com.vantaflow.kairo.tools.Tool> = emptyList(),
-    toolSubtitles: Map<com.vantaflow.kairo.tools.Tool, String> = emptyMap(),
-    onOpenTool: (com.vantaflow.kairo.tools.Tool) -> Unit = {},
-    /** Favori en cours de déplacement : ← → le déplacent, OK ou Retour terminent. */
-    movingFavorite: String? = null,
-    onMoveFavorite: (String, Int) -> Unit = { _, _ -> },
-    onMoveDone: () -> Unit = {},
-    /** Onglet affiché (Pour vous, Films, Séries, Applis) ; null = pas d'onglets (catalogue indisponible). */
-    tab: HomeTab? = null,
-    /** Onglets affichés (Réglages › Personnaliser). */
-    tabsShown: List<HomeTab> = HomeTab.entries,
-    onTab: (HomeTab) -> Unit = {},
-    /** Rangées du catalogue (TMDB) déjà choisies pour l'onglet, et « Ma liste ». */
-    catalog: List<Channel> = emptyList(),
-    myList: List<Program> = emptyList(),
+    /** Bannière en tête de la colonne défilante ; reçoit le premier élément focalisable (null = pas de bannière). */
+    banner: (@Composable (firstElement: FocusRequester) -> Unit)? = null,
+    /** Dessiné entre le fond « héros » et le contenu (null = rien). */
+    backdrop: (@Composable () -> Unit)? = null,
 ) {
-    val forYou = tab == null || tab == HomeTab.ForYou
+    val forYou = data.tab == null || data.tab == HomeTab.ForYou
     val tabRequesters = remember { HomeTab.entries.associateWith { FocusRequester() } }
-    val showApps = forYou || tab == HomeTab.Apps
-    val requesters = remember(state.favorites.size) { List(state.favorites.size) { FocusRequester() } }
+    val showApps = forYou || data.tab == HomeTab.Apps
+    // Premier élément focalisable de la bannière (pas encore relié au reste du focus).
+    val bannerFocus = remember { FocusRequester() }
+    val requesters = remember(data.state.favorites.size) { List(data.state.favorites.size) { FocusRequester() } }
     val rowState = rememberRowState()
     val columnState = rememberScrollState()
     // Contenu sélectionné : lu seulement par le fond « héros », pour ne pas recomposer tout l'accueil.
@@ -146,7 +109,7 @@ fun HomeScreen(
     // et plus rien n'a le focus : il revient sur les favoris au lieu de rester perdu.
     var hasFocus by remember { mutableStateOf(true) }
     val lostFocusView = LocalView.current
-    LaunchedEffect(state.favorites.size, otherApps.size, recentApps.size) {
+    LaunchedEffect(data.state.favorites.size, data.otherApps.size, data.recentApps.size) {
         for (attempt in 1..120) {
             if (lostFocusView.hasWindowFocus()) break
             withFrameNanos { }
@@ -158,20 +121,21 @@ fun HomeScreen(
     }
 
     Box(Modifier.fillMaxSize().onFocusChanged { hasFocus = it.hasFocus }) {
-        HeroBackground(heroProgram, appLabels, layout.heroTransition) {
+        HeroBackground(heroProgram, data.appLabels, layout.heroTransition) {
             // Couche à part : le fond n'est pas redessiné à chaque mouvement du focus.
-            WallpaperLayer(state.wallpaper, Modifier.graphicsLayer(), imageUrl = state.wallpaperImageUrl)
+            WallpaperLayer(data.state.wallpaper, Modifier.graphicsLayer(), imageUrl = data.state.wallpaperImageUrl)
         }
+        backdrop?.invoke()
         Column(Modifier.fillMaxSize().padding(top = 40.dp)) {
             HeaderBar(
-                timeText = state.timeText,
-                dateText = state.dateText,
-                onOpenApps = onOpenApps,
-                onOpenSettings = onOpenSettings,
-                onOpenSearch = onOpenSearch,
-                onOpenTools = onOpenTools,
-                nowPlaying = nowPlaying,
-                onOpenNowPlaying = onOpenNowPlaying,
+                timeText = data.state.timeText,
+                dateText = data.state.dateText,
+                onOpenApps = actions.onOpenApps,
+                onOpenSettings = actions.onOpenSettings,
+                onOpenSearch = actions.onOpenSearch,
+                onOpenTools = actions.onOpenTools,
+                nowPlaying = data.nowPlaying,
+                onOpenNowPlaying = actions.onOpenNowPlaying,
                 // Sur l'en-tête (Applications, Réglages), le fond reprend le fond d'écran.
                 modifier = Modifier
                     .padding(horizontal = 72.dp)
@@ -187,11 +151,11 @@ fun HomeScreen(
                         }
                     }
                     .focusGroup(),
-                netState = netState,
-                tabs = tab?.let { current ->
+                netState = data.netState,
+                tabs = data.tab?.let { current ->
                     {
                         HomeTabs(
-                            current, tabsShown, onTab, tabRequesters,
+                            current, data.tabsShown, actions.onTab, tabRequesters,
                             Modifier.focusProperties { enter = { tabRequesters.getValue(current) } },
                         )
                     }
@@ -241,18 +205,19 @@ fun HomeScreen(
                     .padding(top = 24.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
+                if (banner != null) key("banner") { banner(bannerFocus) }
                 if (showApps) key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                     Column(Modifier.alignRowOnFocus()) {
-                        if (layout.showFavoritesLabel || movingFavorite != null) {
+                        if (layout.showFavoritesLabel || data.movingFavorite != null) {
                             Text(
-                                stringResource(if (movingFavorite != null) R.string.home_favorites_moving else R.string.home_favorites),
+                                stringResource(if (data.movingFavorite != null) R.string.home_favorites_moving else R.string.home_favorites),
                                 fontSize = 20.sp,
                                 color = OnBackground,
                                 modifier = Modifier.padding(start = 72.dp, bottom = 12.dp),
                             )
                         }
-                        if (state.favorites.isEmpty() && state.loaded) {
+                        if (data.state.favorites.isEmpty() && data.state.loaded) {
                             Text(
                                 stringResource(R.string.home_favorites_empty),
                                 fontSize = 16.sp,
@@ -266,13 +231,13 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(18.dp),
                             modifier = Modifier.testTag("favorites"),
                         ) {
-                            itemsIndexed(state.favorites, key = { _, app -> app.packageName }) { index, app ->
-                                val moving = app.packageName == movingFavorite
+                            itemsIndexed(data.state.favorites, key = { _, app -> app.packageName }) { index, app ->
+                                val moving = app.packageName == data.movingFavorite
                                 Box(contentAlignment = Alignment.Center) {
                                     AppTile(
                                         app = app,
-                                        onClick = { onLaunch(app) },
-                                        onLongClick = { onFavoriteLongClick(app) },
+                                        onClick = { actions.onLaunch(app) },
+                                        onLongClick = { actions.onFavoriteLongClick(app) },
                                         width = layout.tileWidthDp.dp,
                                         modifier = Modifier
                                             .testTag("favorite-$index")
@@ -283,7 +248,7 @@ fun HomeScreen(
                                                     heroProgram.value = null
                                                 }
                                             }
-                                            .then(if (moving) Modifier.moveKeys(app.packageName, rtl, onMoveFavorite, onMoveDone) else Modifier),
+                                            .then(if (moving) Modifier.moveKeys(app.packageName, rtl, actions.onMoveFavorite, actions.onMoveDone) else Modifier),
                                     )
                                     if (moving) {
                                         // Chevrons tournés vers l'extérieur (côté début / côté fin, inversés en arabe).
@@ -298,56 +263,56 @@ fun HomeScreen(
                 }
                 // Comme Google TV : « À suivre » sous les favoris, puis une rangée de recommandations,
                 // une rangée d'applis, et ainsi de suite (les deux restent proches du haut).
-                if (forYou && state.watchNext.isNotEmpty()) {
+                if (forYou && data.state.watchNext.isNotEmpty()) {
                     key("watch-next") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            RecoRow(stringResource(R.string.home_watch_next), state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
+                            RecoRow(stringResource(R.string.home_watch_next), data.state.watchNext, data.appLabels, actions.onProgramClick, Modifier.alignRowOnFocus()) {
                                 heroProgram.value = it
                             }
                         }
                     }
                 }
-                if (tab != HomeTab.Apps && myList.isNotEmpty()) {
+                if (data.tab != HomeTab.Apps && data.myList.isNotEmpty()) {
                     key("my-list") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            RecoRow(stringResource(R.string.home_my_list), myList, appLabels, onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
+                            RecoRow(stringResource(R.string.home_my_list), data.myList, data.appLabels, actions.onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
                         }
                     }
                 }
-                val recoSlots: List<Pair<String, @Composable () -> Unit>> = (if (forYou) state.recoRows else emptyList()).map { channel ->
+                val recoSlots: List<Pair<String, @Composable () -> Unit>> = (if (forYou) data.state.recoRows else emptyList()).map { channel ->
                     "channel-${channel.id}" to @Composable {
-                        val app = appLabels[channel.packageName]
+                        val app = data.appLabels[channel.packageName]
                         RecoRow(
                             title = if (app != null) "${channel.name} · $app" else channel.name,
                             programs = channel.programs,
-                            appLabels = appLabels,
-                            onClick = onProgramClick,
+                            appLabels = data.appLabels,
+                            onClick = actions.onProgramClick,
                             modifier = Modifier.alignRowOnFocus(),
                         ) { heroProgram.value = it }
                     }
-                } + (if (tab == HomeTab.Apps) emptyList() else catalog).map { row ->
+                } + (if (data.tab == HomeTab.Apps) emptyList() else data.catalog).map { row ->
                     "catalog-${row.id}" to @Composable {
-                        RecoRow(row.name, row.programs, appLabels, onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
+                        RecoRow(row.name, row.programs, data.appLabels, actions.onProgramClick, Modifier.alignRowOnFocus()) { heroProgram.value = it }
                     }
                 }
                 val appSlots = if (!showApps) emptyList() else buildList<Pair<String, @Composable () -> Unit>> {
-                    if (state.liveChannels.isNotEmpty()) add("live-tv" to @Composable {
-                        LiveTvRow(stringResource(R.string.home_live_tv), state.liveChannels, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    if (data.state.liveChannels.isNotEmpty()) add("live-tv" to @Composable {
+                        LiveTvRow(stringResource(R.string.home_live_tv), data.state.liveChannels, actions.onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
-                    if (state.tvInputs.isNotEmpty()) add("tv-inputs" to @Composable {
-                        LiveTvRow(stringResource(R.string.home_inputs), state.tvInputs, onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    if (data.state.tvInputs.isNotEmpty()) add("tv-inputs" to @Composable {
+                        LiveTvRow(stringResource(R.string.home_inputs), data.state.tvInputs, actions.onOpenTv, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
-                    if (recentApps.isNotEmpty()) add("recent-apps" to @Composable {
-                        AppsRow(stringResource(R.string.home_recent), recentApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    if (data.recentApps.isNotEmpty()) add("recent-apps" to @Composable {
+                        AppsRow(stringResource(R.string.home_recent), data.recentApps, actions.onLaunch, actions.onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
-                    if (otherApps.isNotEmpty()) add("all-apps" to @Composable {
-                        AppsRow(stringResource(R.string.home_all_apps), otherApps, onLaunch, onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    if (data.otherApps.isNotEmpty()) add("all-apps" to @Composable {
+                        AppsRow(stringResource(R.string.home_all_apps), data.otherApps, actions.onLaunch, actions.onFavoriteLongClick, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
-                    if (tools.isNotEmpty()) add("tools" to @Composable {
-                        com.vantaflow.kairo.tools.ToolsRow(tools, toolSubtitles, onOpenTool, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    if (data.tools.isNotEmpty()) add("tools" to @Composable {
+                        com.vantaflow.kairo.tools.ToolsRow(data.tools, data.toolSubtitles, actions.onOpenTool, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
-                    if (ourApps.isNotEmpty()) add("our-apps" to @Composable {
-                        OurAppsRow(ourApps, ourAppStates, ourAppUpdates, onInstallOurApp, Modifier.alignRowOnFocus()) { heroProgram.value = null }
+                    if (data.ourApps.isNotEmpty()) add("our-apps" to @Composable {
+                        OurAppsRow(data.ourApps, data.ourAppStates, data.ourAppUpdates, actions.onInstallOurApp, Modifier.alignRowOnFocus()) { heroProgram.value = null }
                     })
                 }
                 interleave(recoSlots, appSlots).forEach { (id, row) ->
@@ -361,8 +326,8 @@ fun HomeScreen(
     }
 
     // Favori déplacé : il garde le focus et reste visible pendant qu'il change de place.
-    LaunchedEffect(movingFavorite, state.favorites) {
-        val index = state.favorites.indexOfFirst { it.packageName == movingFavorite }
+    LaunchedEffect(data.movingFavorite, data.state.favorites) {
+        val index = data.state.favorites.indexOfFirst { it.packageName == data.movingFavorite }
         if (index < 0 || index > requesters.lastIndex) return@LaunchedEffect
         rowState.animateScrollToItem((index - 1).coerceAtLeast(0))
         runCatching { requesters[index].requestFocus() }
@@ -370,16 +335,16 @@ fun HomeScreen(
 
     // Carte focalisée disparue (retirée de Ma liste) : le focus revient sur l'onglet affiché.
     LaunchedEffect(focus.tabsToken) {
-        if (focus.tabsToken == 0 || tab == null) return@LaunchedEffect
+        if (focus.tabsToken == 0 || data.tab == null) return@LaunchedEffect
         withFrameNanos { }
-        runCatching { tabRequesters.getValue(tab).requestFocus() }
+        runCatching { tabRequesters.getValue(data.tab).requestFocus() }
     }
 
     // Appli ajoutée aux favoris depuis une autre rangée : le focus la suit.
     val view = LocalView.current
-    LaunchedEffect(focus.followFavorite, state.favorites, requesters) {
+    LaunchedEffect(focus.followFavorite, data.state.favorites, requesters) {
         val pkg = focus.followFavorite ?: return@LaunchedEffect
-        val index = state.favorites.indexOfFirst { it.packageName == pkg }
+        val index = data.state.favorites.indexOfFirst { it.packageName == pkg }
         if (index < 0 || index > requesters.lastIndex) return@LaunchedEffect
         focus.index = index
         // Le menu de l'appui long doit être fermé (fenêtre de l'accueil de nouveau active), et la

@@ -55,7 +55,9 @@ import com.vantaflow.kairo.apps.AppActionsDialog
 import com.vantaflow.kairo.apps.AppInfo
 import com.vantaflow.kairo.apps.AppsScreen
 import com.vantaflow.kairo.apps.AppsViewModel
-import com.vantaflow.kairo.home.HomeScreen
+import com.vantaflow.kairo.home.HomeActions
+import com.vantaflow.kairo.home.HomeData
+import com.vantaflow.kairo.home.HomeHost
 import com.vantaflow.kairo.home.HomeViewModel
 import com.vantaflow.kairo.network.NetworkMonitor
 import android.view.KeyEvent
@@ -72,6 +74,7 @@ import com.vantaflow.kairo.settings.SettingsScreen
 import com.vantaflow.kairo.settings.SettingsViewModel
 import com.vantaflow.kairo.ui.DesignScale
 import com.vantaflow.kairo.ui.startSafely
+import com.vantaflow.kairo.ui.theme.HomeStyle
 import com.vantaflow.kairo.ui.theme.TvHomeTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.background
@@ -382,65 +385,71 @@ class HomeActivity : ComponentActivity() {
                 val radioName = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
                     .let { r -> r.station?.name?.takeIf { r.active } }
                 val media by com.vantaflow.kairo.media.NowPlaying.state.collectAsStateWithLifecycle()
-                HomeScreen(
-                    // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
-                    recentApps = if (!showRecent) emptyList() else remember(recent, apps, state.favorites) {
-                        val favs = state.favorites.map { it.packageName }.toSet()
-                        val byPkg = apps.associateBy { it.packageName }
-                        recent.filterNot { it in favs }.mapNotNull { byPkg[it] }
-                    },
-                    // Profil enfant : seulement ses favoris, pas de rangée « Toutes les applis ».
-                    otherApps = if (profile.kids) emptyList() else remember(apps, state.favorites) {
-                        val favs = state.favorites.map { it.packageName }.toSet()
-                        apps.filterNot { it.packageName in favs }
-                    },
-                    netState = net,
-                    appLabels = remember(apps) { apps.associate { it.packageName to it.label } },
-                    onProgramClick = programClick,
-                    onOpenSearch = { searchWithVoice = false; phoneQuery = ""; destination = Destination.Search },
-                    // Profil enfant : pas de recommandations (elles ouvrent n'importe quelle appli).
-                    // Chaînes TV : seulement si la box en a, que le réglage les montre et hors profil enfant.
-                    state = when {
-                        profile.kids -> state.copy(watchNext = emptyList(), recoRows = emptyList(), liveChannels = emptyList(), tvInputs = emptyList())
-                        !LocalHomeLayout.current.showLiveTv -> state.copy(liveChannels = emptyList(), tvInputs = emptyList())
-                        else -> state
-                    },
-                    onOpenTv = ::openTv,
-                    // Nos applis à proposer : recalculées quand la liste des applis change (installation).
-                    // Kairo en tête quand une version plus récente est publiée (réglable à part).
-                    ourApps = run {
-                        val layout = LocalHomeLayout.current
-                        if (profile.kids) emptyList() else remember(apps, ourUpdates, layout.showOurApps, layout.showKairoUpdate) {
-                            val self = if (layout.showKairoUpdate && KairoSelf.id in ourUpdates) listOf(KairoSelf) else emptyList()
-                            val others = if (layout.showOurApps) OurApps.filter { !container.ourApps.isInstalled(it) || it.id in ourUpdates } else emptyList()
-                            self + others
-                        }
-                    },
-                    ourAppUpdates = ourUpdates,
-                    onOpenTools = { toolsMenu = true },
-                    nowPlaying = radioName ?: media?.title,
-                    onOpenNowPlaying = { if (radioName != null) miniPlayer = true else mediaPlayer = true },
-                    tools = tools,
-                    toolSubtitles = if (tools.isEmpty()) emptyMap() else rememberToolSubtitles(),
-                    onOpenTool = ::openTool,
-                    ourAppStates = container.ourApps.states.collectAsStateWithLifecycle().value,
-                    onInstallOurApp = container.ourApps::install,
+                val homeStyle by container.prefs.homeStyle.collectAsStateWithLifecycle(HomeStyle.Classic)
+                HomeHost(
+                    style = homeStyle,
+                    data = HomeData(
+                        // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
+                        recentApps = if (!showRecent) emptyList() else remember(recent, apps, state.favorites) {
+                            val favs = state.favorites.map { it.packageName }.toSet()
+                            val byPkg = apps.associateBy { it.packageName }
+                            recent.filterNot { it in favs }.mapNotNull { byPkg[it] }
+                        },
+                        // Profil enfant : seulement ses favoris, pas de rangée « Toutes les applis ».
+                        otherApps = if (profile.kids) emptyList() else remember(apps, state.favorites) {
+                            val favs = state.favorites.map { it.packageName }.toSet()
+                            apps.filterNot { it.packageName in favs }
+                        },
+                        netState = net,
+                        appLabels = remember(apps) { apps.associate { it.packageName to it.label } },
+                        // Profil enfant : pas de recommandations (elles ouvrent n'importe quelle appli).
+                        // Chaînes TV : seulement si la box en a, que le réglage les montre et hors profil enfant.
+                        state = when {
+                            profile.kids -> state.copy(watchNext = emptyList(), recoRows = emptyList(), liveChannels = emptyList(), tvInputs = emptyList())
+                            !LocalHomeLayout.current.showLiveTv -> state.copy(liveChannels = emptyList(), tvInputs = emptyList())
+                            else -> state
+                        },
+                        // Nos applis à proposer : recalculées quand la liste des applis change (installation).
+                        // Kairo en tête quand une version plus récente est publiée (réglable à part).
+                        ourApps = run {
+                            val layout = LocalHomeLayout.current
+                            if (profile.kids) emptyList() else remember(apps, ourUpdates, layout.showOurApps, layout.showKairoUpdate) {
+                                val self = if (layout.showKairoUpdate && KairoSelf.id in ourUpdates) listOf(KairoSelf) else emptyList()
+                                val others = if (layout.showOurApps) OurApps.filter { !container.ourApps.isInstalled(it) || it.id in ourUpdates } else emptyList()
+                                self + others
+                            }
+                        },
+                        ourAppUpdates = ourUpdates,
+                        nowPlaying = radioName ?: media?.title,
+                        tools = tools,
+                        toolSubtitles = if (tools.isEmpty()) emptyMap() else rememberToolSubtitles(),
+                        ourAppStates = container.ourApps.states.collectAsStateWithLifecycle().value,
+                        movingFavorite = movingFavorite,
+                        // Un onglet décoché dans les réglages disparaît ; s'il ne reste que « Pour vous », plus de barre d'onglets.
+                        tab = homeTab.takeIf { catalogRows.isNotEmpty() && !profile.kids && tabsShown.size > 1 },
+                        tabsShown = tabsShown,
+                        catalog = if (profile.kids) emptyList() else remember(catalogRows, homeTab) { catalogFor(homeTab, catalogRows) },
+                        myList = if (profile.kids) emptyList() else remember(myList, homeTab) {
+                            myList.filter { homeTab.mediaType().let { t -> t == null || it.type == t } }.map { it.toProgram() }
+                        },
+                    ),
+                    actions = HomeActions(
+                        onProgramClick = programClick,
+                        onOpenSearch = { searchWithVoice = false; phoneQuery = ""; destination = Destination.Search },
+                        onOpenTv = ::openTv,
+                        onOpenTools = { toolsMenu = true },
+                        onOpenNowPlaying = { if (radioName != null) miniPlayer = true else mediaPlayer = true },
+                        onOpenTool = ::openTool,
+                        onInstallOurApp = container.ourApps::install,
+                        onLaunch = launch,
+                        onFavoriteLongClick = { if (!profile.kids) actionsFor = it },
+                        onOpenApps = { destination = Destination.Apps },
+                        onOpenSettings = { openSettingsPanel() },
+                        onMoveFavorite = appsViewModel::moveFavoriteBy,
+                        onMoveDone = { movingFavorite = null },
+                        onTab = { homeTab = it },
+                    ),
                     focus = homeFocus,
-                    onLaunch = launch,
-                    onFavoriteLongClick = { if (!profile.kids) actionsFor = it },
-                    onOpenApps = { destination = Destination.Apps },
-                    onOpenSettings = { openSettingsPanel() },
-                    movingFavorite = movingFavorite,
-                    onMoveFavorite = appsViewModel::moveFavoriteBy,
-                    onMoveDone = { movingFavorite = null },
-                    // Un onglet décoché dans les réglages disparaît ; s'il ne reste que « Pour vous », plus de barre d'onglets.
-                    tab = homeTab.takeIf { catalogRows.isNotEmpty() && !profile.kids && tabsShown.size > 1 },
-                    tabsShown = tabsShown,
-                    onTab = { homeTab = it },
-                    catalog = if (profile.kids) emptyList() else remember(catalogRows, homeTab) { catalogFor(homeTab, catalogRows) },
-                    myList = if (profile.kids) emptyList() else remember(myList, homeTab) {
-                        myList.filter { homeTab.mediaType().let { t -> t == null || it.type == t } }.map { it.toProgram() }
-                    },
                 )
             }
             Destination.Apps -> {

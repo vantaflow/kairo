@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.requestFocus
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vantaflow.kairo.apps.AppInfo
+import com.vantaflow.kairo.ui.theme.HomeStyle
 import com.vantaflow.kairo.ui.theme.TvHomeTheme
 import org.junit.Rule
 import org.junit.Test
@@ -26,7 +27,7 @@ class HomeScreenTest {
     @Test
     fun firstFavoriteHasInitialFocus() {
         rule.setContent {
-            TvHomeTheme { HomeScreen(state, focus, {}, {}, {}, {}) }
+            TvHomeTheme { HomeHost(HomeStyle.Classic, HomeData(state = state), HomeActions(), focus) }
         }
         rule.onNodeWithTag("favorite-0").assertIsFocused()
     }
@@ -35,7 +36,7 @@ class HomeScreenTest {
     fun focusRestoredAfterResume() {
         val restoration = StateRestorationTester(rule)
         restoration.setContent {
-            TvHomeTheme { HomeScreen(state, focus, {}, {}, {}, {}) }
+            TvHomeTheme { HomeHost(HomeStyle.Classic, HomeData(state = state), HomeActions(), focus) }
         }
         rule.onNodeWithTag("favorite-2").requestFocus()
         rule.onNodeWithTag("favorite-2").assertIsFocused()
