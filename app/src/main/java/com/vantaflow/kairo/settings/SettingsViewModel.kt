@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
+import com.vantaflow.kairo.system.resilient
 
 class SettingsViewModel(
     private val prefs: LauncherPrefs,
@@ -27,15 +28,15 @@ class SettingsViewModel(
 ) : ViewModel() {
     /** Une exception (TvProvider, réseau, écriture) est journalisée, elle ne fait plus tomber Kairo. */
     private val scope = viewModelScope + com.vantaflow.kairo.system.SafeHandler
-    val themeId: StateFlow<String> = prefs.themeId.stateIn(scope, SharingStarted.Eagerly, "google-tv")
-    val weatherEnabled: StateFlow<Boolean> = prefs.weatherEnabled.stateIn(scope, SharingStarted.Eagerly, true)
-    val weatherCity: StateFlow<String> = prefs.weatherCity.stateIn(scope, SharingStarted.Eagerly, "")
-    val useFahrenheit: StateFlow<Boolean> = prefs.useFahrenheit.stateIn(scope, SharingStarted.Eagerly, false)
+    val themeId: StateFlow<String> = prefs.themeId.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, "google-tv")
+    val weatherEnabled: StateFlow<Boolean> = prefs.weatherEnabled.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, true)
+    val weatherCity: StateFlow<String> = prefs.weatherCity.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, "")
+    val useFahrenheit: StateFlow<Boolean> = prefs.useFahrenheit.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, false)
 
     val customTheme: StateFlow<LauncherTheme> =
-        prefs.customTheme.stateIn(scope, SharingStarted.Eagerly, Themes.first())
+        prefs.customTheme.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, Themes.first())
     val homeLayout: StateFlow<HomeLayout> =
-        prefs.homeLayout.stateIn(scope, SharingStarted.Eagerly, HomeLayout())
+        prefs.homeLayout.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, HomeLayout())
 
     fun setCustomTheme(theme: LauncherTheme) {
         scope.launch {
@@ -65,7 +66,7 @@ class SettingsViewModel(
     }
 
     val pixabayKey: StateFlow<String> =
-        prefs.pixabayKey.stateIn(scope, SharingStarted.Eagerly, "")
+        prefs.pixabayKey.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, "")
 
     fun setPixabayKey(key: String) {
         scope.launch { prefs.setPixabayKey(key) }
@@ -81,13 +82,13 @@ class SettingsViewModel(
     }
 
     val showWatchNext: StateFlow<Boolean> =
-        prefs.showWatchNext.stateIn(scope, SharingStarted.Eagerly, true)
+        prefs.showWatchNext.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, true)
     val recoAppOrder: StateFlow<List<String>> =
-        prefs.recoAppOrder.stateIn(scope, SharingStarted.Eagerly, emptyList())
+        prefs.recoAppOrder.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, emptyList())
     val hiddenChannels: StateFlow<Set<Long>> =
-        prefs.hiddenChannels.stateIn(scope, SharingStarted.Eagerly, emptySet())
+        prefs.hiddenChannels.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, emptySet())
     val hiddenRecoApps: StateFlow<Set<String>> =
-        prefs.hiddenRecoApps.stateIn(scope, SharingStarted.Eagerly, emptySet())
+        prefs.hiddenRecoApps.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     /** Chaînes lues pour l'écran de réglages, et accès au TvProvider. */
     val recoChannels = MutableStateFlow<List<Channel>>(emptyList())
@@ -124,13 +125,13 @@ class SettingsViewModel(
     }
 
     val favorites: StateFlow<List<String>> =
-        prefs.favorites.stateIn(scope, SharingStarted.Eagerly, emptyList())
+        prefs.favorites.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, emptyList())
     val wallpaper: StateFlow<WallpaperConfig> =
-        prefs.wallpaper.stateIn(scope, SharingStarted.Eagerly, WallpaperConfig.Default)
+        prefs.wallpaper.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, WallpaperConfig.Default)
     val use24h: StateFlow<Boolean> =
-        prefs.use24h.stateIn(scope, SharingStarted.Eagerly, true)
+        prefs.use24h.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, true)
     val keyBindings: StateFlow<Map<Int, String>> =
-        prefs.keyBindings.stateIn(scope, SharingStarted.Eagerly, emptyMap())
+        prefs.keyBindings.resilient("réglages").stateIn(scope, SharingStarted.Eagerly, emptyMap())
     val lastSyncMs: StateFlow<Long?> = clock.lastSyncMs
     val offsetMs: StateFlow<Long> = clock.offsetMs
 

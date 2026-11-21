@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
+import com.vantaflow.kairo.system.resilient
 
 class AppsViewModel(
     installedApps: () -> List<AppInfo>,
@@ -30,22 +31,24 @@ class AppsViewModel(
     val showHidden = MutableStateFlow(false)
 
     val favorites: StateFlow<List<String>> =
-        prefs.favorites.stateIn(scope, SharingStarted.Eagerly, emptyList())
+        prefs.favorites.resilient("favoris").stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val hidden: StateFlow<Set<String>> =
-        prefs.hidden.stateIn(scope, SharingStarted.Eagerly, emptySet())
+        prefs.hidden.resilient("applis masquées").stateIn(scope, SharingStarted.Eagerly, emptySet())
 
-    private val installed = merge(flowOf(Unit), appChanges).map { runCatching { installedApps() }.getOrDefault(emptyList()) }.flowOn(ioDispatcher)
+    private val installed = merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
+        // Lecture en échec : nouvel essai (délai croissant), la dernière liste reste affichée en attendant.
+        .resilient("liste des applis")
 
     val apps: StateFlow<List<AppInfo>> =
         combine(installed, prefs.hidden, showHidden) { all, hiddenSet, show ->
             if (show) all else all.filterNot { it.packageName in hiddenSet }
-        }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+        }.resilient("applis").stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** Applis non masquées, pour l'accueil et la recherche : l'interrupteur de l'écran Applis n'y change rien. */
     val visibleApps: StateFlow<List<AppInfo>> =
         combine(installed, prefs.hidden) { all, hiddenSet -> all.filterNot { it.packageName in hiddenSet } }
-            .stateIn(scope, SharingStarted.Eagerly, emptyList())
+            .resilient("applis visibles").stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     fun toggleFavorite(pkg: String) {
         scope.launch {

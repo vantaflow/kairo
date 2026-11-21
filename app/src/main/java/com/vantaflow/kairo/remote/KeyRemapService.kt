@@ -19,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import com.vantaflow.kairo.system.resilient
 
 /** Réaffecte les touches d'applis de la télécommande (YouTube, Netflix…) vers l'appli choisie. */
 class KeyRemapService : AccessibilityService() {
@@ -33,12 +34,12 @@ class KeyRemapService : AccessibilityService() {
         scope.launch {
             combine(container.prefs.keyBindings, container.prefs.currentProfile, container.prefs.favorites) { b, profile, favs ->
                 effectiveBindings(b, profile.kids, favs.toSet())
-            }.collect { bindings = it }
+            }.resilient("raccourcis").collect { bindings = it }
         }
         // Minuteur de mise en veille : bandeau d'avertissement la dernière minute.
         scope.launch { container.sleepTimer.warning.collect(::showSleepWarning) }
         // Allumage sans personne devant (télé qui s'allume seule) : bandeau puis remise en veille.
-        scope.launch { container.prefs.wakeGuard.collect { guardEnabled = it; if (!it) wakeGuard.stop() } }
+        scope.launch { container.prefs.wakeGuard.resilient("garde d'allumage").collect { guardEnabled = it; if (!it) wakeGuard.stop() } }
         scope.launch {
             wakeGuard.warning.collect { s ->
                 showSleepWarning(s, s?.let { getString(R.string.keyremap_wake_guard, it) })

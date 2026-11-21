@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import com.vantaflow.kairo.system.SafeHandler
+import com.vantaflow.kairo.system.resilient
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
@@ -171,7 +172,9 @@ class HomeViewModel(
     }.flowOn(ioDispatcher)
 
     private val installed: Flow<List<AppInfo>> =
-        merge(flowOf(Unit), appChanges).map { runCatching { installedApps() }.getOrDefault(emptyList()) }.flowOn(ioDispatcher)
+        merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
+            // Lecture en échec : nouvel essai (délai croissant), la dernière liste reste affichée en attendant.
+            .resilient("liste des applis")
 
     private val favorites: Flow<List<AppInfo>> =
         combine(prefs.favorites, prefs.favoritesInitialized, installed, prefs.currentProfile, prefs.hidden) { saved, initialized, apps, profile, hidden ->
@@ -193,7 +196,7 @@ class HomeViewModel(
     val state: StateFlow<HomeUiState> =
         combine(clockText, favorites, prefs.wallpaper, reco, prefs.pixabayCurrent) { (time, date), favs, wallpaper, r, image ->
             HomeUiState(time, date, favs, wallpaper, r.watchNext, r.rows, image, weatherText.value, r.live, r.inputs, loaded = true)
-        }.stateIn(scope, SharingStarted.Eagerly, HomeUiState())
+        }.resilient("accueil").stateIn(scope, SharingStarted.Eagerly, HomeUiState())
 
     init {
         if (background) {
