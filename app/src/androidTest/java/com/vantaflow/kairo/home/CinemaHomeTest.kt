@@ -224,6 +224,41 @@ class CinemaHomeTest {
     }
 
     @Test
+    fun homeBehindOnboardingNeverRequestsFocus() {
+        var style by mutableStateOf(HomeStyle.Classic)
+        var onboarding by mutableStateOf(true)
+        rule.setContent {
+            TvHomeTheme {
+                Box {
+                    HomeHost(style, HomeData(state = state, banner = listOf(catalog(1)), behindPanel = onboarding), HomeActions(), focus)
+                    // Tient lieu de l'assistant, dessiné par-dessus l'accueil dans la même fenêtre.
+                    if (onboarding) {
+                        Column {
+                            Box(Modifier.size(40.dp).testTag("classic").focusable())
+                            Box(Modifier.size(40.dp).testTag("cinema").focusable())
+                        }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithTag("cinema").requestFocus()
+        rule.onNodeWithTag("cinema").assertIsFocused()
+        // « Cinéma » choisi dans l'assistant : l'accueil est recréé derrière, sans prendre le focus.
+        rule.runOnIdle { style = HomeStyle.Cinema }
+        rule.waitForIdle()
+        rule.onNodeWithTag("banner").assertExists()
+        rule.onNodeWithTag("cinema").assertIsFocused()
+        rule.onNodeWithTag("banner-primary").assertIsNotFocused()
+        // Assistant terminé (comme son onFinish) : l'accueil reçoit le focus, sur la bannière.
+        rule.runOnIdle {
+            onboarding = false
+            focus.reset()
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag("banner-primary").assertIsFocused()
+    }
+
+    @Test
     fun emptiedBannerGivesFocusToFavorite() {
         var banner by mutableStateOf(listOf(catalog(1)))
         rule.setContent {

@@ -447,7 +447,9 @@ class HomeActivity : ComponentActivity() {
                             }
                         },
                         myListIds = if (profile.kids) emptySet() else remember(myList) { myList.map(::catalogUri).toSet() },
-                        behindPanel = destination == Destination.Settings,
+                        // Recouvert dans la même fenêtre (réglages, assistant du premier lancement, menu
+                        // Outils, petits lecteurs) : l'accueil ne leur prend jamais le focus.
+                        behindPanel = destination == Destination.Settings || onboarding || toolsMenu || miniPlayer || mediaPlayer,
                     ),
                     // Références de méthode retenues : même rappel d'une recomposition à l'autre.
                     actions = HomeActions(
