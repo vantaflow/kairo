@@ -18,6 +18,7 @@ import com.vantaflow.kairo.clock.SntpClient
 import com.vantaflow.kairo.clock.TrustedClock
 import com.vantaflow.kairo.net.UrlConnectionHttpGet
 import com.vantaflow.kairo.settings.LauncherPrefs
+import com.vantaflow.kairo.settings.launcherCorruptionHandler
 import com.vantaflow.kairo.weather.Place
 import com.vantaflow.kairo.weather.Forecast
 import com.vantaflow.kairo.weather.Weather
@@ -28,12 +29,13 @@ import com.vantaflow.kairo.wallpaper.WallpaperRotator
 import kotlinx.coroutines.flow.first
 import java.io.File
 
-private val Context.dataStore by preferencesDataStore(name = "launcher")
+/** Fichier corrompu remplacé par des préférences vides : sinon chaque écriture échouerait à chaque lancement. */
+private val Context.dataStore by preferencesDataStore(name = "launcher", corruptionHandler = launcherCorruptionHandler())
 
 /** Dépendances partagées de l'appli, construites à la main (pas de framework DI). */
 class AppContainer(val app: Application) {
     val appRepository = AppRepository(app)
-    val prefs = LauncherPrefs(app.dataStore)
+    val prefs = LauncherPrefs(app.dataStore) { e -> android.util.Log.w("Kairo", "écriture des préférences impossible", e) }
     val clock = TrustedClock(SntpClient())
     val tileImages = TileImageCache<TileImage>()
     val http = UrlConnectionHttpGet

@@ -7,6 +7,11 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import com.vantaflow.kairo.catalog.CatalogItem
+import com.vantaflow.kairo.catalog.MediaType
+import androidx.datastore.preferences.core.emptyPreferences
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -122,6 +127,40 @@ class LauncherPrefsTest {
         val prefs = LauncherPrefs(broken)
         assertEquals(emptyList<String>(), prefs.favorites.first())
         assertEquals(WallpaperConfig.Default, prefs.wallpaper.first())
+    }
+
+    @Test
+    fun failingWritesNeverThrow() = runTest(UnconfinedTestDispatcher()) {
+        val full = object : DataStore<Preferences> {
+            override val data: Flow<Preferences> = flowOf(emptyPreferences())
+            override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+                throw IOException("disque plein")
+        }
+        val errors = mutableListOf<Throwable>()
+        val prefs = LauncherPrefs(full, onWriteError = { errors += it })
+        prefs.setHomeLayout(com.vantaflow.kairo.ui.theme.HomeLayout(showClock = false))
+        prefs.toggleMyList(CatalogItem(MediaType.Movie, 1, "Film", "", null, 0.0, null, null))
+        prefs.recordLaunch("a")
+        prefs.setSetupShown()
+        prefs.setWallpaper(WallpaperConfig.Solid(0xFF202124))
+        prefs.initializeFavorites(DEFAULT_PROFILE_ID, listOf("a"))
+        prefs.recordAppUse("a", 1L)
+        prefs.setPixabayCurrent("x")
+        prefs.renewPhoneRemoteToken()
+        prefs.switchProfile(prefs.addProfile("Salon", kids = false, pin = null).id)
+        assertEquals(11, errors.size)
+        assertTrue(errors.all { it is IOException })
+    }
+
+    @Test
+    fun corruptedFileIsReplacedAndWritable() = runTest(UnconfinedTestDispatcher()) {
+        val file = File(tmp.root, "prefs.preferences_pb").apply { writeBytes(byteArrayOf(0x7F, 0x00, 0x13, 0x37, 0x2A, 0x01)) }
+        val store = PreferenceDataStoreFactory.create(corruptionHandler = launcherCorruptionHandler(), scope = backgroundScope) { file }
+        val prefs = LauncherPrefs(store)
+        assertEquals(true, prefs.use24h.first())
+        assertEquals(emptyList<String>(), prefs.favorites.first())
+        prefs.setUse24h(false)
+        assertEquals(false, prefs.use24h.first())
     }
 
     @Test

@@ -5,6 +5,8 @@ import com.vantaflow.kairo.catalog.decodeListItem
 import com.vantaflow.kairo.catalog.encodeListItem
 import com.vantaflow.kairo.dream.DreamConfig
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.map
 
 private const val DEFAULT_FAVORITES_COUNT = 6
@@ -48,11 +51,33 @@ fun resolveFavorites(saved: List<String>, installed: List<AppInfo>, initialized:
     return saved.mapNotNull { byPackage[it] }
 }
 
-class LauncherPrefs(private val store: DataStore<Preferences>) {
+/** Fichier de préférences illisible (corrompu) : remplacé par des préférences vides au lieu de bloquer toute écriture. */
+fun launcherCorruptionHandler(): ReplaceFileCorruptionHandler<Preferences> = ReplaceFileCorruptionHandler { emptyPreferences() }
+
+/** [onWriteError] est prévenu de chaque écriture ratée (journal) ; nul dans les tests. */
+class LauncherPrefs(
+    private val store: DataStore<Preferences>,
+    private val onWriteError: ((Throwable) -> Unit)? = null,
+) {
     /** Un fichier de préférences illisible ne doit jamais faire planter le launcher : valeurs par défaut. */
     private val data: Flow<Preferences> = store.data.catch { e ->
         if (e is IOException) emit(emptyPreferences()) else throw e
     }
+
+    /**
+     * Écriture qui ne plante jamais (disque plein, fichier illisible…) : l'échec est signalé
+     * à [onWriteError] et la valeur est simplement perdue. Vrai si l'écriture a réussi.
+     */
+    private suspend fun safeEdit(block: suspend (MutablePreferences) -> Unit): Boolean =
+        try {
+            store.edit(block)
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            onWriteError?.invoke(e)
+            false
+        }
 
     /** Une préférence ne réémet que si sa valeur change (sinon toute écriture relance les abonnés). */
     private fun <T> pref(read: (Preferences) -> T): Flow<T> = data.map(read).distinctUntilChanged()
@@ -69,7 +94,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val githubToken: Flow<String> = pref { it[Keys.githubToken].orEmpty() }
 
     suspend fun setGithubToken(token: String) {
-        store.edit { it[Keys.githubToken] = token.trim() }
+        safeEdit { it[Keys.githubToken] = token.trim() }
     }
 
     val profiles: Flow<List<Profile>> = pref { listOf(DefaultProfile) + decodeProfiles(it[Keys.profiles]) }
@@ -83,7 +108,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         val cleanPin = pin?.takeIf { it.isNotBlank() }
         require(!kids || cleanPin != null) { "Un profil enfant doit avoir un PIN" }
         val profile = Profile(java.util.UUID.randomUUID().toString().take(8), name.trim().ifBlank { "Profil" }, kids, cleanPin?.let(::hashPin))
-        store.edit {
+        safeEdit {
             it[Keys.profiles] = encodeProfiles(decodeProfiles(it[Keys.profiles]) + profile)
             if (kids) it[Keys.favoritesInitialized("@${profile.id}")] = true
         }
@@ -95,9 +120,9 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
      * le profil actif et n'a pas encore de favoris (évite d'écrire dans un autre profil).
      */
     suspend fun initializeFavorites(profileId: String, packages: List<String>) {
-        store.edit {
+        safeEdit {
             val current = it[Keys.currentProfile] ?: DEFAULT_PROFILE_ID
-            if (current != profileId || it[Keys.favoritesInitialized(it.sfx)] == true) return@edit
+            if (current != profileId || it[Keys.favoritesInitialized(it.sfx)] == true) return@safeEdit
             it[Keys.favorites(it.sfx)] = encode(packages.distinct())
             it[Keys.favoritesInitialized(it.sfx)] = true
         }
@@ -105,7 +130,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
 
     suspend fun removeProfile(id: String) {
         if (id == DEFAULT_PROFILE_ID) return
-        store.edit {
+        safeEdit {
             it[Keys.profiles] = encodeProfiles(decodeProfiles(it[Keys.profiles]).filterNot { p -> p.id == id })
             if (it[Keys.currentProfile] == id) it.remove(Keys.currentProfile)
             // Réglages propres au profil supprimé (favoris, fond, applis masquées…).
@@ -114,17 +139,17 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun switchProfile(id: String) {
-        store.edit { it[Keys.currentProfile] = id }
+        safeEdit { it[Keys.currentProfile] = id }
     }
 
     /** Sauvegarde de toutes les préférences (tous profils) en JSON. */
     suspend fun exportJson(): String =
         exportPrefs(data.first().asMap().mapKeys { it.key.name }.filterKeys { it !in SECRET_KEYS })
 
-    /** Restaure une sauvegarde ; false si le fichier n'en est pas une. */
+    /** Restaure une sauvegarde ; false si le fichier n'en est pas une ou si l'écriture échoue. */
     suspend fun importJson(json: String): Boolean {
         val values = importPrefs(json) ?: return false
-        store.edit { prefs ->
+        return safeEdit { prefs ->
             // Les secrets ne sont jamais dans une sauvegarde : on garde ceux de la box.
             val kept = prefs.asMap().filterKeys { it.name in SECRET_KEYS }
             prefs.clear()
@@ -141,7 +166,6 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
                 }
             }
         }
-        return true
     }
 
     private object Keys {
@@ -220,14 +244,14 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val phoneRemoteEnabled: Flow<Boolean> = pref { it[Keys.phoneRemoteEnabled] ?: false }
 
     suspend fun setPhoneRemoteEnabled(value: Boolean) {
-        store.edit { it[Keys.phoneRemoteEnabled] = value }
+        safeEdit { it[Keys.phoneRemoteEnabled] = value }
     }
 
     /** Rendormir la box si elle s'allume sans touche pressée (télé qui s'allume seule) : activé par défaut. */
     val wakeGuard: Flow<Boolean> = pref { it[Keys.wakeGuard] ?: true }
 
     suspend fun setWakeGuard(value: Boolean) {
-        store.edit { it[Keys.wakeGuard] = value }
+        safeEdit { it[Keys.wakeGuard] = value }
     }
 
     val phoneRemoteTokenFlow: Flow<String> = pref { it[Keys.phoneRemoteToken].orEmpty() }
@@ -242,7 +266,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     suspend fun renewPhoneRemoteToken(): String {
         val bytes = ByteArray(12).also { java.security.SecureRandom().nextBytes(it) }
         val token = bytes.joinToString("") { "%02x".format(it) }
-        store.edit { it[Keys.phoneRemoteToken] = token }
+        safeEdit { it[Keys.phoneRemoteToken] = token }
         return token
     }
 
@@ -261,7 +285,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun setDreamConfig(c: DreamConfig) {
-        store.edit {
+        safeEdit {
             it[Keys.dreamMode] = c.mode
             it[Keys.dreamQuery] = c.query
             it[Keys.dreamPalette] = c.palette
@@ -276,7 +300,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val setupShown: Flow<Boolean> = pref { it[Keys.setupShown] ?: false }
 
     suspend fun setSetupShown() {
-        store.edit { it[Keys.setupShown] = true }
+        safeEdit { it[Keys.setupShown] = true }
     }
 
     /** Bloqueur de pubs (VPN DNS local) et filtre choisi. */
@@ -284,11 +308,11 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val adBlockFilter: Flow<String> = pref { it[Keys.adBlockFilter] ?: "Ads" }
 
     suspend fun setAdBlockEnabled(on: Boolean) {
-        store.edit { it[Keys.adBlockEnabled] = on }
+        safeEdit { it[Keys.adBlockEnabled] = on }
     }
 
     suspend fun setAdBlockFilter(id: String) {
-        store.edit { it[Keys.adBlockFilter] = id }
+        safeEdit { it[Keys.adBlockFilter] = id }
     }
 
     /** Nettoyage automatique de la mémoire (actif par défaut) et délai avant de fermer une appli inutilisée. */
@@ -299,15 +323,15 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val autoUpdate: Flow<Boolean> = pref { it[Keys.autoUpdate] ?: true }
 
     suspend fun setAutoUpdate(on: Boolean) {
-        store.edit { it[Keys.autoUpdate] = on }
+        safeEdit { it[Keys.autoUpdate] = on }
     }
 
     suspend fun setAutoClean(on: Boolean) {
-        store.edit { it[Keys.autoClean] = on }
+        safeEdit { it[Keys.autoClean] = on }
     }
 
     suspend fun setIdleCloseMin(min: Int) {
-        store.edit { it[Keys.idleCloseMin] = min }
+        safeEdit { it[Keys.idleCloseMin] = min }
     }
 
     /** Radios favorites (dans l'ordre d'ajout) et pays choisi dans l'écran Radio (null = jamais choisi). */
@@ -315,7 +339,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val radioCountry: Flow<String?> = pref { it[Keys.radioCountry] }
 
     suspend fun toggleRadioFavorite(station: com.vantaflow.kairo.radio.Station) {
-        store.edit {
+        safeEdit {
             val list = com.vantaflow.kairo.radio.decodeStations(it[Keys.radioFavorites])
             val next = if (list.any { s -> s.url == station.url }) list.filterNot { s -> s.url == station.url } else list + station
             it[Keys.radioFavorites] = com.vantaflow.kairo.radio.encodeStations(next)
@@ -323,14 +347,14 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun setRadioCountry(code: String) {
-        store.edit { it[Keys.radioCountry] = code }
+        safeEdit { it[Keys.radioCountry] = code }
     }
 
     /** Dernière utilisation de chaque appli (vue à l'écran, quel que soit le moyen de l'ouvrir). */
     val appUsage: Flow<Map<String, Long>> = pref { decodeUsage(it[Keys.appUsage]) }
 
     suspend fun recordAppUse(pkg: String, at: Long) {
-        store.edit {
+        safeEdit {
             val usage = decodeUsage(it[Keys.appUsage]) + (pkg to at)
             it[Keys.appUsage] = usage.entries.sortedByDescending { e -> e.value }.take(MAX_APP_USAGE)
                 .joinToString("\n") { e -> "${e.key}\t${e.value}" }
@@ -347,7 +371,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val myList: Flow<List<CatalogItem>> = pref { decode(it[Keys.myList(it.sfx)]).mapNotNull(::decodeListItem) }
 
     suspend fun toggleMyList(item: CatalogItem) {
-        store.edit {
+        safeEdit {
             val list = decode(it[Keys.myList(it.sfx)])
             val prefix = "${item.type.path}\t${item.id}\t"
             val present = list.any { line -> line.startsWith(prefix) }
@@ -362,7 +386,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val recentApps: Flow<List<String>> = pref { decode(it[Keys.recentApps(it.sfx)]) }
 
     suspend fun recordLaunch(pkg: String) {
-        store.edit {
+        safeEdit {
             val list = decode(it[Keys.recentApps(it.sfx)])
             if (list.firstOrNull() != pkg) it[Keys.recentApps(it.sfx)] = encode((listOf(pkg) + (list - pkg)).take(MAX_RECENT_APPS))
         }
@@ -377,11 +401,11 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val pixabayKey: Flow<String> = pref { it[Keys.pixabayKey].orEmpty() }
 
     suspend fun setPixabayCurrent(url: String?) {
-        store.edit { if (url == null) it.remove(Keys.pixabayCurrent(it.sfx)) else it[Keys.pixabayCurrent(it.sfx)] = url }
+        safeEdit { if (url == null) it.remove(Keys.pixabayCurrent(it.sfx)) else it[Keys.pixabayCurrent(it.sfx)] = url }
     }
 
     suspend fun setPixabayKey(key: String) {
-        store.edit { it[Keys.pixabayKey] = key.trim() }
+        safeEdit { it[Keys.pixabayKey] = key.trim() }
     }
 
     val themeId: Flow<String> = pref { it[Keys.themeId] ?: "google-tv" }
@@ -406,7 +430,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun setCustomTheme(accent: Long, focusBorder: Long, radiusDp: Int, scale: Float) {
-        store.edit {
+        safeEdit {
             it[Keys.customAccent] = accent
             it[Keys.customFocus] = focusBorder
             it[Keys.customRadius] = radiusDp
@@ -437,7 +461,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun setHomeLayout(layout: HomeLayout) {
-        store.edit {
+        safeEdit {
             it[Keys.showClock] = layout.showClock
             it[Keys.showDate] = layout.showDate
             it[Keys.showFavoritesLabel] = layout.showFavoritesLabel
@@ -458,19 +482,19 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun setThemeId(id: String) {
-        store.edit { it[Keys.themeId] = id }
+        safeEdit { it[Keys.themeId] = id }
     }
 
     suspend fun setWeatherEnabled(value: Boolean) {
-        store.edit { it[Keys.weatherEnabled] = value }
+        safeEdit { it[Keys.weatherEnabled] = value }
     }
 
     suspend fun setWeatherCity(city: String) {
-        store.edit { it[Keys.weatherCity] = city.trim() }
+        safeEdit { it[Keys.weatherCity] = city.trim() }
     }
 
     suspend fun setUseFahrenheit(value: Boolean) {
-        store.edit { it[Keys.useFahrenheit] = value }
+        safeEdit { it[Keys.useFahrenheit] = value }
     }
 
     val showWatchNext: Flow<Boolean> = pref { it[Keys.showWatchNext] ?: true }
@@ -479,32 +503,32 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     val recoAppOrder: Flow<List<String>> = pref { decode(it[Keys.recoAppOrder]) }
 
     suspend fun setShowWatchNext(value: Boolean) {
-        store.edit { it[Keys.showWatchNext] = value }
+        safeEdit { it[Keys.showWatchNext] = value }
     }
 
     suspend fun setChannelHidden(id: Long, hidden: Boolean) {
-        store.edit {
+        safeEdit {
             val current = it[Keys.hiddenChannels].orEmpty()
             it[Keys.hiddenChannels] = if (hidden) current + id.toString() else current - id.toString()
         }
     }
 
     suspend fun setRecoAppHidden(pkg: String, hidden: Boolean) {
-        store.edit {
+        safeEdit {
             val current = it[Keys.hiddenRecoApps].orEmpty()
             it[Keys.hiddenRecoApps] = if (hidden) current + pkg else current - pkg
         }
     }
 
     suspend fun setRecoAppOrder(packages: List<String>) {
-        store.edit { it[Keys.recoAppOrder] = encode(packages.distinct()) }
+        safeEdit { it[Keys.recoAppOrder] = encode(packages.distinct()) }
     }
 
     val keyBindings: Flow<Map<Int, String>> = pref { decodeBindings(it[Keys.keyBindings]) }
 
     /** Lie une touche à une appli ; pkg = null supprime la liaison. */
     suspend fun setKeyBinding(keyCode: Int, pkg: String?) {
-        store.edit {
+        safeEdit {
             val current = decodeBindings(it[Keys.keyBindings]).toMutableMap()
             if (pkg == null) current.remove(keyCode) else current[keyCode] = pkg
             it[Keys.keyBindings] = encodeBindings(current)
@@ -512,11 +536,11 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun setUse24h(value: Boolean) {
-        store.edit { it[Keys.use24h] = value }
+        safeEdit { it[Keys.use24h] = value }
     }
 
     suspend fun setFavorites(packages: List<String>) {
-        store.edit {
+        safeEdit {
             it[Keys.favorites(it.sfx)] = encode(packages.distinct())
             it[Keys.favoritesInitialized(it.sfx)] = true
         }
@@ -533,14 +557,14 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     suspend fun setHidden(pkg: String, hidden: Boolean) {
-        store.edit {
+        safeEdit {
             val current = it[Keys.hidden(it.sfx)].orEmpty()
             it[Keys.hidden(it.sfx)] = if (hidden) current + pkg else current - pkg
         }
     }
 
     suspend fun setWallpaper(c: WallpaperConfig) {
-        store.edit {
+        safeEdit {
             when (c) {
                 is WallpaperConfig.Solid -> {
                     it[Keys.wallpaperType(it.sfx)] = "solid"
@@ -562,7 +586,7 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
     }
 
     private suspend fun updateFavorites(transform: (List<String>) -> List<String>) {
-        store.edit {
+        safeEdit {
             it[Keys.favorites(it.sfx)] = encode(transform(decode(it[Keys.favorites(it.sfx)])))
             it[Keys.favoritesInitialized(it.sfx)] = true
         }

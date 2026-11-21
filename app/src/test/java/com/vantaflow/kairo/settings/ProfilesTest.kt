@@ -14,6 +14,12 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.io.IOException
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 @RunWith(RobolectricTestRunner::class)
 class ProfilesTest {
@@ -76,6 +82,17 @@ class ProfilesTest {
         assertTrue(prefs.importJson(json))
         assertEquals(listOf("x", "y"), prefs.favorites.first())
         assertEquals("ambre", prefs.themeId.first())
+    }
+
+    @Test
+    fun importOnFullDiskReportsFailureWithoutThrowing() = runTest(UnconfinedTestDispatcher()) {
+        val json = prefs().apply { setFavorites(listOf("a")) }.exportJson()
+        val full = object : DataStore<Preferences> {
+            override val data: Flow<Preferences> = flowOf(emptyPreferences())
+            override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+                throw IOException("disque plein")
+        }
+        assertFalse(LauncherPrefs(full).importJson(json))
     }
 
     @Test(expected = IllegalArgumentException::class)
