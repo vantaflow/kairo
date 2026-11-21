@@ -72,6 +72,9 @@
     <string name="catalog_tmdb_notice">Data from TMDB · not endorsed by TMDB</string>
     <string name="catalog_movie">Movie</string>
     <string name="catalog_show">Series</string>
+    <string name="banner_open_details">View details</string>
+    <string name="banner_resume">Resume</string>
+    <string name="banner_remove_my_list">Remove from My list</string>
     <string name="catalog_where_loading">Finding apps to watch it on…</string>
     <string name="catalog_where_none">Not available on your apps (%1$s).</string>
     <string name="catalog_where_list">Available on: %1$s</string>

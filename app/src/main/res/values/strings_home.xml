@@ -72,6 +72,9 @@
     <string name="catalog_tmdb_notice">Données TMDB · non approuvé par TMDB</string>
     <string name="catalog_movie">Film</string>
     <string name="catalog_show">Série</string>
+    <string name="banner_open_details">Voir la fiche</string>
+    <string name="banner_resume">Reprendre</string>
+    <string name="banner_remove_my_list">Retirer de Ma liste</string>
     <string name="catalog_where_loading">Recherche des applis où le regarder…</string>
     <string name="catalog_where_none">Pas disponible dans vos applis (%1$s).</string>
     <string name="catalog_where_list">Disponible sur : %1$s</string>

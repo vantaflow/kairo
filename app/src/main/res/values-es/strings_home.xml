@@ -72,6 +72,9 @@
     <string name="catalog_tmdb_notice">Datos de TMDB · sin el respaldo de TMDB</string>
     <string name="catalog_movie">Película</string>
     <string name="catalog_show">Serie</string>
+    <string name="banner_open_details">Ver ficha</string>
+    <string name="banner_resume">Reanudar</string>
+    <string name="banner_remove_my_list">Quitar de Mi lista</string>
     <string name="catalog_where_loading">Buscando apps donde verlo…</string>
     <string name="catalog_where_none">No disponible en tus apps (%1$s).</string>
     <string name="catalog_where_list">Disponible en: %1$s</string>

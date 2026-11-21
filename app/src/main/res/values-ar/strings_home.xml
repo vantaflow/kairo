@@ -72,6 +72,9 @@
     <string name="catalog_tmdb_notice">بيانات من TMDB · غير معتمد من TMDB</string>
     <string name="catalog_movie">فيلم</string>
     <string name="catalog_show">مسلسل</string>
+    <string name="banner_open_details">عرض التفاصيل</string>
+    <string name="banner_resume">متابعة</string>
+    <string name="banner_remove_my_list">إزالة من قائمتي</string>
     <string name="catalog_where_loading">جارٍ البحث عن تطبيقات لمشاهدته…</string>
     <string name="catalog_where_none">غير متاح في تطبيقاتك (%1$s).</string>
     <string name="catalog_where_list">متاح على: %1$s</string>
