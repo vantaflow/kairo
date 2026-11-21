@@ -179,7 +179,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     }
 
     /**
-     * Mode sans échec : Kairo a redémarré plusieurs fois de suite sans accueil stable. Fixé une fois
+     * Mode sans échec : Kairo a planté plusieurs fois de suite sans accueil stable. Fixé une fois
      * pour toute la vie du process ; aucune fonction de fond n'est lancée.
      */
     var safeMode = false
@@ -205,7 +205,10 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         // En tout premier : une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
-        safeMode = crashGuard.recordStart()
+        // Seule une sortie précédente plantée compte : un arrêt pour manque de mémoire ou une mise à jour non.
+        safeMode = crashGuard.recordStart(
+            previousExitWasCrash = com.vantaflow.kairo.system.isCrashExit(com.vantaflow.kairo.system.lastExitReason(this)),
+        )
         // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)
