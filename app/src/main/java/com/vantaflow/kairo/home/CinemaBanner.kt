@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -87,6 +86,9 @@ private const val BACKDROP_FADE_MS = 450
  * côté fin. Les flèches changent de contenu (sens de lecture respecté) et la bannière avance seule
  * toutes les [BANNER_ADVANCE_MS] tant qu'elle a le focus, sans changement fait à la main.
  * [onCurrent] reçoit le contenu affiché quand la bannière a le focus, null quand elle le perd.
+ *
+ * Sans contenu, rien n'est affiché : si la bannière avait le focus, il est perdu. L'appelant ne
+ * l'affiche donc pas avec une liste vide, ou déplace le focus avant de vider [items].
  */
 @Composable
 fun CinemaBanner(
@@ -111,6 +113,8 @@ fun CinemaBanner(
     // Changement de contenu fait à la main depuis que la bannière a reçu le focus : plus d'avance seule.
     var manual by remember { mutableStateOf(false) }
     var myListFocused by remember { mutableStateOf(false) }
+    // Contenu du catalogue dont le bouton Ma liste a reçu le focus (null sans focus).
+    var myListCatalog by remember { mutableStateOf<CatalogItem?>(null) }
     val myListFocus = remember { FocusRequester() }
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
 
@@ -122,8 +126,9 @@ fun CinemaBanner(
         index = stepBanner(current, items.size, delta)
     }
 
-    LaunchedEffect(focused, manual, lifecycleState, items.size, current) {
-        if (!focused || manual || !lifecycleState.isAtLeast(Lifecycle.State.RESUMED) || items.size <= 1) return@LaunchedEffect
+    // Pas d'avance non plus sur Ma liste : un appui sur OK ne doit pas viser le contenu suivant.
+    LaunchedEffect(focused, manual, myListFocused, lifecycleState, items.size, current) {
+        if (!focused || manual || myListFocused || !lifecycleState.isAtLeast(Lifecycle.State.RESUMED) || items.size <= 1) return@LaunchedEffect
         delay(BANNER_ADVANCE_MS)
         show(1)
     }
@@ -134,9 +139,7 @@ fun CinemaBanner(
 
     // Contenu changé de l'extérieur (liste raccourcie) alors que Ma liste a le focus : le bouton
     // reste le temps de passer le focus au bouton principal, au lieu de disparaître avec lui.
-    val lastCatalog = remember { arrayOfNulls<CatalogItem>(1) }
-    SideEffect { item.catalog?.let { lastCatalog[0] = it } }
-    val myListItem = item.catalog ?: lastCatalog[0]?.takeIf { myListFocused }
+    val myListItem = item.catalog ?: myListCatalog?.takeIf { myListFocused }
     val orphanFocus = item.catalog == null && myListFocused
     LaunchedEffect(orphanFocus) { if (orphanFocus) runCatching { primaryFocus.requestFocus() } }
 
@@ -198,7 +201,10 @@ fun CinemaBanner(
                         modifier = Modifier
                             .testTag("banner-mylist")
                             .focusRequester(myListFocus)
-                            .onFocusChanged { myListFocused = it.isFocused }
+                            .onFocusChanged {
+                                myListFocused = it.isFocused
+                                myListCatalog = if (it.isFocused) item.catalog ?: myListCatalog else null
+                            }
                             .bannerKeys(
                                 rtl,
                                 onStart = { runCatching { primaryFocus.requestFocus() } },
@@ -234,7 +240,8 @@ private fun sourceLabel(item: BannerItem): String? = when (item.catalog?.type) {
 
 /**
  * Flèches gauche / droite dans le sens de lecture : [onStart] vers le début (droite en arabe),
- * [onEnd] vers la fin. Appui seul pris en compte ; la touche est consommée dans les deux sens.
+ * [onEnd] vers la fin. Premier appui seul pris en compte (pas les répétitions) ; la touche est
+ * consommée dans les deux sens.
  */
 private fun Modifier.bannerKeys(rtl: Boolean, onStart: () -> Unit, onEnd: () -> Unit) =
     onPreviewKeyEvent { e ->
@@ -245,7 +252,8 @@ private fun Modifier.bannerKeys(rtl: Boolean, onStart: () -> Unit, onEnd: () -> 
             toStart -> onStart
             else -> return@onPreviewKeyEvent false
         }
-        if (e.type == KeyEventType.KeyDown) action()
+        // Touche maintenue : une seule action, pas de défilement en boucle des contenus.
+        if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0) action()
         true
     }
 

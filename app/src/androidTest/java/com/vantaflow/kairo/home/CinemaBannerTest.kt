@@ -1,7 +1,9 @@
 package com.vantaflow.kairo.home
 
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -16,6 +18,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
@@ -28,6 +31,10 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.vantaflow.kairo.R
@@ -36,6 +43,7 @@ import com.vantaflow.kairo.catalog.MediaType
 import com.vantaflow.kairo.catalog.toProgram
 import com.vantaflow.kairo.reco.Program
 import com.vantaflow.kairo.ui.theme.TvHomeTheme
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,15 +66,16 @@ class CinemaBannerTest {
     )
 
     @Composable
-    private fun Banner(items: List<BannerItem>) {
+    private fun Banner(items: List<BannerItem>, modifier: Modifier = Modifier, onCurrent: (BannerItem?) -> Unit = {}) {
         TvHomeTheme {
             CinemaBanner(
                 items = items,
                 inMyList = { false },
                 onOpen = {},
                 onToggleMyList = {},
-                onCurrent = {},
+                onCurrent = onCurrent,
                 primaryFocus = remember { FocusRequester() },
+                modifier = modifier,
             )
         }
     }
@@ -130,7 +139,15 @@ class CinemaBannerTest {
     @Test
     fun singleItemHasNoDotsAndDoesNotMove() {
         rule.mainClock.autoAdvance = false
-        rule.setContent { Banner(listOf(catalog(1))) }
+        val shown = mutableListOf<BannerItem?>()
+        // Une case focalisable de chaque côté : une flèche non consommée y enverrait le focus.
+        rule.setContent {
+            Row {
+                Box(Modifier.size(40.dp).testTag("before").focusable())
+                Banner(listOf(catalog(1)), Modifier.weight(1f)) { shown += it }
+                Box(Modifier.size(40.dp).testTag("after").focusable())
+            }
+        }
         rule.onNodeWithTag("banner-dots").assertDoesNotExist()
         rule.onNodeWithTag("banner-primary").requestFocus()
         frame()
@@ -138,15 +155,57 @@ class CinemaBannerTest {
         frame()
         assertTitle("Film 1")
         rule.onNodeWithTag("banner-primary").assertIsFocused()
-        // Depuis Ma liste, « vers la fin » n'a pas de contenu suivant.
+        rule.onNodeWithTag("before").assertIsNotFocused()
+        // Depuis Ma liste, « vers la fin » n'a pas de contenu suivant : le focus y reste
+        // (un changement de contenu l'aurait renvoyé au bouton principal).
         rule.onNodeWithTag("banner-mylist").requestFocus()
         frame()
         rule.onRoot().performKeyInput { pressKey(Key.DirectionRight) }
         frame()
         assertTitle("Film 1")
+        rule.onNodeWithTag("banner-mylist").assertIsFocused()
+        rule.onNodeWithTag("after").assertIsNotFocused()
         rule.mainClock.advanceTimeBy(20_000)
         assertTitle("Film 1")
+        rule.onNodeWithTag("banner-mylist").assertIsFocused()
         rule.onNodeWithTag("banner-dots").assertDoesNotExist()
+        // Le contenu montré n'a jamais changé : seulement « Film 1 » (ou null avant le focus).
+        rule.runOnIdle { assertEquals(listOf("Film 1"), shown.filterNotNull().map { it.program.title }.distinct()) }
+    }
+
+    @Test
+    fun myListFocusPausesAutoAdvance() {
+        rule.mainClock.autoAdvance = false
+        rule.setContent { Banner(listOf(catalog(1), catalog(2), catalog(3))) }
+        rule.onNodeWithTag("banner-mylist").requestFocus()
+        frame()
+        rule.mainClock.advanceTimeBy(20_000)
+        assertTitle("Film 1")
+        rule.onNodeWithTag("banner-mylist").assertIsFocused()
+    }
+
+    @Test
+    fun noAutoAdvanceWhenNotResumed() {
+        rule.mainClock.autoAdvance = false
+        val owner = object : LifecycleOwner {
+            val registry = LifecycleRegistry.createUnsafe(this)
+            override val lifecycle: Lifecycle get() = registry
+        }
+        owner.registry.currentState = Lifecycle.State.STARTED
+        rule.setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                Banner(listOf(catalog(1), catalog(2), catalog(3)))
+            }
+        }
+        rule.onNodeWithTag("banner-primary").requestFocus()
+        frame()
+        rule.mainClock.advanceTimeBy(20_000)
+        assertTitle("Film 1")
+        // De retour au premier plan : l'avance reprend.
+        rule.runOnIdle { owner.registry.currentState = Lifecycle.State.RESUMED }
+        frame()
+        rule.mainClock.advanceTimeBy(BANNER_ADVANCE_MS + 500)
+        assertTitle("Film 2")
     }
 
     @Test
@@ -200,7 +259,7 @@ class CinemaBannerTest {
         rule.setContent {
             Column {
                 Banner(listOf(catalog(1), catalog(2), catalog(3)))
-                androidx.compose.foundation.layout.Box(Modifier.size(40.dp).testTag("other").focusable())
+                Box(Modifier.size(40.dp).testTag("other").focusable())
             }
         }
         rule.onNodeWithTag("other").requestFocus()
