@@ -514,6 +514,8 @@ class HomeActivity : ComponentActivity() {
         catalogDetail?.let { item ->
             // Titre déjà dans Ma liste à l'ouverture de la fiche : sa carte de Ma liste peut disparaître.
             val openedInList = remember(item) { myList.any { it.type == item.type && it.id == item.id } }
+            // Fiche ouverte par la bannière (style Cinéma) : aucune carte ne disparaît avec le retrait.
+            val openedFromBanner = remember(item) { destination == Destination.Home && homeFocus.onBanner }
             val scope = androidx.compose.runtime.rememberCoroutineScope()
             // Fenêtre à part : à sa fermeture, le focus revient sur la carte d'où la fiche a été ouverte.
             androidx.compose.ui.window.Dialog(
@@ -529,7 +531,8 @@ class HomeActivity : ComponentActivity() {
                         onToggleMyList = { scope.launch { container.prefs.toggleMyList(item) } },
                         onDismiss = {
                             // Retiré de Ma liste depuis sa carte de Ma liste : la carte disparaît, le focus va aux onglets.
-                            if (openedInList && myList.none { it.type == item.type && it.id == item.id }) homeFocus.tabsToken++
+                            // Depuis la bannière, le focus y reste (si elle s'est vidée, le filet de l'accueil le reprend).
+                            if (openedInList && !openedFromBanner && myList.none { it.type == item.type && it.id == item.id }) homeFocus.tabsToken++
                             catalogDetail = null
                         },
                     )
