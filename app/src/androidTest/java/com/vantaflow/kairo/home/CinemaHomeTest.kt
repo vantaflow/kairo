@@ -124,8 +124,9 @@ class CinemaHomeTest {
         // Sur un favori, focus parti ailleurs (panneau des réglages) : refocus rend le même favori, pas la bannière.
         rule.onNodeWithTag("favorite-2").requestFocus()
         rule.onNodeWithTag("favorite-2").assertIsFocused()
+        // Sur une box (hors mode tactile), Android redonne aussitôt le focus à l'en-tête : le favori l'a perdu.
         rule.runOnIdle { focusManager.clearFocus() }
-        rule.onNode(isFocused()).assertDoesNotExist()
+        rule.onNodeWithTag("favorite-2").assertIsNotFocused()
         rule.runOnIdle { focus.refocus() }
         rule.onNodeWithTag("favorite-2").assertIsFocused()
         rule.onNodeWithTag("favorite-2").assertIsDisplayed()
@@ -133,7 +134,7 @@ class CinemaHomeTest {
         press(Key.DirectionUp)
         rule.onNodeWithTag("banner-primary").assertIsFocused()
         rule.runOnIdle { focusManager.clearFocus() }
-        rule.onNode(isFocused()).assertDoesNotExist()
+        rule.onNodeWithTag("banner-primary").assertIsNotFocused()
         rule.runOnIdle { focus.refocus() }
         rule.onNodeWithTag("banner-primary").assertIsFocused()
     }

@@ -103,7 +103,16 @@ fun HomeRowsScreen(
     val showApps = forYou || data.tab == HomeTab.Apps
     // Premier élément focalisable de la bannière : il reçoit le focus à la place du 1er favori.
     val bannerFocus = remember { FocusRequester() }
-    val bannerShown = banner != null
+    // Bannière vidée pendant qu'elle a le focus : elle reste affichée (derniers contenus) le temps de
+    // passer le focus au favori retenu. Retirée avec le focus, Android le donnerait aussitôt au
+    // premier bouton de l'en-tête, avant tout filet. Lu seulement quand la bannière manque.
+    val bannerHasFocus = remember { mutableStateOf(false) }
+    val releaseBanner = remember { mutableStateOf(false) }
+    val lastBanner = remember { Memo<(@Composable (FocusRequester) -> Unit)?>(null) }
+    if (banner != null) lastBanner.value = banner
+    val shownBanner = banner ?: lastBanner.value.takeIf { bannerHasFocus.value && !releaseBanner.value }
+    val bannerLeaving = banner == null && shownBanner != null
+    val bannerShown = shownBanner != null
     // Bannière déjà affichée : si elle disparaît avec le focus, il peut revenir aux onglets ou à l'en-tête.
     val bannerSeen = remember { Memo(false) }
     SideEffect { if (bannerShown) bannerSeen.value = true }
@@ -169,6 +178,24 @@ fun HomeRowsScreen(
                 }
             }
         }
+    }
+
+    // Bannière qui part avec le focus : favori retenu, sinon onglet affiché, sinon en-tête, puis
+    // elle est retirée ; elle l'est aussi si aucune de ces cibles n'a pris le focus.
+    LaunchedEffect(bannerLeaving) {
+        if (!bannerLeaving) {
+            releaseBanner.value = false
+            return@LaunchedEffect
+        }
+        val favorite = requesters.getOrNull(focus.index.coerceIn(0, requesters.lastIndex.coerceAtLeast(0)))
+        val targets = listOfNotNull(favorite?.takeIf { showApps }, data.tab?.let { tabRequesters.getValue(it) }, headerFocus)
+        for (target in targets) {
+            runCatching { target.requestFocus() }
+            withFrameNanos { }
+            if (!bannerHasFocus.value) return@LaunchedEffect
+        }
+        bannerHasFocus.value = false
+        releaseBanner.value = true
     }
 
     // Accueil (re)construit : aucune touche encore appuyée sur lui.
@@ -306,9 +333,10 @@ fun HomeRowsScreen(
                     .padding(top = 24.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                if (banner != null) key("banner") {
+                if (shownBanner != null) key("banner") {
                     Box(
                         Modifier
+                            .onFocusChanged { bannerHasFocus.value = it.hasFocus }
                             .alignRowOnFocus(isBanner = true)
                             .focusProperties {
                                 // Entrée par Haut depuis les rangées : toujours le bouton principal.
@@ -323,7 +351,7 @@ fun HomeRowsScreen(
                                 }
                             }
                             .focusGroup(),
-                    ) { banner(bannerFocus) }
+                    ) { shownBanner(bannerFocus) }
                 }
                 if (showApps) key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
