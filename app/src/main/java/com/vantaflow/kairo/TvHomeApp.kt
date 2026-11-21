@@ -187,8 +187,10 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     }
 
     /**
-     * Mode sans échec : Kairo a planté plusieurs fois de suite sans accueil stable. Fixé une fois
-     * pour toute la vie du process ; aucune fonction de fond n'est lancée.
+     * Mode sans échec : Kairo a planté plusieurs fois de suite sans démarrage réussi. Fixé une fois
+     * pour toute la vie du process ; aucune fonction de fond n'est lancée (ni vérification ni
+     * installation automatique des mises à jour). Réglages › Mise à jour reste utilisable à la main :
+     * une version défectueuse de Kairo peut être remplacée depuis le mode sans échec.
      */
     var safeMode = false
         private set

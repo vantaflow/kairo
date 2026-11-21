@@ -201,12 +201,17 @@ class HomeFallback(private val context: Context) {
      */
     fun fallbackHomeAvailable(): Boolean? = otherHomeAvailable()
 
-    /** Mode sans échec imposé par une remise en place automatique (voir [StartupOutcome.Restored]). */
+    /**
+     * Mode sans échec imposé par une remise en place automatique (voir [StartupOutcome.Restored]) ;
+     * levé seulement par « Redémarrer Kairo normalement ».
+     */
     fun isSafeModeForced(): Boolean = runCatching { prefs.getBoolean(KEY_FORCED_SAFE_MODE, false) }.getOrDefault(false)
 
     /**
-     * Accueil stable ou « Redémarrer Kairo normalement » : les plantages en mode sans échec sont
-     * oubliés, et le mode sans échec imposé par une remise en place automatique est levé.
+     * Démarrage réussi (`TvHomeApp.markStable()`, mode normal seulement) ou « Redémarrer Kairo
+     * normalement » : les plantages en mode sans échec sont oubliés et l'indicateur de mode sans échec
+     * imposé est effacé. En mode sans échec, seul ce bouton peut le lever : `markStable()` n'y est
+     * jamais appelé (pas de porte de démarrage).
      */
     fun resetCrashes() {
         runCatching {
