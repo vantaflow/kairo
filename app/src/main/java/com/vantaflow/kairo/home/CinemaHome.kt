@@ -31,6 +31,8 @@ fun CinemaHome(data: HomeData, actions: HomeActions, focus: HomeFocus) {
                 onCurrent = { current.value = it },
                 primaryFocus = first,
                 appLabels = data.appLabels,
+                // Onglet changé : la bannière repart du premier contenu (sans onglets = Pour vous).
+                listId = data.tab ?: HomeTab.ForYou,
             )
         },
         backdrop = { CinemaBackdrop(current) },

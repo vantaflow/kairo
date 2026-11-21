@@ -12,6 +12,10 @@ import com.vantaflow.kairo.ui.theme.BannerSource
 /** Contenu de la bannière ; [catalog] et [backdropUrl] sont nuls pour un contenu « À suivre ». */
 data class BannerItem(val program: Program, val catalog: CatalogItem?, val backdropUrl: String?)
 
+/** Identité d'un contenu de la bannière, stable quand la liste se réordonne. */
+fun bannerKey(item: BannerItem): String =
+    item.catalog?.let(::catalogUri) ?: "watch-next:${item.program.id}"
+
 /** Nombre de contenus montrés au plus par la bannière. */
 const val BANNER_LIMIT = 5
 

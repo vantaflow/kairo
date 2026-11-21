@@ -66,16 +66,24 @@ class CinemaBannerTest {
     )
 
     @Composable
-    private fun Banner(items: List<BannerItem>, modifier: Modifier = Modifier, onCurrent: (BannerItem?) -> Unit = {}) {
+    private fun Banner(
+        items: List<BannerItem>,
+        modifier: Modifier = Modifier,
+        inMyList: (CatalogItem) -> Boolean = { false },
+        onToggleMyList: (CatalogItem) -> Unit = {},
+        listId: Any? = null,
+        onCurrent: (BannerItem?) -> Unit = {},
+    ) {
         TvHomeTheme {
             CinemaBanner(
                 items = items,
-                inMyList = { false },
+                inMyList = inMyList,
                 onOpen = {},
-                onToggleMyList = {},
+                onToggleMyList = onToggleMyList,
                 onCurrent = onCurrent,
                 primaryFocus = remember { FocusRequester() },
                 modifier = modifier,
+                listId = listId,
             )
         }
     }
@@ -144,7 +152,7 @@ class CinemaBannerTest {
         rule.setContent {
             Row {
                 Box(Modifier.size(40.dp).testTag("before").focusable())
-                Banner(listOf(catalog(1)), Modifier.weight(1f)) { shown += it }
+                Banner(listOf(catalog(1)), Modifier.weight(1f), onCurrent = { shown += it })
                 Box(Modifier.size(40.dp).testTag("after").focusable())
             }
         }
@@ -267,5 +275,64 @@ class CinemaBannerTest {
         rule.onNodeWithTag("other").assertIsFocused()
         rule.mainClock.advanceTimeBy(20_000)
         assertTitle("Film 1")
+    }
+
+    @Test
+    fun addingToMyListKeepsShownItem() {
+        rule.mainClock.autoAdvance = false
+        // Comme l'accueil : Ma liste en tête de la bannière, le dernier ajouté en premier.
+        var myList by mutableStateOf(emptyList<Int>())
+        rule.setContent {
+            val items = myList.map(::catalog) + (1..3).filterNot { it in myList }.map(::catalog)
+            Banner(
+                items,
+                inMyList = { it.id.toInt() in myList },
+                onToggleMyList = { c ->
+                    val n = c.id.toInt()
+                    myList = if (n in myList) myList - n else listOf(n) + myList
+                },
+            )
+        }
+        rule.onNodeWithTag("banner-primary").requestFocus()
+        frame()
+        // « Vers le début » : le 3e contenu, puis « vers la fin » : son bouton Ma liste.
+        rule.onRoot().performKeyInput { pressKey(Key.DirectionLeft) }
+        frame()
+        assertTitle("Film 3")
+        rule.onRoot().performKeyInput { pressKey(Key.DirectionRight) }
+        frame()
+        rule.onNodeWithTag("banner-mylist").assertIsFocused()
+        // + Ma liste : le film passe en tête de la liste, la bannière le montre toujours.
+        rule.onRoot().performKeyInput { pressKey(Key.DirectionCenter) }
+        repeat(3) { frame() }
+        rule.runOnIdle { assertEquals(listOf(3), myList) }
+        assertTitle("Film 3")
+        rule.onNodeWithTag("banner-mylist").assertIsFocused()
+        assertButtonText("banner-mylist", context.getString(R.string.banner_remove_my_list))
+        // Un second appui vise le même film : il est retiré.
+        rule.onRoot().performKeyInput { pressKey(Key.DirectionCenter) }
+        repeat(3) { frame() }
+        rule.runOnIdle { assertEquals(emptyList<Int>(), myList) }
+        assertTitle("Film 3")
+    }
+
+    @Test
+    fun otherListStartsOnFirstItem() {
+        rule.mainClock.autoAdvance = false
+        var tab by mutableStateOf(HomeTab.ForYou)
+        var items by mutableStateOf(listOf(catalog(1), catalog(2), catalog(3)))
+        rule.setContent { Banner(items, listId = tab) }
+        rule.onNodeWithTag("banner-primary").requestFocus()
+        frame()
+        rule.onRoot().performKeyInput { pressKey(Key.DirectionLeft) }
+        frame()
+        assertTitle("Film 3")
+        // Autre onglet : premier contenu, même si le contenu affiché fait aussi partie de la liste.
+        rule.runOnIdle {
+            tab = HomeTab.Movies
+            items = listOf(catalog(4), catalog(3), catalog(5))
+        }
+        repeat(2) { frame() }
+        assertTitle("Film 4")
     }
 }

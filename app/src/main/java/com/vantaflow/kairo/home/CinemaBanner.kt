@@ -86,6 +86,8 @@ private const val BACKDROP_FADE_MS = 450
  * côté fin. Les flèches changent de contenu (sens de lecture respecté) et la bannière avance seule
  * toutes les [BANNER_ADVANCE_MS] tant qu'elle a le focus, sans changement fait à la main.
  * [onCurrent] reçoit le contenu affiché quand la bannière a le focus, null quand elle le perd.
+ * Le contenu affiché est retenu par son identité ([bannerKey]) : il reste le même quand la liste se
+ * réordonne (ajout à Ma liste, catalogue relu). Une autre [listId] (l'onglet) ramène au premier.
  *
  * Sans contenu, rien n'est affiché : si la bannière avait le focus, il est perdu. L'appelant ne
  * l'affiche donc pas avec une liste vide, ou déplace le focus avant de vider [items].
@@ -100,14 +102,22 @@ fun CinemaBanner(
     primaryFocus: FocusRequester,
     modifier: Modifier = Modifier,
     appLabels: Map<String, String> = emptyMap(),
+    listId: Any? = null,
 ) {
     if (items.isEmpty()) return
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    var index by rememberSaveable { mutableIntStateOf(0) }
-    // Liste raccourcie : l'index est ramené dans la liste (dès cette composition, sans plantage).
-    val current = index.coerceIn(0, items.lastIndex)
-    LaunchedEffect(items.size) { if (index > items.lastIndex) index = items.lastIndex }
+    // Contenu affiché (identité) et sa dernière position ; autre liste : le premier contenu.
+    var shownKey by rememberSaveable(listId) { mutableStateOf<String?>(null) }
+    var index by rememberSaveable(listId) { mutableIntStateOf(0) }
+    // Contenu retrouvé là où il est passé ; disparu, la même position ramenée dans la liste (le
+    // suivant), dès cette composition, sans plantage.
+    val current = items.indexOfFirst { bannerKey(it) == shownKey }.takeIf { it >= 0 } ?: index.coerceIn(0, items.lastIndex)
     val item = items[current]
+    val itemKey = bannerKey(item)
+    LaunchedEffect(current, itemKey) {
+        index = current
+        shownKey = itemKey
+    }
 
     var focused by remember { mutableStateOf(false) }
     // Changement de contenu fait à la main depuis que la bannière a reçu le focus : plus d'avance seule.
@@ -123,11 +133,13 @@ fun CinemaBanner(
     fun show(delta: Int) {
         if (items.size <= 1) return
         runCatching { primaryFocus.requestFocus() }
-        index = stepBanner(current, items.size, delta)
+        val next = stepBanner(current, items.size, delta)
+        index = next
+        shownKey = bannerKey(items[next])
     }
 
     // Pas d'avance non plus sur Ma liste : un appui sur OK ne doit pas viser le contenu suivant.
-    LaunchedEffect(focused, manual, myListFocused, lifecycleState, items.size, current) {
+    LaunchedEffect(focused, manual, myListFocused, lifecycleState, items, current) {
         if (!focused || manual || myListFocused || !lifecycleState.isAtLeast(Lifecycle.State.RESUMED) || items.size <= 1) return@LaunchedEffect
         delay(BANNER_ADVANCE_MS)
         show(1)
@@ -141,6 +153,8 @@ fun CinemaBanner(
     // reste le temps de passer le focus au bouton principal, au lieu de disparaître avec lui.
     val myListItem = item.catalog ?: myListCatalog?.takeIf { myListFocused }
     val orphanFocus = item.catalog == null && myListFocused
+    // Autre contenu du catalogue sous le bouton Ma liste focalisé : le contenu retenu le suit.
+    LaunchedEffect(item.catalog) { if (myListFocused && item.catalog != null) myListCatalog = item.catalog }
     LaunchedEffect(orphanFocus) { if (orphanFocus) runCatching { primaryFocus.requestFocus() } }
 
     Box(
