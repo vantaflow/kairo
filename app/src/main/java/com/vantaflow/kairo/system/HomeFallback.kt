@@ -175,12 +175,12 @@ class HomeFallback(private val context: Context) {
      * sans se fier à leur date (voir [newExitTraces]) ; les traces actuelles sont mémorisées pour le
      * démarrage suivant. Traces illisibles : rien n'est compté ni mémorisé.
      */
-    fun previousExitWasCrash(): Boolean = runCatching {
-        val current = exitTraces(context) ?: return false
+    fun previousExit(): PreviousExit = runCatching {
+        val current = exitTraces(context) ?: return NO_EXIT
         val seen = decodeSeenExitKeys(prefs.getString(KEY_SEEN_EXITS, null))
         prefs.edit().putString(KEY_SEEN_EXITS, encodeSeenExitKeys(current)).commit()
-        previousExitWasCrash(seen, current)
-    }.getOrDefault(false)
+        previousExit(seen, current, bootIsRecent(android.os.SystemClock.elapsedRealtime()))
+    }.getOrDefault(NO_EXIT)
 
     /**
      * Mode du lancement en cours, relu au démarrage suivant (écrit seulement s'il change). Un démarrage
@@ -279,6 +279,7 @@ class HomeFallback(private val context: Context) {
         const val KEY_LAST_RUN_SAFE_MODE = "last_run_safe_mode"
         const val KEY_SAFE_MODE_CRASHES = "safe_mode_crashes"
         const val KEY_SEEN_EXITS = "seen_exits"
+        val NO_EXIT = PreviousExit(crashed = false, countsForSafeMode = false)
         const val KEY_FORCED_SAFE_MODE = "forced_safe_mode"
         const val RECOVERY_ACTIVITY = "com.vantaflow.kairo.system.RecoveryActivity"
         val HOME_ACTIVITY: String = HomeActivity::class.java.name

@@ -210,10 +210,10 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     var gate: com.vantaflow.kairo.system.StartupGate? = null
         private set
 
-    /** Vrai une fois l'accueil resté au premier plan assez longtemps dans ce process. */
+    /** Vrai une fois le démarrage jugé réussi dans ce process (porte ouverte depuis 5 min). */
     @Volatile private var stable = false
 
-    /** Accueil stable : démarrages et plantages en mode sans échec précédents oubliés (une seule fois par process). */
+    /** Démarrage réussi : démarrages et plantages en mode sans échec précédents oubliés (une seule fois par process). */
     fun markStable() {
         if (stable) return
         stable = true
@@ -226,7 +226,9 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         // Avant tout, à chaque démarrage : seules les sorties survenues depuis le démarrage précédent
         // comptent (traces jamais vues, sans se fier à l'horloge) ; une sortie plantée compte, un arrêt
         // pour manque de mémoire ou une mise à jour non.
-        val previousExitWasCrash = homeFallback.previousExitWasCrash()
+        val previousExit = homeFallback.previousExit()
+        // Vrai plantage (exception, plantage natif) : seul compté pour le retrait de l'accueil.
+        val previousExitWasCrash = previousExit.crashed
         // Dernier filet, avant la langue, le conteneur et tout le reste : Kairo retiré de l'accueil ne
         // démarre plus rien jusqu'à « Remettre Kairo comme accueil ». Les composants sont réalignés sur
         // l'indicateur à chaque démarrage ; plus d'autre accueil : Kairo le reprend, en mode sans échec.
@@ -244,8 +246,9 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
             return
         }
         // Une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
-        safeMode = crashGuard.recordStart(previousExitWasCrash) || restored || homeFallback.isSafeModeForced()
-        homeFallback.recordRun(safeMode, previousExitWasCrash)
+        // Mode sans échec : plantages, et ANR ou échecs de démarrage loin du boot de la box.
+        safeMode = crashGuard.recordStart(previousExit.countsForSafeMode) || restored || homeFallback.isSafeModeForced()
+        homeFallback.recordRun(safeMode, previousExit.countsForSafeMode)
         // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)
@@ -262,6 +265,11 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         }
         gate.whenOpen { com.vantaflow.kairo.media.NowPlaying.start(this) }
         gate.whenOpen { container.ourApps.checkUpdates() }
+        // Porte ouverte depuis 5 min sans plantage, accueil à l'écran ou non : le démarrage est réussi.
+        gate.whenOpen {
+            while (!com.vantaflow.kairo.system.isStable(gate.openForMs())) kotlinx.coroutines.delay(10_000)
+            kotlinx.coroutines.withContext(Dispatchers.IO) { markStable() }
+        }
     }
 
     /** Un changement de configuration de la box remet sa langue : on réapplique celle de Kairo. */

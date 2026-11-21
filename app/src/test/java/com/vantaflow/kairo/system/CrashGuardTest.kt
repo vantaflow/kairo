@@ -29,8 +29,8 @@ class CrashGuardTest {
     fun oldStartsAreForgotten() {
         assertFalse(startAt(0))
         assertFalse(startAt(30_000))
-        assertFalse(startAt(200_000))
-        assertEquals(listOf(BootTime(1, 200_000L)), stored)
+        assertFalse(startAt(700_000))
+        assertEquals(listOf(BootTime(1, 700_000L)), stored)
     }
 
     @Test
@@ -84,7 +84,7 @@ class CrashGuardTest {
         // Kairo tué par manque de mémoire pendant le mode sans échec : la boucle n'est pas finie.
         assertTrue(startAt(30_000, crash = false))
         // Hors de la fenêtre : mode normal.
-        assertFalse(startAt(200_000, crash = false))
+        assertFalse(startAt(700_000, crash = false))
     }
 
     @Test
@@ -93,6 +93,29 @@ class CrashGuardTest {
         assertFalse(startAt(90_000, boot = 1))
         assertFalse(startAt(5_000, boot = 2))
         assertTrue(startAt(10_000, boot = 2))
+    }
+
+    @Test
+    fun slowLoopWithinTenMinutesEntersSafeMode() {
+        // Plantages espacés de 4 min (après l'ouverture de la porte) : toujours une boucle.
+        assertFalse(startAt(0))
+        assertFalse(startAt(240_000))
+        assertTrue(startAt(480_000))
+    }
+
+    @Test
+    fun crashesOfPreviousBootCountOnlyRightAfterBoot() {
+        assertFalse(startAt(3_000_000, boot = 1))
+        assertFalse(startAt(3_100_000, boot = 1))
+        // Démarrage actuel à 30 min du boot : les plantages de la veille ne comptent plus.
+        assertFalse(startAt(1_800_000, boot = 2))
+    }
+
+    @Test
+    fun crashesOfPreviousBootCountTwoMinutesAfterBoot() {
+        assertFalse(startAt(3_000_000, boot = 1))
+        assertFalse(startAt(3_100_000, boot = 1))
+        assertTrue(startAt(120_000, boot = 2))
     }
 
     @Test
@@ -116,10 +139,10 @@ class CrashGuardTest {
         val crashes = listOf(
             ApplicationExitInfo.REASON_CRASH,
             ApplicationExitInfo.REASON_CRASH_NATIVE,
-            ApplicationExitInfo.REASON_ANR,
-            ApplicationExitInfo.REASON_INITIALIZATION_FAILURE,
         )
         val others = listOf(
+            ApplicationExitInfo.REASON_ANR,
+            ApplicationExitInfo.REASON_INITIALIZATION_FAILURE,
             ApplicationExitInfo.REASON_UNKNOWN,
             ApplicationExitInfo.REASON_EXIT_SELF,
             ApplicationExitInfo.REASON_SIGNALED,
@@ -137,5 +160,35 @@ class CrashGuardTest {
         crashes.forEach { assertTrue("raison $it", isCrashExit(it)) }
         others.forEach { assertFalse("raison $it", isCrashExit(it)) }
         assertFalse(isCrashExit(null))
+    }
+
+    @Test
+    fun anrAndStartTimeoutCountForSafeModeOnlyLongAfterBoot() {
+        val always = listOf(ApplicationExitInfo.REASON_CRASH, ApplicationExitInfo.REASON_CRASH_NATIVE)
+        val afterBoot = listOf(ApplicationExitInfo.REASON_ANR, ApplicationExitInfo.REASON_INITIALIZATION_FAILURE)
+        val never = listOf(
+            ApplicationExitInfo.REASON_UNKNOWN,
+            ApplicationExitInfo.REASON_EXIT_SELF,
+            ApplicationExitInfo.REASON_SIGNALED,
+            ApplicationExitInfo.REASON_LOW_MEMORY,
+            ApplicationExitInfo.REASON_USER_REQUESTED,
+            ApplicationExitInfo.REASON_PACKAGE_UPDATED,
+        )
+        for (recent in listOf(true, false)) {
+            always.forEach { assertTrue("raison $it, boot récent $recent", countsForSafeMode(it, recent)) }
+            never.forEach { assertFalse("raison $it, boot récent $recent", countsForSafeMode(it, recent)) }
+            assertFalse(countsForSafeMode(null, recent))
+        }
+        afterBoot.forEach {
+            assertFalse("raison $it juste après le boot", countsForSafeMode(it, bootIsRecent = true))
+            assertTrue("raison $it longtemps après le boot", countsForSafeMode(it, bootIsRecent = false))
+        }
+    }
+
+    @Test
+    fun stableFiveMinutesAfterTheGateOpened() {
+        assertFalse(isStable(gateOpenForMs = null))
+        assertFalse(isStable(gateOpenForMs = 299_999))
+        assertTrue(isStable(gateOpenForMs = 300_000))
     }
 }

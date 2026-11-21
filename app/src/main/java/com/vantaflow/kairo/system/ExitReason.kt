@@ -5,16 +5,23 @@ import android.app.ApplicationExitInfo
 import android.content.Context
 
 /**
- * Sortie du process due à un plantage : exception, plantage natif, ANR ou échec d'initialisation.
- * Tout le reste (mémoire basse, mise à jour, arrêt demandé, arrêt volontaire, signal…) n'en est pas un.
+ * Sortie du process due à un vrai plantage de Kairo : exception ou plantage natif. Sert au retrait
+ * de l'accueil et au compteur de plantages en mode sans échec. Un ANR ou un échec d'initialisation
+ * (« start timeout » d'une box saturée au démarrage) n'en est pas un : Kairo n'y est souvent pour rien.
  */
-fun isCrashExit(reason: Int?): Boolean = when (reason) {
-    ApplicationExitInfo.REASON_CRASH,
-    ApplicationExitInfo.REASON_CRASH_NATIVE,
-    ApplicationExitInfo.REASON_ANR,
-    ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> true
-    else -> false
-}
+fun isCrashExit(reason: Int?): Boolean =
+    reason == ApplicationExitInfo.REASON_CRASH || reason == ApplicationExitInfo.REASON_CRASH_NATIVE
+
+/**
+ * Sortie qui compte pour entrer en mode sans échec : un plantage toujours ; un ANR ou un échec
+ * d'initialisation seulement plus de 10 min après le démarrage de la box ([bootIsRecent] faux),
+ * quand la box n'est plus saturée par le démarrage des autres applis.
+ */
+fun countsForSafeMode(reason: Int?, bootIsRecent: Boolean): Boolean = isCrashExit(reason) ||
+    (!bootIsRecent && (reason == ApplicationExitInfo.REASON_ANR || reason == ApplicationExitInfo.REASON_INITIALIZATION_FAILURE))
+
+/** Sortie du process précédent : [crashed] (vrai plantage) et [countsForSafeMode]. */
+data class PreviousExit(val crashed: Boolean, val countsForSafeMode: Boolean)
 
 /** Traces de sortie mémorisées au plus (les plus récentes de la liste rendue par Android). */
 const val MAX_SEEN_EXITS = 32
@@ -52,9 +59,14 @@ fun newExitTraces(seenKeys: Set<String>?, current: List<ExitTrace>): List<Int> {
     return current.take(MAX_SEEN_EXITS).filter { it.key !in seenKeys }.map { it.reason }
 }
 
-/** Le process précédent a planté : au moins une des sorties nouvelles est un plantage. */
-fun previousExitWasCrash(seenKeys: Set<String>?, current: List<ExitTrace>): Boolean =
-    newExitTraces(seenKeys, current).any(::isCrashExit)
+/** Sortie du process précédent : au moins une des sorties nouvelles est un plantage (resp. compte). */
+fun previousExit(seenKeys: Set<String>?, current: List<ExitTrace>, bootIsRecent: Boolean): PreviousExit {
+    val reasons = newExitTraces(seenKeys, current)
+    return PreviousExit(
+        crashed = reasons.any(::isCrashExit),
+        countsForSafeMode = reasons.any { countsForSafeMode(it, bootIsRecent) },
+    )
+}
 
 /** Toutes les traces de sortie du process principal de Kairo ; null si illisibles. */
 fun exitTraces(context: Context): List<ExitTrace>? = runCatching {

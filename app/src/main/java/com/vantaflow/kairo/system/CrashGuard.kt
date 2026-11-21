@@ -3,8 +3,11 @@ package com.vantaflow.kairo.system
 /** Démarrages rapprochés à partir desquels Kairo passe en mode sans échec. */
 const val SAFE_MODE_STARTS = 3
 
-/** Fenêtre dans laquelle ces démarrages sont comptés (temps écoulé depuis le démarrage de la box). */
-const val SAFE_MODE_WINDOW_MS = 120_000L
+/**
+ * Fenêtre dans laquelle ces démarrages sont comptés (temps écoulé depuis le démarrage de la box).
+ * Large (10 min) : seules les sorties plantées comptent, une boucle lente est aussi une boucle.
+ */
+const val SAFE_MODE_WINDOW_MS = 600_000L
 
 /**
  * Moment d'un démarrage sans horloge murale (fausse sur une box qui redémarre sans réseau) : numéro du
@@ -14,26 +17,23 @@ data class BootTime(val boot: Int, val elapsedMs: Long)
 
 /**
  * [earlier] appartient à la même boucle de plantage que [now] : même démarrage de la box et moins de
- * [SAFE_MODE_WINDOW_MS] d'écart, ou démarrage de la box juste précédent (plantage, redémarrage de la
- * box, nouveau plantage).
+ * [SAFE_MODE_WINDOW_MS] d'écart, ou démarrage de la box juste précédent si le démarrage actuel a lieu
+ * moins de [SAFE_MODE_WINDOW_MS] après le boot (plantage, redémarrage de la box, nouveau plantage) ;
+ * des plantages d'un démarrage de la box ancien de plusieurs jours ne comptent pas.
  */
 fun inSameLoop(earlier: BootTime, now: BootTime): Boolean =
     (earlier.boot == now.boot && now.elapsedMs - earlier.elapsedMs in 0 until SAFE_MODE_WINDOW_MS) ||
-        (now.boot > 0 && earlier.boot == now.boot - 1)
+        (now.boot > 0 && earlier.boot == now.boot - 1 && now.elapsedMs < SAFE_MODE_WINDOW_MS)
+
+/** Temps de porte de démarrage ouverte, process vivant, après lequel le démarrage est jugé réussi. */
+const val STABLE_AFTER_GATE_MS = 300_000L
 
 /**
- * Temps d'accueil au premier plan, d'affilée, ET de porte de démarrage ouverte, après lequel le
- * démarrage est jugé réussi.
+ * Démarrage réussi : la porte est ouverte depuis [STABLE_AFTER_GATE_MS] sans que le process ait
+ * planté (les fonctions de fond lancées à son ouverture ont eu le temps de le faire), que l'accueil
+ * soit à l'écran ou non. Porte jamais ouverte ([gateOpenForMs] null) : pas encore.
  */
-const val STABLE_AFTER_MS = 30_000L
-
-/**
- * Démarrage réussi : la porte est ouverte depuis [STABLE_AFTER_MS] (les fonctions de fond lancées à
- * son ouverture ont eu le temps de planter) et l'accueil est au premier plan depuis [STABLE_AFTER_MS].
- * Porte jamais ouverte ([gateOpenForMs] null) : pas encore.
- */
-fun isStable(gateOpenForMs: Long?, homeForegroundForMs: Long): Boolean =
-    gateOpenForMs != null && gateOpenForMs >= STABLE_AFTER_MS && homeForegroundForMs >= STABLE_AFTER_MS
+fun isStable(gateOpenForMs: Long?): Boolean = gateOpenForMs != null && gateOpenForMs >= STABLE_AFTER_GATE_MS
 
 /**
  * Garde anti-boucle de plantage : chaque démarrage qui suit un plantage est noté ; s'il y en a
@@ -66,7 +66,7 @@ class CrashGuard(
         return recent.size >= SAFE_MODE_STARTS
     }
 
-    /** L'accueil est resté au premier plan [STABLE_AFTER_MS] : les démarrages précédents sont oubliés. */
+    /** Démarrage réussi (voir [isStable]) : les démarrages précédents sont oubliés. */
     fun markStable() {
         runCatching { save(emptyList()) }
     }
