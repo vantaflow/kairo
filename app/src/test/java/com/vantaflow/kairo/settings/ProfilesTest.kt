@@ -1,6 +1,8 @@
 package com.vantaflow.kairo.settings
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.vantaflow.kairo.ui.theme.BannerSource
+import com.vantaflow.kairo.ui.theme.HomeStyle
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -128,7 +130,25 @@ class ProfilesTest {
     }
 
     @Test
-    fun removingProfileDeletesItsSettings() = runTest(UnconfinedTestDispatcher()) {
+    fun homeStyleAndBannerSourcesArePerProfile() = runTest(UnconfinedTestDispatcher()) {
+        val prefs = prefs()
+        assertEquals(HomeStyle.Classic, prefs.homeStyle.first())
+        assertEquals(BannerSource.entries.toSet(), prefs.bannerSources.first())
+        prefs.setHomeStyle(HomeStyle.Cinema)
+        prefs.setBannerSources(setOf(BannerSource.Catalog))
+        val guest = prefs.addProfile("Invité", kids = false, pin = null)
+        prefs.switchProfile(guest.id)
+        assertEquals(HomeStyle.Classic, prefs.homeStyle.first())
+        assertEquals(BannerSource.entries.toSet(), prefs.bannerSources.first())
+        prefs.setBannerSources(emptySet())
+        assertEquals(emptySet<BannerSource>(), prefs.bannerSources.first())
+        prefs.switchProfile(DEFAULT_PROFILE_ID)
+        assertEquals(HomeStyle.Cinema, prefs.homeStyle.first())
+        assertEquals(setOf(BannerSource.Catalog), prefs.bannerSources.first())
+    }
+
+    @Test
+    fun removingProfileDeletesItsSettings()= runTest(UnconfinedTestDispatcher()) {
         val prefs = prefs()
         val guest = prefs.addProfile("Invité", kids = false, pin = null)
         prefs.switchProfile(guest.id)

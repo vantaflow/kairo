@@ -14,7 +14,11 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import com.vantaflow.kairo.apps.AppInfo
+import com.vantaflow.kairo.ui.theme.BannerSource
 import com.vantaflow.kairo.ui.theme.CUSTOM_THEME_ID
+import com.vantaflow.kairo.ui.theme.HomeStyle
+import com.vantaflow.kairo.ui.theme.bannerSourcesOf
+import com.vantaflow.kairo.ui.theme.homeStyleById
 import com.vantaflow.kairo.ui.theme.HomeLayout
 import com.vantaflow.kairo.ui.theme.LauncherTheme
 import com.vantaflow.kairo.ui.theme.Themes
@@ -187,6 +191,8 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
         fun recentApps(s: String) = stringPreferencesKey("recent_apps$s")
         val appUsage = stringPreferencesKey("app_usage")
         fun myList(s: String) = stringPreferencesKey("my_list$s")
+        fun homeStyle(s: String) = stringPreferencesKey("home_style$s")
+        fun bannerSources(s: String) = stringSetPreferencesKey("banner_sources$s")
         val clockSize = intPreferencesKey("clock_size")
         val tileWidth = intPreferencesKey("tile_width")
         val heroTransition = stringPreferencesKey("hero_transition")
@@ -382,6 +388,20 @@ class LauncherPrefs(private val store: DataStore<Preferences>) {
 
     suspend fun setPixabayKey(key: String) {
         store.edit { it[Keys.pixabayKey] = key.trim() }
+    }
+
+    /** Style de l'accueil (par profil) ; classique par défaut. */
+    val homeStyle: Flow<HomeStyle> = pref { homeStyleById(it[Keys.homeStyle(it.sfx)]) }
+
+    suspend fun setHomeStyle(style: HomeStyle) {
+        store.edit { it[Keys.homeStyle(it.sfx)] = style.id }
+    }
+
+    /** Sources de la bannière (par profil) ; jamais réglées = les trois. */
+    val bannerSources: Flow<Set<BannerSource>> = pref { bannerSourcesOf(it[Keys.bannerSources(it.sfx)]) }
+
+    suspend fun setBannerSources(sources: Set<BannerSource>) {
+        store.edit { it[Keys.bannerSources(it.sfx)] = sources.map { s -> s.id }.toSet() }
     }
 
     val themeId: Flow<String> = pref { it[Keys.themeId] ?: "google-tv" }
