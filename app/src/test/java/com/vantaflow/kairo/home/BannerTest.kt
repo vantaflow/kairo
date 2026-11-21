@@ -72,6 +72,20 @@ class BannerTest {
     }
 
     @Test
+    fun myListItemWithoutBackdropIsDropped() {
+        val items = bannerItems(HomeTab.ForYou, all, listOf(movie(1, backdrop = null), movie(2)), emptyList(), emptyList())
+        assertEquals(listOf(2L), ids(items))
+    }
+
+    @Test
+    fun rowWithoutAnyBackdropIsSkippedForNextRow() {
+        val first = row(movie(1, backdrop = null), movie(2, backdrop = null))
+        val second = row(movie(3))
+        val items = bannerItems(HomeTab.ForYou, all, emptyList(), emptyList(), listOf(first, second))
+        assertEquals(listOf(3L), ids(items))
+    }
+
+    @Test
     fun watchNextItemHasNoBackdropAndNoCatalog() {
         val items = bannerItems(HomeTab.ForYou, all, emptyList(), listOf(resume(9)), emptyList())
         assertEquals(1, items.size)

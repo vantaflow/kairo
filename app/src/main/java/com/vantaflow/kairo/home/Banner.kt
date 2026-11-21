@@ -59,15 +59,14 @@ fun bannerItems(
     return result
 }
 
-/** Éléments de la première rangée non vide qui convient au type ; une rangée sans type est filtrée. */
+/**
+ * Éléments de la première rangée qui garde au moins un contenu du bon type avec image de fond ;
+ * une rangée sans type est filtrée, une rangée d'un autre type est sautée.
+ */
 private fun catalogRowFor(type: MediaType?, rows: List<CatalogRow>): List<CatalogItem> {
     for (row in rows) {
-        val items = when {
-            type == null -> row.items
-            row.type == type -> row.items
-            row.type == null -> row.items.filter { it.type == type }
-            else -> emptyList()
-        }
+        if (type != null && row.type != null && row.type != type) continue
+        val items = row.items.filter { it.backdrop != null && (type == null || it.type == type) }
         if (items.isNotEmpty()) return items
     }
     return emptyList()
