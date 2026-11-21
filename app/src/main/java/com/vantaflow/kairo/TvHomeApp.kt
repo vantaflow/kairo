@@ -216,6 +216,9 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        // Heure de ce démarrage notée avant tout : une trace de sortie plus ancienne que le démarrage
+        // précédent est périmée (coupure de courant) et n'est comptée ni ici ni par la garde anti-boucle.
+        val previousStart = homeFallback.noteStart(System.currentTimeMillis())
         // Dernier filet, avant la langue, le conteneur et tout le reste : Kairo retiré de l'accueil ne
         // démarre plus rien jusqu'à « Remettre Kairo comme accueil ». Les composants sont réalignés sur
         // l'indicateur à chaque démarrage ; plus d'autre accueil : Kairo le reprend, en mode sans échec.
@@ -228,7 +231,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
             com.vantaflow.kairo.system.StartupOutcome.Normal -> false
         }
         // Seule une sortie précédente plantée compte : un arrêt pour manque de mémoire ou une mise à jour non.
-        val previousExitWasCrash = com.vantaflow.kairo.system.isCrashExit(com.vantaflow.kairo.system.lastExitReason(this))
+        val previousExitWasCrash = com.vantaflow.kairo.system.isCrashExit(com.vantaflow.kairo.system.lastExitReason(this, previousStart))
         // Le mode sans échec plante encore : Kairo se retire et la box retombe sur l'autre accueil.
         if (homeFallback.withdrawIfSafeModeKeepsCrashing(previousExitWasCrash)) {
             withdrawn = true

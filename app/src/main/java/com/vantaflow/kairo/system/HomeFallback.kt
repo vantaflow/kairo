@@ -138,6 +138,16 @@ class HomeFallback(private val context: Context) {
             withdraw()
     }.getOrDefault(false)
 
+    /**
+     * Note l'heure de ce démarrage, à chaque démarrage (retiré compris) ; rend celle du démarrage
+     * précédent (0 si inconnue). Sert à écarter une trace de sortie périmée (voir [previousExitReason]).
+     */
+    fun noteStart(now: Long): Long = runCatching {
+        val previous = prefs.getLong(KEY_LAST_START, 0L)
+        prefs.edit().putLong(KEY_LAST_START, now).commit()
+        previous
+    }.getOrDefault(0L)
+
     /** Mode du lancement en cours, relu au démarrage suivant (écrit seulement s'il change). */
     fun recordRun(safeMode: Boolean) {
         runCatching {
@@ -156,12 +166,15 @@ class HomeFallback(private val context: Context) {
 
     /**
      * « Remettre Kairo comme accueil » : accueil de Kairo réactivé, toute la garde remise à zéro
-     * (démarrages notés, compteurs, indicateur de retrait), activité de réparation désactivée.
+     * (démarrages notés, compteurs, indicateur de retrait ; seule l'heure du dernier démarrage est
+     * gardée), activité de réparation désactivée.
      * Faux si l'accueil n'a pas pu être réactivé (rien d'autre n'est alors changé).
      */
     fun restore(): Boolean = runCatching {
         setEnabled(HOME_ACTIVITY, true)
-        prefs.edit().clear().commit()
+        val lastStart = prefs.getLong(KEY_LAST_START, 0L)
+        // Sur un éditeur, clear() passe avant les écritures : l'heure du dernier démarrage reste.
+        prefs.edit().clear().putLong(KEY_LAST_START, lastStart).commit()
         runCatching { setEnabled(RECOVERY_ACTIVITY, false) }
         true
     }.getOrDefault(false)
@@ -210,6 +223,7 @@ class HomeFallback(private val context: Context) {
         const val KEY_WITHDRAWN = "withdrawn"
         const val KEY_LAST_RUN_SAFE_MODE = "last_run_safe_mode"
         const val KEY_SAFE_MODE_CRASHES = "safe_mode_crashes"
+        const val KEY_LAST_START = "last_start"
         const val RECOVERY_ACTIVITY = "com.vantaflow.kairo.system.RecoveryActivity"
         val HOME_ACTIVITY: String = HomeActivity::class.java.name
     }
