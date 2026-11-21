@@ -27,7 +27,9 @@ import com.vantaflow.kairo.tools.formatMinutes
 import com.vantaflow.kairo.remote.KairoCommands
 import com.vantaflow.kairo.settings.Section
 import com.vantaflow.kairo.onboarding.Onboarding
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import com.vantaflow.kairo.system.orDefaultAfter
 import com.vantaflow.kairo.settings.setupNeeded
 import com.vantaflow.kairo.reco.passthroughInputs
 import com.vantaflow.kairo.reco.LiveChannel
@@ -86,6 +88,8 @@ import com.vantaflow.kairo.ui.theme.Background
 import kotlinx.coroutines.flow.combine
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.themeFor
+import com.vantaflow.kairo.ui.theme.themeById
+import com.vantaflow.kairo.ui.theme.HomeLayout
 
 /** Réglages ouverts au moment d'une recréation (changement de langue). */
 private const val STATE_SETTINGS = "kairo.settings"
@@ -109,8 +113,7 @@ class HomeActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 HomeViewModel(
-                    installedApps = container.appRepository::installedApps,
-                    appChanges = container.appRepository.changes,
+                    apps = container.appRepository.apps,
                     prefs = container.prefs,
                     clock = container.clock,
                     launcher = ::launchApp,
@@ -131,7 +134,7 @@ class HomeActivity : ComponentActivity() {
     private val appsViewModel: AppsViewModel by viewModels {
         viewModelFactory {
             initializer {
-                AppsViewModel(container.appRepository::installedApps, container.appRepository.changes, container.prefs)
+                AppsViewModel(container.appRepository.apps, container.prefs)
             }
         }
     }
@@ -184,9 +187,11 @@ class HomeActivity : ComponentActivity() {
     /** Catalogue relu (fichier de la box) ou téléchargé s'il date de plus d'un jour, sans bloquer l'affichage. */
     private fun refreshCatalog() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
-            val installed = runCatching { container.appRepository.installedApps() }.getOrDefault(emptyList()).associate { it.packageName to it.label }
+            // Inventaire partagé avec l'accueil : pas de nouveau parcours des applis à chaque retour.
+            val installed = container.appRepository.apps.filterNotNull().first().associate { it.packageName to it.label }
             val rows = runCatching { container.catalog.rows(installed) }.getOrDefault(emptyList())
-            if (rows.isNotEmpty()) catalogRows = rows
+            // État Compose : écrit sur le fil principal.
+            if (rows.isNotEmpty()) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { catalogRows = rows }
         }
     }
     /** Favori en cours de déplacement sur l'accueil (← → puis OK), comme sur Google TV. */
@@ -246,10 +251,12 @@ class HomeActivity : ComponentActivity() {
         setContent {
             DesignScale {
             // Rien n'est dessiné (fond uni) tant que le thème et l'affichage ne sont pas lus : pas de flash.
+            // Lecture lente (disque encore occupé par le démarrage de la box) : thème et affichage par
+            // défaut après 700 ms, puis les vrais dès qu'ils arrivent ; jamais d'écran noir prolongé.
             val look by remember {
                 combine(container.prefs.themeId, container.prefs.customTheme, container.prefs.homeLayout) { id, custom, layout ->
                     themeFor(id, custom) to layout
-                }
+                }.orDefaultAfter(com.vantaflow.kairo.home.LOOK_TIMEOUT_MS, themeById(null) to HomeLayout())
             }.collectAsStateWithLifecycle(null)
             val current = look
             if (current == null) {

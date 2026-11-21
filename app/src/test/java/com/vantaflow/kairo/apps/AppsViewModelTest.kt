@@ -6,7 +6,7 @@ import com.vantaflow.kairo.settings.LauncherPrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -37,7 +37,7 @@ class AppsViewModelTest {
     }
 
     private fun vm(prefs: LauncherPrefs) =
-        AppsViewModel({ installed }, emptyFlow(), prefs, ioDispatcher = Dispatchers.Main).also { created += it }
+        AppsViewModel(flowOf(installed), prefs).also { created += it }
 
     private suspend fun withVm(block: suspend () -> Unit) = try { block() } finally {
         created.forEach { it.viewModelScope.cancel() }

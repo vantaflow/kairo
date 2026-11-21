@@ -97,7 +97,8 @@ class AppContainer(val app: Application) {
         app,
         enabled = { prefs.autoClean.first() },
         idleMinutes = { prefs.idleCloseMin.first() },
-        installed = { appRepository.installedApps().map { it.packageName } },
+        // Appel direct (pas l'inventaire partagé, qui ne tourne qu'avec l'accueil) ; une erreur ne nettoie rien.
+        installed = { runCatching { appRepository.installedApps().map { it.packageName } }.getOrDefault(emptyList()) },
     )
 
     fun startAutoClean() {

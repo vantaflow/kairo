@@ -3,28 +3,22 @@ package com.vantaflow.kairo.apps
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vantaflow.kairo.settings.LauncherPrefs
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import com.vantaflow.kairo.system.resilient
 
 class AppsViewModel(
-    installedApps: () -> List<AppInfo>,
-    appChanges: Flow<Unit>,
+    /** Inventaire partagé des applis (null tant qu'il n'est pas lu). */
+    installedApps: Flow<List<AppInfo>?>,
     private val prefs: LauncherPrefs,
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     /** Une exception de lecture ou d'écriture est journalisée, elle ne fait plus tomber Kairo. */
     private val scope = viewModelScope + com.vantaflow.kairo.system.SafeHandler
@@ -36,9 +30,8 @@ class AppsViewModel(
     val hidden: StateFlow<Set<String>> =
         prefs.hidden.resilient("applis masquées").stateIn(scope, SharingStarted.Eagerly, emptySet())
 
-    private val installed = merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
-        // Lecture en échec : nouvel essai (délai croissant), la dernière liste reste affichée en attendant.
-        .resilient("liste des applis")
+    /** Un seul inventaire pour les deux listes (et pour l'accueil) : relu seulement à une installation. */
+    private val installed = installedApps.filterNotNull()
 
     val apps: StateFlow<List<AppInfo>> =
         combine(installed, prefs.hidden, showHidden) { all, hiddenSet, show ->

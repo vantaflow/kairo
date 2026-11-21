@@ -7,12 +7,45 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
+import com.vantaflow.kairo.system.SafeHandler
+import com.vantaflow.kairo.system.resilient
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.stateIn
+
+/**
+ * Inventaire des applis partagé par tous les écrans : un seul parcours du PackageManager au lancement,
+ * puis un par installation, suppression ou mise à jour. Null tant que le premier n'est pas fini.
+ * Démarré au premier lecteur, il vit ensuite autant que [scope].
+ */
+fun sharedApps(
+    scope: CoroutineScope,
+    load: () -> List<AppInfo>,
+    changes: Flow<Unit>,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+): StateFlow<List<AppInfo>?> =
+    merge(flowOf(Unit), changes).map { load() }.flowOn(ioDispatcher)
+        // Lecture en échec : nouvel essai (délai croissant), la dernière liste reste affichée en attendant.
+        .resilient("liste des applis")
+        .stateIn(scope, SharingStarted.Lazily, null)
 
 /** Applis lanceables installées (leanback prioritaire sur launcher classique). */
-class AppRepository(private val context: Context) {
+class AppRepository(
+    private val context: Context,
+    /** Portée de l'inventaire partagé : celle du process. */
+    scope: CoroutineScope = CoroutineScope(SupervisorJob() + SafeHandler),
+) {
     private val pm: PackageManager = context.packageManager
 
     fun installedApps(): List<AppInfo> {
@@ -59,6 +92,12 @@ class AppRepository(private val context: Context) {
         context.registerReceiver(receiver, filter)
         awaitClose { context.unregisterReceiver(receiver) }
     }
+
+    /**
+     * Inventaire partagé (accueil, écran Applis, catalogue, réglages). Le nettoyeur et la télécommande
+     * sur téléphone gardent leur appel direct à [installedApps].
+     */
+    val apps: StateFlow<List<AppInfo>?> = sharedApps(scope, ::installedApps, changes)
 
     private fun query(category: String): List<ResolveInfo> =
         pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(category), 0)

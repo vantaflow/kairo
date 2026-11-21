@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
@@ -65,8 +64,7 @@ class HomeViewModelTest {
     private var weather: suspend (String, Boolean) -> com.vantaflow.kairo.weather.Weather? = { _, _ -> null }
 
     private fun vm(prefs: LauncherPrefs, launched: MutableList<String> = mutableListOf()) = HomeViewModel(
-        installedApps = { installed },
-        appChanges = emptyFlow(),
+        apps = flowOf(installed),
         prefs = prefs,
         clock = failingClock(),
         launcher = { launched += it },

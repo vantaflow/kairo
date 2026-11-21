@@ -24,10 +24,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -77,7 +76,18 @@ private class EpgSnapshot(
     val inputs: List<LiveChannel> = emptyList(),
 )
 
-private class RecoState(val watchNext: List<Program>, val rows: List<Channel>, val live: List<LiveChannel>, val inputs: List<LiveChannel>)
+private class RecoState(val watchNext: List<Program>, val rows: List<Channel>, val live: List<LiveChannel>, val inputs: List<LiveChannel>) {
+    companion object {
+        /** Rien encore : l'accueil s'affiche sans attendre, les rangées viennent sous les favoris à leur arrivée. */
+        val Empty = RecoState(emptyList(), emptyList(), emptyList(), emptyList())
+    }
+}
+
+/** Préférences d'affichage pas encore lues après ce délai (disque lent au démarrage) : l'accueil prend les valeurs par défaut. */
+const val LOOK_TIMEOUT_MS = 700L
+
+/** Relecture des recommandations ignorée si la précédente date de moins de ce délai (création puis premier onResume). */
+private const val RECO_REFRESH_MIN_MS = 5_000L
 
 private const val WEATHER_REFRESH_MS = 30 * 60 * 1000L
 private const val WEATHER_RETRY_MS = 2 * 60 * 1000L
@@ -127,8 +137,8 @@ fun minuteTicks(now: () -> Long = System::currentTimeMillis): Flow<Unit> = flow 
 }
 
 class HomeViewModel(
-    private val installedApps: () -> List<AppInfo>,
-    appChanges: Flow<Unit>,
+    /** Inventaire partagé des applis (null tant qu'il n'est pas lu). */
+    apps: Flow<List<AppInfo>?>,
     private val prefs: LauncherPrefs,
     private val clock: TrustedClock,
     private val launcher: (String) -> Unit,
@@ -146,6 +156,8 @@ class HomeViewModel(
     private val resumePrograms: ((Map<String, Long>, Set<String>) -> List<Program>)? = null,
     /** Faux en mode sans échec : ni réseau (heure, météo, fonds), ni TvProvider. */
     private val background: Boolean = true,
+    /** Temps écoulé (ms), pour ne pas relire les recommandations deux fois de suite au démarrage. */
+    private val uptimeMs: () -> Long = { System.nanoTime() / 1_000_000 },
 ) : ViewModel() {
     /** Portée des travaux de l'accueil : une exception y est journalisée, elle ne fait plus tomber Kairo. */
     private val scope = viewModelScope + SafeHandler
@@ -162,6 +174,10 @@ class HomeViewModel(
     /** Vrai tant que l'accueil est visible : la rotation des fonds s'arrête sinon (écran de veille, autre appli). */
     private val foreground = MutableStateFlow(true)
 
+
+    // Déclaré avant init (qui lance la première lecture).
+    /** Début de la dernière lecture des recommandations (null : jamais lues). */
+    @Volatile private var lastRecoRefreshMs: Long? = null
 
     private val epgSnapshot = MutableStateFlow(EpgSnapshot(emptyList(), emptyList()))
 
@@ -185,10 +201,7 @@ class HomeViewModel(
         else RecoState((state.watchNext + resume).sortedByDescending { it.engagedAt }, state.rows, state.live, state.inputs)
     }.flowOn(ioDispatcher)
 
-    private val installed: Flow<List<AppInfo>> =
-        merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
-            // Lecture en échec : nouvel essai (délai croissant), la dernière liste reste affichée en attendant.
-            .resilient("liste des applis")
+    private val installed: Flow<List<AppInfo>> = apps.filterNotNull()
 
     private val favorites: Flow<List<AppInfo>> =
         combine(prefs.favorites, prefs.favoritesInitialized, installed, prefs.currentProfile, prefs.hidden) { saved, initialized, apps, profile, hidden ->
@@ -207,8 +220,19 @@ class HomeViewModel(
             formatTime(now, zone, use24h) to (if (weather != null) "$date · $weather" else date)
         }
 
+    /**
+     * Émis dès que l'heure, les favoris et le fond sont connus (`loaded`) ; recommandations, « À suivre »,
+     * chaînes TV, entrées et image en ligne partent vides et complètent l'état à leur arrivée : une source
+     * lente ou en échec ne retient jamais les autres. La météo suit le même principe (voir [weatherText]).
+     */
     val state: StateFlow<HomeUiState> =
-        combine(clockText, favorites, prefs.wallpaper, reco, prefs.pixabayCurrent) { (time, date), favs, wallpaper, r, image ->
+        combine(
+            clockText,
+            favorites,
+            prefs.wallpaper,
+            reco.resilient("recommandations").onStart { emit(RecoState.Empty) },
+            prefs.pixabayCurrent.onStart { emit(null) },
+        ) { (time, date), favs, wallpaper, r, image ->
             HomeUiState(time, date, favs, wallpaper, r.watchNext, r.rows, image, weatherText.value, r.live, r.inputs, loaded = true)
         }.resilient("accueil").stateIn(scope, SharingStarted.Eagerly, HomeUiState())
 
@@ -288,9 +312,15 @@ class HomeViewModel(
         }
     }
 
-    /** Relit les recommandations (au démarrage et à chaque retour sur l'accueil). */
+    /**
+     * Relit les recommandations (au démarrage et à chaque retour sur l'accueil). Ignoré si la lecture
+     * précédente date de moins de 5 s : le premier onResume suit de près celle de la création.
+     */
     fun refreshReco() {
         if (!background) return
+        val now = uptimeMs()
+        if (lastRecoRefreshMs?.let { now - it < RECO_REFRESH_MIN_MS } == true) return
+        lastRecoRefreshMs = now
         scope.launch {
             if (epg == null && tvInputs == null) return@launch
             epgSnapshot.value = withContext(ioDispatcher) {
