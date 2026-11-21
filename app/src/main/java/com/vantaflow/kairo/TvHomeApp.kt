@@ -239,7 +239,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         }
         // Une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
         safeMode = crashGuard.recordStart(previousExitWasCrash) || restored
-        homeFallback.recordRun(safeMode)
+        homeFallback.recordRun(safeMode, previousExitWasCrash)
         // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)

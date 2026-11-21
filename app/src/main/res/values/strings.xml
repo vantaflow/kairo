@@ -55,4 +55,6 @@
     <string name="recovery_text">Kairo s\'est arrêté plusieurs fois, même en mode sans échec. Il s\'est retiré de l\'accueil pour que la box reste utilisable.</string>
     <string name="recovery_restore">Remettre Kairo comme accueil</string>
     <string name="recovery_keep">Laisser comme ça</string>
+    <string name="recovery_hint">Choisissez ensuite Kairo comme écran d\'accueil dans les réglages Android.</string>
+    <string name="recovery_failed">La remise en place a échoué. Réessayez.</string>
 </resources>

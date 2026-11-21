@@ -139,6 +139,14 @@ class HomeFallbackTest {
         }
     }
 
+    @Test
+    fun normalStartAfterCleanExitForgetsSafeModeCrashes() {
+        assertTrue(forgetsSafeModeCrashes(safeMode = false, previousExitWasCrash = false))
+        assertFalse(forgetsSafeModeCrashes(safeMode = false, previousExitWasCrash = true))
+        assertFalse(forgetsSafeModeCrashes(safeMode = true, previousExitWasCrash = false))
+        assertFalse(forgetsSafeModeCrashes(safeMode = true, previousExitWasCrash = true))
+    }
+
     private companion object {
         const val KAIRO = "com.vantaflow.kairo"
     }

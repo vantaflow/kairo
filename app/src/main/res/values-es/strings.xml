@@ -54,4 +54,6 @@
     <string name="recovery_text">Kairo se ha detenido varias veces, incluso en modo seguro. Se ha retirado de la pantalla de inicio para que el dispositivo siga siendo utilizable.</string>
     <string name="recovery_restore">Volver a usar Kairo como inicio</string>
     <string name="recovery_keep">Dejarlo así</string>
+    <string name="recovery_hint">Después elige Kairo como pantalla de inicio en los ajustes de Android.</string>
+    <string name="recovery_failed">No se pudo restaurar. Inténtalo de nuevo.</string>
 </resources>

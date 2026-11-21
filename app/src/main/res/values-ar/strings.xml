@@ -54,4 +54,6 @@
     <string name="recovery_text">توقف Kairo عدة مرات حتى في الوضع الآمن. انسحب من الشاشة الرئيسية ليبقى الجهاز قابلاً للاستخدام.</string>
     <string name="recovery_restore">إعادة Kairo كشاشة رئيسية</string>
     <string name="recovery_keep">تركه كما هو</string>
+    <string name="recovery_hint">ثم اختر Kairo كشاشة رئيسية في إعدادات Android.</string>
+    <string name="recovery_failed">فشلت الاستعادة. حاول مجدداً.</string>
 </resources>

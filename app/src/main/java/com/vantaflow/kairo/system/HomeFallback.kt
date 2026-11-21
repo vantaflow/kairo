@@ -30,6 +30,12 @@ fun shouldWithdrawFromHome(
 fun nextSafeModeCrashCount(previousExitWasCrash: Boolean, previousRunWasSafeMode: Boolean, crashesInSafeMode: Int): Int =
     if (previousExitWasCrash && previousRunWasSafeMode) crashesInSafeMode + 1 else crashesInSafeMode
 
+/**
+ * Les plantages en mode sans échec sont oubliés : Kairo repart en mode normal après une sortie
+ * non plantée (la boucle est passée), même sans accueil stable.
+ */
+fun forgetsSafeModeCrashes(safeMode: Boolean, previousExitWasCrash: Boolean): Boolean = !safeMode && !previousExitWasCrash
+
 /** Activité d'accueil déclarée sur la box. */
 data class HomeCandidate(val packageName: String, val className: String)
 
@@ -110,9 +116,16 @@ class HomeFallback(private val context: Context) {
             recoveryEnabled = isEnabled(RECOVERY_ACTIVITY, enabledByDefault = false),
             otherHomeAvailable = withdrawn && otherHomeAvailable(),
         )
-        // La réparation d'abord : il y a toujours une entrée vers Kairo.
-        plan.recoveryEnabled?.let { enabled -> runCatching { setEnabled(RECOVERY_ACTIVITY, enabled) } }
-        val homeApplied = plan.homeEnabled?.let { enabled -> runCatching { setEnabled(HOME_ACTIVITY, enabled) }.isSuccess } ?: true
+        // Activations avant désactivations : il reste toujours une entrée vers Kairo.
+        val changes = listOfNotNull(
+            plan.recoveryEnabled?.let { RECOVERY_ACTIVITY to it },
+            plan.homeEnabled?.let { HOME_ACTIVITY to it },
+        ).sortedByDescending { it.second }
+        var homeApplied = true
+        for ((component, enabled) in changes) {
+            val ok = runCatching { setEnabled(component, enabled) }.isSuccess
+            if (component == HOME_ACTIVITY) homeApplied = ok
+        }
         when {
             plan.stop && homeApplied -> StartupOutcome.Withdrawn
             plan.stop || plan.restore -> {
@@ -132,8 +145,9 @@ class HomeFallback(private val context: Context) {
         val before = prefs.getInt(KEY_SAFE_MODE_CRASHES, 0)
         val crashes = nextSafeModeCrashCount(previousExitWasCrash, previousRunWasSafeMode, before)
         if (crashes != before) prefs.edit().putInt(KEY_SAFE_MODE_CRASHES, crashes).commit()
-        // Les autres accueils ne sont cherchés que si tout le reste désigne déjà un retrait.
-        shouldWithdrawFromHome(previousExitWasCrash, previousRunWasSafeMode, crashes, otherHomeAvailable = true) &&
+        // Les autres accueils (requête au PackageManager) ne sont cherchés qu'après un plantage du mode sans échec.
+        val crashedInSafeMode = previousExitWasCrash && previousRunWasSafeMode
+        crashedInSafeMode &&
             shouldWithdrawFromHome(previousExitWasCrash, previousRunWasSafeMode, crashes, otherHomeAvailable()) &&
             withdraw()
     }.getOrDefault(false)
@@ -148,13 +162,17 @@ class HomeFallback(private val context: Context) {
         previous
     }.getOrDefault(0L)
 
-    /** Mode du lancement en cours, relu au démarrage suivant (écrit seulement s'il change). */
-    fun recordRun(safeMode: Boolean) {
+    /**
+     * Mode du lancement en cours, relu au démarrage suivant (écrit seulement s'il change). Un démarrage
+     * en mode normal après une sortie non plantée oublie aussi les plantages en mode sans échec.
+     */
+    fun recordRun(safeMode: Boolean, previousExitWasCrash: Boolean) {
         runCatching {
             if (prefs.getBoolean(KEY_LAST_RUN_SAFE_MODE, false) != safeMode) {
                 prefs.edit().putBoolean(KEY_LAST_RUN_SAFE_MODE, safeMode).commit()
             }
         }
+        if (forgetsSafeModeCrashes(safeMode, previousExitWasCrash)) resetCrashes()
     }
 
     /** Accueil stable ou « Redémarrer Kairo normalement » : les plantages en mode sans échec sont oubliés. */

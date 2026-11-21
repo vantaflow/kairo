@@ -17,6 +17,9 @@ import com.vantaflow.kairo.R
  * puisse replanter. Désactivée dans le manifeste, activée seulement par le retrait.
  */
 class RecoveryActivity : Activity() {
+    /** Consigne sous le texte ; remplacée par un message d'erreur si la remise en place échoue. */
+    private lateinit var hint: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val density = resources.displayMetrics.density
@@ -25,6 +28,12 @@ class RecoveryActivity : Activity() {
             setText(R.string.recovery_text)
             textSize = 22f
             setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }
+        hint = TextView(this).apply {
+            setText(R.string.recovery_hint)
+            textSize = 18f
+            setTextColor(Color.LTGRAY)
             gravity = Gravity.CENTER
         }
         val restore = Button(this).apply {
@@ -43,6 +52,9 @@ class RecoveryActivity : Activity() {
             setPadding(pad, pad, pad, pad)
             setBackgroundColor(Color.BLACK)
             addView(text, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = pad / 4
+            })
+            addView(hint, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = pad / 2
             })
             addView(restore, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
@@ -60,11 +72,28 @@ class RecoveryActivity : Activity() {
      * doit repartir dans un process neuf.
      */
     private fun restoreHome() {
-        if (!HomeFallback(this).restore()) return
-        val opened = runCatching { startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess ||
-            runCatching { startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
-        if (!opened) android.util.Log.w("Kairo", "paramètres d'accueil introuvables")
+        if (!HomeFallback(this).restore()) {
+            hint.setText(R.string.recovery_failed)
+            hint.setTextColor(Color.rgb(0xFF, 0x8A, 0x80))
+            return
+        }
+        openHomeSettings()
         finishAndRemoveTask()
         Runtime.getRuntime().exit(0)
+    }
+
+    /**
+     * Choix de l'écran d'accueil, à défaut les paramètres (souvent absent sur TV : d'où la consigne
+     * affichée). Copie volontaire de celle des réglages, pour ne charger aucun écran de Kairo ici.
+     */
+    private fun openHomeSettings() {
+        for (action in listOf(Settings.ACTION_HOME_SETTINGS, Settings.ACTION_SETTINGS)) {
+            try {
+                startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (_: RuntimeException) {
+                // Introuvable (ActivityNotFoundException) ou refusé : intention suivante.
+            }
+        }
     }
 }

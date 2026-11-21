@@ -54,4 +54,6 @@
     <string name="recovery_text">Kairo stopped several times, even in safe mode. It stepped down as home screen so the box stays usable.</string>
     <string name="recovery_restore">Set Kairo as home again</string>
     <string name="recovery_keep">Leave it as is</string>
+    <string name="recovery_hint">Then choose Kairo as the home screen in Android settings.</string>
+    <string name="recovery_failed">Restore failed. Try again.</string>
 </resources>
