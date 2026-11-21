@@ -185,6 +185,13 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
     var safeMode = false
         private set
 
+    /**
+     * Porte de démarrage : les fonctions de fond attendent que la box et l'accueil aient démarré.
+     * Null en mode sans échec : rien ne part.
+     */
+    var gate: com.vantaflow.kairo.system.StartupGate? = null
+        private set
+
     /** Vrai une fois l'accueil resté au premier plan assez longtemps dans ce process. */
     @Volatile private var stable = false
 
@@ -203,12 +210,18 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)
         if (safeMode) return
-        container.watchPhoneRemote()
-        container.startAutoClean()
-        container.watchAdBlock()
-        container.ensureAdBlock()
-        com.vantaflow.kairo.media.NowPlaying.start(this)
-        container.ourApps.checkUpdates()
+        // Process souvent créé au boot par le service d'accessibilité, bien avant l'accueil : rien de
+        // lourd tant que la porte n'est pas ouverte (30 s après la première image de l'accueil, 2 min sans accueil).
+        val gate = com.vantaflow.kairo.system.StartupGate(CoroutineScope(SupervisorJob() + Dispatchers.Default + SafeHandler))
+        this.gate = gate
+        gate.whenOpen { container.watchPhoneRemote() }
+        gate.whenOpen { container.startAutoClean() }
+        gate.whenOpen {
+            container.watchAdBlock()
+            container.ensureAdBlock()
+        }
+        gate.whenOpen { com.vantaflow.kairo.media.NowPlaying.start(this) }
+        gate.whenOpen { container.ourApps.checkUpdates() }
     }
 
     /** Un changement de configuration de la box remet sa langue : on réapplique celle de Kairo. */

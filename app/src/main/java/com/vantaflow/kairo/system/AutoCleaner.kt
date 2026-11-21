@@ -61,9 +61,12 @@ class AutoCleaner(
         }
     }
 
-    /** Vérifie tout de suite (ex. retour sur l'accueil). */
+    /**
+     * Vérifie tout de suite (ex. retour sur l'accueil). Rien dans les 10 minutes qui suivent
+     * l'allumage de la box : fermer des applis en plein démarrage les ferait redémarrer.
+     */
     suspend fun check() {
-        if (!enabled()) return
+        if (bootIsRecent(now()) || !enabled()) return
         idleApps(lastSeen, now(), idleMinutes() * 60_000L, foreground).forEach { pkg ->
             cleaner.close(pkg)
             lastSeen.remove(pkg)

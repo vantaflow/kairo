@@ -154,7 +154,10 @@ class OurAppsStore(
             // GitHub injoignable pour une appli : on garde ce qu'on savait, la mise à jour ne « disparaît » pas.
             val unknown = results.filter { (app, remote) -> remote == null && app.id in _updates.value }.map { it.first.id }
             _updates.value = (found.map { it.first.id } + unknown).toSet()
-            if (found.isNotEmpty() && runCatching { autoUpdate() }.getOrDefault(false)) autoInstall(found.toMap())
+            if (found.isEmpty()) return@launch
+            // Box allumée depuis peu : les applis démarrent encore, l'installation automatique attend.
+            while (com.vantaflow.kairo.system.bootIsRecent(android.os.SystemClock.elapsedRealtime())) kotlinx.coroutines.delay(60_000)
+            if (runCatching { autoUpdate() }.getOrDefault(false)) autoInstall(found.toMap())
         }
     }
 
@@ -272,14 +275,17 @@ class OurAppsStore(
         }
     }
 
-    /** Au retour dans Kairo : une appli installée entre-temps repasse à l'état normal. */
-    fun refresh() {
+    /**
+     * Au retour dans Kairo : une appli installée entre-temps repasse à l'état normal. [check] faux
+     * (porte de démarrage encore fermée) : pas de nouvelle vérification sur GitHub.
+     */
+    fun refresh(check: Boolean = true) {
         _states.update { states -> states.filterNot { (id, s) -> s is InstallState.Confirm && id != KairoSelf.id && OurApps.firstOrNull { it.id == id }?.let(::isInstalled) == true } }
         // Mise à jour installée : la version ne dépasse plus celle publiée, on la retire au prochain contrôle.
         // Sinon, nouvelle vérification toutes les 12 h : la box reste allumée et Kairo n'est pas relancé.
         // Mise à jour en attente : contrôle plus rapproché, mais pas à chaque retour (GitHub limite à 60 requêtes par heure).
         val every = if (_updates.value.isEmpty()) CHECK_EVERY_MS else PENDING_CHECK_EVERY_MS
-        if (System.currentTimeMillis() - lastCheckMs > every) checkUpdates(delayMs = 0)
+        if (check && System.currentTimeMillis() - lastCheckMs > every) checkUpdates(delayMs = 0)
     }
 
     private fun set(app: OurApp, state: InstallState) = _states.update { it + (app.id to state) }

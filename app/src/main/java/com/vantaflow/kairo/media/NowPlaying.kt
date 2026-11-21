@@ -9,7 +9,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
-import android.os.Looper
+import android.os.HandlerThread
 import android.service.notification.NotificationListenerService
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -22,9 +22,9 @@ import kotlinx.coroutines.flow.StateFlow
  */
 class MediaListener : NotificationListenerService() {
     override fun onListenerConnected() {
-        // Mode sans échec : la lecture en cours n'est pas suivie.
-        if ((application as? com.vantaflow.kairo.TvHomeApp)?.safeMode == true) return
-        NowPlaying.start(applicationContext)
+        // Suivi lancé à l'ouverture de la porte de démarrage ; mode sans échec (pas de porte) : jamais.
+        val context = applicationContext
+        (application as? com.vantaflow.kairo.TvHomeApp)?.gate?.whenOpen { NowPlaying.start(context) }
     }
 }
 
@@ -52,10 +52,14 @@ object NowPlaying {
     private val mutable = MutableStateFlow<MediaNow?>(null)
     val state: StateFlow<MediaNow?> = mutable
 
-    private val main = Handler(Looper.getMainLooper())
+    /**
+     * Fil à part pour le suivi : appels système, PackageManager et pochettes ne passent pas par le
+     * fil principal (qui fait aussi passer les touches de la télécommande). Tout l'état est modifié ici.
+     */
+    private val worker by lazy { Handler(HandlerThread("kairo-nowplaying").apply { start() }.looper) }
     private var manager: MediaSessionManager? = null
-    private var controller: MediaController? = null
-    private var appContext: Context? = null
+    @Volatile private var controller: MediaController? = null
+    @Volatile private var appContext: Context? = null
 
     private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { list -> pick(list.orEmpty()) }
 
@@ -70,14 +74,21 @@ object NowPlaying {
     fun hasAccess(context: Context): Boolean =
         context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(component(context))
 
-    /** À appeler au démarrage et à chaque retour sur l'accueil : sans effet si déjà suivi ou sans accès. */
+    /**
+     * À appeler à l'ouverture de la porte de démarrage et à chaque retour sur l'accueil : sans effet si
+     * déjà suivi ou sans accès. Le travail se fait sur le fil du suivi, pas sur celui de l'appelant.
+     */
     fun start(context: Context) {
         val app = context.applicationContext
+        worker.post { runCatching { startOnWorker(app) } }
+    }
+
+    private fun startOnWorker(app: Context) {
         if (manager != null || !hasAccess(app)) return
         appContext = app
         val m = app.getSystemService(MediaSessionManager::class.java) ?: return
         val sessions = runCatching {
-            m.addOnActiveSessionsChangedListener(sessionsListener, component(app), main)
+            m.addOnActiveSessionsChangedListener(sessionsListener, component(app), worker)
             m.getActiveSessions(component(app))
         }.getOrNull() ?: return
         manager = m
@@ -110,7 +121,7 @@ object NowPlaying {
         if (chosen?.sessionToken != controller?.sessionToken) {
             controller?.unregisterCallback(callback)
             controller = chosen
-            chosen?.registerCallback(callback, main)
+            chosen?.registerCallback(callback, worker)
         }
         publish()
     }

@@ -50,6 +50,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -96,6 +98,12 @@ class HomeActivity : ComponentActivity() {
     private val container by lazy { (application as TvHomeApp).container }
     /** Mode sans échec (démarrages répétés) : accueil réduit, aucun travail de fond. */
     private val safeMode by lazy { (application as TvHomeApp).safeMode }
+    /** Porte de démarrage (null en mode sans échec). */
+    private val gate get() = (application as TvHomeApp).gate
+    /** Première image de l'accueil déjà signalée à la porte. */
+    private var homeReported = false
+    /** Premier lancement vérifié : l'assistant, s'il doit s'afficher, est déjà décidé. */
+    private var setupChecked by mutableStateOf(false)
 
     private val homeViewModel: HomeViewModel by viewModels {
         viewModelFactory {
@@ -218,6 +226,7 @@ class HomeActivity : ComponentActivity() {
                 container.prefs.setSetupShown()
                 if (setupNeeded(this@HomeActivity)) onboarding = true
             }
+            setupChecked = true
         }
         // Touches Réglages / Entrées vues par le service pendant que Kairo est à l'écran.
         lifecycleScope.launch(SafeHandler) {
@@ -245,6 +254,14 @@ class HomeActivity : ComponentActivity() {
                     CompositionLocalProvider(LocalHomeLayout provides current.second) {
                         Box(Modifier.fillMaxSize()) {
                             Root()
+                            // Accueil réellement dessiné (pas l'assistant ni un autre écran) : la porte de démarrage compte à partir d'ici.
+                            if (!safeMode && !homeReported && setupChecked && !onboarding && destination == Destination.Home) {
+                                LaunchedEffect(Unit) {
+                                    withFrameNanos { }
+                                    homeReported = true
+                                    gate?.homeShown()
+                                }
+                            }
                             if (onboarding) {
                                 Onboarding(onFinish = {
                                     onboarding = false
@@ -316,13 +333,16 @@ class HomeActivity : ComponentActivity() {
         // Retour sur l'accueil : l'appli quittée est notée, puis nettoyage si besoin (sans bloquer l'affichage).
         container.autoCleaner.onForeground(packageName)
         if (!safeMode) {
-            container.ensureAdBlock()
-            com.vantaflow.kairo.media.NowPlaying.start(this)
-            refreshCatalog()
-            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
-                kotlinx.coroutines.delay(3_000)
-                runCatching { container.autoCleaner.check() }
+            // Avant l'ouverture de la porte de démarrage, c'est elle qui lance ces fonctions.
+            if (gate?.open?.value == true) {
+                container.ensureAdBlock()
+                com.vantaflow.kairo.media.NowPlaying.start(this)
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
+                    kotlinx.coroutines.delay(3_000)
+                    runCatching { container.autoCleaner.check() }
+                }
             }
+            refreshCatalog()
             // Accueil resté au premier plan assez longtemps : le démarrage est réussi (recompté s'il le quitte avant).
             stableJob = lifecycleScope.launch(SafeHandler) {
                 kotlinx.coroutines.delay(STABLE_AFTER_MS)
@@ -349,7 +369,7 @@ class HomeActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Mode sans échec : pas de contrôle des mises à jour (réseau).
-        if (!safeMode) container.ourApps.refresh()
+        if (!safeMode) container.ourApps.refresh(check = gate?.open?.value == true)
         // Après l'attachement de la vue Compose (elle relit alors les services d'accessibilité).
         window.decorView.post { disableComposeAccessibilityTracking(window.decorView) }
         homeViewModel.refreshReco()
