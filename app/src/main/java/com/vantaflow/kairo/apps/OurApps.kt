@@ -136,7 +136,7 @@ class OurAppsStore(
     /** Réglage « Mise à jour automatique ». */
     private val autoUpdate: suspend () -> Boolean = { false },
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + com.vantaflow.kairo.system.SafeHandler)
     private val updater = Updater(context)
     private val _states = MutableStateFlow<Map<String, InstallState>>(emptyMap())
     val states: StateFlow<Map<String, InstallState>> = _states

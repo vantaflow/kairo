@@ -141,4 +141,9 @@
         <item quantity="one">il y a %1$d j</item>
         <item quantity="other">il y a %1$d j</item>
     </plurals>
+    <!-- Mode sans échec (démarrages répétés) -->
+    <string name="safe_mode_title">Mode sans échec</string>
+    <string name="safe_mode_text">Kairo s\'est arrêté plusieurs fois de suite. Seuls vos applis et les réglages sont affichés.</string>
+    <string name="safe_mode_restart">Redémarrer Kairo normalement</string>
+    <string name="safe_mode_android_settings">Réglages Android</string>
 </resources>

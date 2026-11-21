@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.plus
+import com.vantaflow.kairo.system.SafeHandler
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
@@ -127,8 +129,11 @@ class HomeViewModel(
     private val tvInputs: (() -> List<LiveChannel>)? = null,
     /** Cartes « Reprendre » (applis récentes sans contenus publiés), lues hors du fil principal. */
     private val resumePrograms: ((Map<String, Long>, Set<String>) -> List<Program>)? = null,
+    /** Faux en mode sans échec : ni réseau (heure, météo, fonds), ni TvProvider. */
+    private val background: Boolean = true,
 ) : ViewModel() {
-
+    /** Portée des travaux de l'accueil : une exception y est journalisée, elle ne fait plus tomber Kairo. */
+    private val scope = viewModelScope + SafeHandler
 
     private val weatherText = MutableStateFlow<String?>(null)
     private val weatherReload = MutableStateFlow(0)
@@ -166,13 +171,13 @@ class HomeViewModel(
     }.flowOn(ioDispatcher)
 
     private val installed: Flow<List<AppInfo>> =
-        merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
+        merge(flowOf(Unit), appChanges).map { runCatching { installedApps() }.getOrDefault(emptyList()) }.flowOn(ioDispatcher)
 
     private val favorites: Flow<List<AppInfo>> =
         combine(prefs.favorites, prefs.favoritesInitialized, installed, prefs.currentProfile, prefs.hidden) { saved, initialized, apps, profile, hidden ->
             val resolved = resolveFavorites(saved, apps, initialized)
             if (!initialized && resolved.isNotEmpty()) {
-                viewModelScope.launch { prefs.initializeFavorites(profile.id, resolved.map { it.packageName }) }
+                scope.launch { prefs.initializeFavorites(profile.id, resolved.map { it.packageName }) }
             }
             // Une appli masquée quitte aussi la rangée des favoris ; elle y revient à sa place si on la réaffiche.
             resolved.filterNot { it.packageName in hidden }
@@ -188,13 +193,20 @@ class HomeViewModel(
     val state: StateFlow<HomeUiState> =
         combine(clockText, favorites, prefs.wallpaper, reco, prefs.pixabayCurrent) { (time, date), favs, wallpaper, r, image ->
             HomeUiState(time, date, favs, wallpaper, r.watchNext, r.rows, image, weatherText.value, r.live, r.inputs, loaded = true)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
+        }.stateIn(scope, SharingStarted.Eagerly, HomeUiState())
 
     init {
-        refreshReco()
-        startWallpaperRotation()
-        startWeather()
-        viewModelScope.launch {
+        if (background) {
+            refreshReco()
+            startWallpaperRotation()
+            startWeather()
+            syncClockForever()
+        }
+    }
+
+    /** Heure de confiance (SNTP), resynchronisée à intervalle régulier. */
+    private fun syncClockForever() {
+        scope.launch {
             while (true) {
                 clock.sync()
                 delay(TrustedClock.RESYNC_INTERVAL_MS)
@@ -204,13 +216,13 @@ class HomeViewModel(
 
     /** À appeler quand le réseau revient. */
     fun syncClock() {
-        viewModelScope.launch { clock.sync() }
+        if (background) scope.launch { clock.sync() }
     }
 
     /** Met à jour la météo toutes les 30 minutes tant qu'elle est activée. */
     private fun startWeather() {
         val fetch = weather ?: return
-        viewModelScope.launch {
+        scope.launch {
             combine(prefs.weatherEnabled, prefs.weatherCity, prefs.useFahrenheit, weatherReload) { enabled, city, fahrenheit, _ ->
                 Triple(enabled, city, fahrenheit)
             }.collectLatest { (enabled, city, fahrenheit) ->
@@ -244,7 +256,7 @@ class HomeViewModel(
         // au lieu de changer d'image à chaque fois.
         var lastQuery: String? = null
         var lastChangeMs = 0L
-        viewModelScope.launch {
+        scope.launch {
             combine(prefs.wallpaper, foreground, ::Pair).collectLatest { (config, visible) ->
                 if (config !is WallpaperConfig.Pixabay || !visible) return@collectLatest
                 val interval = config.intervalMin.coerceAtLeast(5) * 60_000L
@@ -261,7 +273,8 @@ class HomeViewModel(
 
     /** Relit les recommandations (au démarrage et à chaque retour sur l'accueil). */
     fun refreshReco() {
-        viewModelScope.launch {
+        if (!background) return
+        scope.launch {
             if (epg == null && tvInputs == null) return@launch
             epgSnapshot.value = withContext(ioDispatcher) {
                 val inputs = runCatching { tvInputs?.invoke() }.getOrNull().orEmpty()

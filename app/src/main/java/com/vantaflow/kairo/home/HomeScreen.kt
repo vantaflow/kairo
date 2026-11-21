@@ -79,6 +79,7 @@ import com.vantaflow.kairo.reco.RecoRow
 import com.vantaflow.kairo.remote.HomeFocus
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.OnBackground
+import com.vantaflow.kairo.ui.theme.OnBackgroundMuted
 import com.vantaflow.kairo.wallpaper.WallpaperLayer
 
 /**
@@ -97,7 +98,8 @@ fun HomeScreen(
     appLabels: Map<String, String> = emptyMap(),
     onProgramClick: (Program) -> Unit = {},
     netState: NetState? = null,
-    onOpenSearch: () -> Unit = {},
+    /** Bouton Rechercher de l'en-tête (null = masqué). */
+    onOpenSearch: (() -> Unit)? = {},
     /** Applis hors favoris, pour la rangée « Toutes les applis » (vide = rangée masquée). */
     otherApps: List<AppInfo> = emptyList(),
     /** Dernières applis ouvertes, pour la rangée « Récentes » (vide = rangée masquée). */
@@ -129,6 +131,9 @@ fun HomeScreen(
     /** Rangées du catalogue (TMDB) déjà choisies pour l'onglet, et « Ma liste ». */
     catalog: List<Channel> = emptyList(),
     myList: List<Program> = emptyList(),
+    /** Mode sans échec : non nul, le bandeau s'affiche au-dessus des favoris avec ses deux boutons. */
+    onSafeModeRestart: (() -> Unit)? = null,
+    onAndroidSettings: () -> Unit = {},
 ) {
     val forYou = tab == null || tab == HomeTab.ForYou
     val tabRequesters = remember { HomeTab.entries.associateWith { FocusRequester() } }
@@ -136,6 +141,7 @@ fun HomeScreen(
     val requesters = remember(state.favorites.size) { List(state.favorites.size) { FocusRequester() } }
     val rowState = rememberRowState()
     val columnState = rememberScrollState()
+    val safeModeFirstButton = remember { FocusRequester() }
     // Contenu sélectionné : lu seulement par le fond « héros », pour ne pas recomposer tout l'accueil.
     val heroProgram = remember { mutableStateOf<Program?>(null) }
     val layout = LocalHomeLayout.current
@@ -197,6 +203,25 @@ fun HomeScreen(
                     }
                 },
             )
+            // Mode sans échec : bandeau fixe sous l'en-tête, toujours visible ; Bas revient sur le favori quitté.
+            if (onSafeModeRestart != null) {
+                SafeModeBanner(
+                    onRestart = onSafeModeRestart,
+                    onAndroidSettings = onAndroidSettings,
+                    firstButton = safeModeFirstButton,
+                    modifier = Modifier
+                        .padding(start = 72.dp, end = 72.dp, top = 24.dp)
+                        .onFocusChanged { if (it.hasFocus) heroProgram.value = null }
+                        .focusProperties {
+                            exit = { direction ->
+                                if (direction == FocusDirection.Down && showApps && requesters.isNotEmpty()) {
+                                    requesters[focus.index.coerceIn(0, requesters.lastIndex)]
+                                } else FocusRequester.Default
+                            }
+                        }
+                        .focusGroup(),
+                )
+            }
             // Rangée sélectionnée calée en haut de la liste (comme Google TV) : jamais à moitié
             // coupée sous l'en-tête. Les rangées horizontales gardent le défilement par défaut.
             val defaultSpec = LocalBringIntoViewSpec.current
@@ -360,6 +385,13 @@ fun HomeScreen(
         }
     }
 
+    // Mode sans échec sans aucun favori : le focus va sur le premier bouton du bandeau.
+    LaunchedEffect(onSafeModeRestart != null, state.loaded, requesters.isEmpty()) {
+        if (onSafeModeRestart == null || !state.loaded || requesters.isNotEmpty()) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { safeModeFirstButton.requestFocus() }
+    }
+
     // Favori déplacé : il garde le focus et reste visible pendant qu'il change de place.
     LaunchedEffect(movingFavorite, state.favorites) {
         val index = state.favorites.indexOfFirst { it.packageName == movingFavorite }
@@ -408,6 +440,40 @@ fun HomeScreen(
         rowState.scrollToItem(target)
         withFrameNanos { }
         runCatching { requesters[target].requestFocus() }
+    }
+}
+
+/** Bandeau du mode sans échec : explication, puis « Redémarrer Kairo normalement » et « Réglages Android ». */
+@Composable
+private fun SafeModeBanner(
+    onRestart: () -> Unit,
+    onAndroidSettings: () -> Unit,
+    firstButton: FocusRequester,
+    modifier: Modifier,
+) {
+    Column(modifier.testTag("safe-mode-banner")) {
+        Text(stringResource(R.string.safe_mode_title), fontSize = 24.sp, color = OnBackground)
+        Text(
+            stringResource(R.string.safe_mode_text),
+            fontSize = 18.sp,
+            color = OnBackgroundMuted,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        androidx.compose.foundation.layout.Row(
+            Modifier.padding(top = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            androidx.tv.material3.Button(
+                onClick = onRestart,
+                colors = PillColors(),
+                modifier = Modifier.focusRequester(firstButton).testTag("safe-mode-restart"),
+            ) { Text(stringResource(R.string.safe_mode_restart), maxLines = 1) }
+            androidx.tv.material3.Button(
+                onClick = onAndroidSettings,
+                colors = PillColors(),
+                modifier = Modifier.testTag("safe-mode-android-settings"),
+            ) { Text(stringResource(R.string.safe_mode_android_settings), maxLines = 1) }
+        }
     }
 }
 

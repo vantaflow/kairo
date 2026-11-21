@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 
 /** Réaffecte les touches d'applis de la télécommande (YouTube, Netflix…) vers l'appli choisie. */
 class KeyRemapService : AccessibilityService() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + com.vantaflow.kairo.system.SafeHandler)
     @Volatile private var bindings: Map<Int, String> = emptyMap()
     /** Touches dont l'appui a été consommé : on consomme aussi leur relâchement. */
     private val consumed = mutableSetOf<Int>()

@@ -153,4 +153,9 @@
         <item quantity="many">منذ %1$d يومًا</item>
         <item quantity="other">منذ %1$d يوم</item>
     </plurals>
+    <!-- Mode sans échec (démarrages répétés) -->
+    <string name="safe_mode_title">الوضع الآمن</string>
+    <string name="safe_mode_text">توقف Kairo عدة مرات متتالية. تُعرض تطبيقاتك والإعدادات فقط.</string>
+    <string name="safe_mode_restart">إعادة تشغيل Kairo بشكل عادي</string>
+    <string name="safe_mode_android_settings">إعدادات Android</string>
 </resources>

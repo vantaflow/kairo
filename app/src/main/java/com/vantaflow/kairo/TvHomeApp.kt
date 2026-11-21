@@ -19,6 +19,8 @@ import com.vantaflow.kairo.clock.TrustedClock
 import com.vantaflow.kairo.net.UrlConnectionHttpGet
 import com.vantaflow.kairo.settings.LauncherPrefs
 import com.vantaflow.kairo.settings.launcherCorruptionHandler
+import com.vantaflow.kairo.system.CrashGuard
+import com.vantaflow.kairo.system.SafeHandler
 import com.vantaflow.kairo.weather.Place
 import com.vantaflow.kairo.weather.Forecast
 import com.vantaflow.kairo.weather.Weather
@@ -125,7 +127,7 @@ class AppContainer(val app: Application) {
     }
 
     /** Minuteur de mise en veille : coupe la radio puis met la box en veille (service d'accessibilité). */
-    val sleepTimer = com.vantaflow.kairo.tools.SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main), onSleep = {
+    val sleepTimer = com.vantaflow.kairo.tools.SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main + SafeHandler), onSleep = {
         com.vantaflow.kairo.radio.Radio.stop(app)
         com.vantaflow.kairo.remote.KeyRemapService.instance?.sleep()
     })
@@ -133,7 +135,7 @@ class AppContainer(val app: Application) {
     /** Télécommande sur téléphone : démarrée ou arrêtée selon le réglage. */
     @Volatile private var phoneToken = ""
     val phoneRemote = PhoneRemoteServer({ phoneToken }, PhoneRemoteActions(app)::route, { app.getString(R.string.phoneremote_forbidden) })
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + SafeHandler)
 
     fun watchPhoneRemote() {
         scope.launch {
@@ -166,11 +168,41 @@ class AppContainer(val app: Application) {
 class TvHomeApp : Application(), coil.ImageLoaderFactory {
     lateinit var container: AppContainer
 
+    /** Démarrages notés dans un fichier à part, écrit aussitôt (le process peut mourir juste après). */
+    val crashGuard by lazy {
+        val prefs = getSharedPreferences(CRASH_GUARD_PREFS, MODE_PRIVATE)
+        CrashGuard(
+            load = { prefs.getString(CRASH_GUARD_STARTS, "").orEmpty().split(',').filter { it.isNotBlank() }.map { it.toLong() } },
+            save = { starts -> prefs.edit().putString(CRASH_GUARD_STARTS, starts.joinToString(",")).commit() },
+            now = System::currentTimeMillis,
+        )
+    }
+
+    /**
+     * Mode sans échec : Kairo a redémarré plusieurs fois de suite sans accueil stable. Fixé une fois
+     * pour toute la vie du process ; aucune fonction de fond n'est lancée.
+     */
+    var safeMode = false
+        private set
+
+    /** Vrai une fois l'accueil resté au premier plan assez longtemps dans ce process. */
+    @Volatile private var stable = false
+
+    /** Accueil stable : les démarrages précédents sont oubliés (une seule écriture par process). */
+    fun markStable() {
+        if (stable) return
+        stable = true
+        crashGuard.markStable()
+    }
+
     override fun onCreate() {
         super.onCreate()
+        // En tout premier : une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
+        safeMode = crashGuard.recordStart()
         // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
         container = AppContainer(this)
+        if (safeMode) return
         container.watchPhoneRemote()
         container.startAutoClean()
         container.watchAdBlock()
@@ -202,5 +234,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
 
     private companion object {
         const val IMAGE_CACHE_BYTES = 24 * 1024 * 1024
+        const val CRASH_GUARD_PREFS = "crash_guard"
+        const val CRASH_GUARD_STARTS = "starts"
     }
 }

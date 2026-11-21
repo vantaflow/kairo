@@ -43,7 +43,8 @@ fun HeaderBar(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     netState: NetState? = null,
-    onOpenSearch: () -> Unit = {},
+    /** Bouton Rechercher (null = masqué : mode sans échec). */
+    onOpenSearch: (() -> Unit)? = {},
     onOpenTools: (() -> Unit)? = null,
     /** Radio en cours : pastille « ♪ » qui rouvre le lecteur (null = rien ne joue). */
     nowPlaying: String? = null,
@@ -64,7 +65,7 @@ fun HeaderBar(
                         Text("♪ " + name.take(22), maxLines = 1)
                     }
                 }
-                IconButton(TvIcon.Search, stringResource(R.string.home_search), onOpenSearch)
+                onOpenSearch?.let { IconButton(TvIcon.Search, stringResource(R.string.home_search), it) }
                 onOpenTools?.let { IconButton(TvIcon.Tools, stringResource(R.string.home_tools), it) }
                 IconButton(TvIcon.Apps, stringResource(R.string.home_apps), onOpenApps)
                 IconButton(TvIcon.Settings, stringResource(R.string.settings_title), onOpenSettings)
@@ -102,7 +103,7 @@ fun HeaderBar(
                         Text("♪ " + name.take(22), maxLines = 1)
                     }
                 }
-                HeaderButton(TvIcon.Search, stringResource(R.string.home_search), onOpenSearch)
+                onOpenSearch?.let { HeaderButton(TvIcon.Search, stringResource(R.string.home_search), it) }
                 onOpenTools?.let { HeaderButton(TvIcon.Tools, stringResource(R.string.home_tools), it) }
                 HeaderButton(TvIcon.Apps, stringResource(R.string.home_apps), onOpenApps)
                 HeaderButton(TvIcon.Settings, stringResource(R.string.settings_title), onOpenSettings)
@@ -144,8 +145,9 @@ private fun HeaderButton(icon: TvIcon, label: String, onClick: () -> Unit) {
     }
 }
 
+/** Couleurs des boutons de l'en-tête, reprises par le bandeau du mode sans échec. */
 @Composable
-private fun PillColors() = ButtonDefaults.colors(
+internal fun PillColors() = ButtonDefaults.colors(
     // Couleurs du thème : surface au repos, accent au focus.
     containerColor = SurfaceColor.copy(alpha = 0.82f),
     contentColor = OnBackground,

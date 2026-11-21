@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.plus
 
 class AppsViewModel(
     installedApps: () -> List<AppInfo>,
@@ -24,35 +25,37 @@ class AppsViewModel(
     private val prefs: LauncherPrefs,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
+    /** Une exception de lecture ou d'écriture est journalisée, elle ne fait plus tomber Kairo. */
+    private val scope = viewModelScope + com.vantaflow.kairo.system.SafeHandler
     val showHidden = MutableStateFlow(false)
 
     val favorites: StateFlow<List<String>> =
-        prefs.favorites.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        prefs.favorites.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val hidden: StateFlow<Set<String>> =
-        prefs.hidden.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        prefs.hidden.stateIn(scope, SharingStarted.Eagerly, emptySet())
 
-    private val installed = merge(flowOf(Unit), appChanges).map { installedApps() }.flowOn(ioDispatcher)
+    private val installed = merge(flowOf(Unit), appChanges).map { runCatching { installedApps() }.getOrDefault(emptyList()) }.flowOn(ioDispatcher)
 
     val apps: StateFlow<List<AppInfo>> =
         combine(installed, prefs.hidden, showHidden) { all, hiddenSet, show ->
             if (show) all else all.filterNot { it.packageName in hiddenSet }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** Applis non masquées, pour l'accueil et la recherche : l'interrupteur de l'écran Applis n'y change rien. */
     val visibleApps: StateFlow<List<AppInfo>> =
         combine(installed, prefs.hidden) { all, hiddenSet -> all.filterNot { it.packageName in hiddenSet } }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     fun toggleFavorite(pkg: String) {
-        viewModelScope.launch {
+        scope.launch {
             if (pkg in prefs.favorites.first()) prefs.removeFavorite(pkg) else prefs.addFavorite(pkg)
         }
     }
 
     /** Déplace un favori d'une position vers la gauche (-1) ou la droite (+1). */
     fun moveFavoriteBy(pkg: String, delta: Int) {
-        viewModelScope.launch {
+        scope.launch {
             val list = prefs.favorites.first()
             // Voisin pris parmi les favoris affichés : la liste enregistrée garde les applis masquées ou
             // désinstallées, par-dessus lesquelles un appui « ne faisait rien ».
@@ -63,7 +66,7 @@ class AppsViewModel(
     }
 
     fun toggleHidden(pkg: String) {
-        viewModelScope.launch {
+        scope.launch {
             prefs.setHidden(pkg, pkg !in prefs.hidden.first())
         }
     }

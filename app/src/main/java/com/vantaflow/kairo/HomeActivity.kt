@@ -15,6 +15,8 @@ import com.vantaflow.kairo.radio.RadioScreen
 import com.vantaflow.kairo.radio.Radio
 import com.vantaflow.kairo.remote.KeyRemapService
 import com.vantaflow.kairo.system.MemoryCleaner
+import com.vantaflow.kairo.system.STABLE_AFTER_MS
+import com.vantaflow.kairo.system.SafeHandler
 import com.vantaflow.kairo.system.formatMb
 import com.vantaflow.kairo.tools.CleanerScreen
 import com.vantaflow.kairo.tools.SleepTimerDialog
@@ -79,6 +81,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import com.vantaflow.kairo.ui.theme.Background
+import com.vantaflow.kairo.settings.WallpaperConfig
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.flow.combine
 import com.vantaflow.kairo.ui.theme.LocalHomeLayout
 import com.vantaflow.kairo.ui.theme.themeFor
@@ -90,6 +94,8 @@ enum class Destination { Home, Apps, Settings, Search, Radio, Weather, Cleaner }
 
 class HomeActivity : ComponentActivity() {
     private val container by lazy { (application as TvHomeApp).container }
+    /** Mode sans échec (démarrages répétés) : accueil réduit, aucun travail de fond. */
+    private val safeMode by lazy { (application as TvHomeApp).safeMode }
 
     private val homeViewModel: HomeViewModel by viewModels {
         viewModelFactory {
@@ -100,13 +106,15 @@ class HomeActivity : ComponentActivity() {
                     prefs = container.prefs,
                     clock = container.clock,
                     launcher = ::launchApp,
-                    epg = TvProviderEpgSource(applicationContext),
-                    nextWallpaper = container.nextWallpaper,
-                    weather = container.weather,
-                    tvInputs = { passthroughInputs(applicationContext) },
-                    resumePrograms = { usage, exclude ->
+                    // Mode sans échec : ni TvProvider, ni réseau (fonds, météo, heure).
+                    epg = if (safeMode) null else TvProviderEpgSource(applicationContext),
+                    nextWallpaper = if (safeMode) null else container.nextWallpaper,
+                    weather = if (safeMode) null else container.weather,
+                    tvInputs = if (safeMode) null else ({ passthroughInputs(applicationContext) }),
+                    resumePrograms = if (safeMode) null else ({ usage, exclude ->
                         com.vantaflow.kairo.reco.resumePrograms(applicationContext, usage, exclude, System.currentTimeMillis())
-                    },
+                    }),
+                    background = !safeMode,
                 )
             }
         }
@@ -167,8 +175,8 @@ class HomeActivity : ComponentActivity() {
 
     /** Catalogue relu (fichier de la box) ou téléchargé s'il date de plus d'un jour, sans bloquer l'affichage. */
     private fun refreshCatalog() {
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val installed = container.appRepository.installedApps().associate { it.packageName to it.label }
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
+            val installed = runCatching { container.appRepository.installedApps() }.getOrDefault(emptyList()).associate { it.packageName to it.label }
             val rows = runCatching { container.catalog.rows(installed) }.getOrDefault(emptyList())
             if (rows.isNotEmpty()) catalogRows = rows
         }
@@ -204,21 +212,23 @@ class HomeActivity : ComponentActivity() {
             openSettingsPanel()
             true
         } else openFromIntent(intent)
-        lifecycleScope.launch {
-            if (!opened && !container.prefs.setupShown.first()) {
+        lifecycleScope.launch(SafeHandler) {
+            // Mode sans échec : pas d'accueil animé par-dessus le bandeau.
+            if (!opened && !safeMode && !container.prefs.setupShown.first()) {
                 container.prefs.setSetupShown()
                 if (setupNeeded(this@HomeActivity)) onboarding = true
             }
         }
         // Touches Réglages / Entrées vues par le service pendant que Kairo est à l'écran.
-        lifecycleScope.launch {
+        lifecycleScope.launch(SafeHandler) {
             KairoCommands.openSettings.collect { section ->
                 onboarding = false
                 settingsSection = Section.entries.firstOrNull { it.name == section }
                 openSettingsPanel()
             }
         }
-        getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback, Handler(mainLooper))
+        // Réseau retrouvé : heure resynchronisée (pas en mode sans échec, sans réseau).
+        if (!safeMode) getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(networkCallback, Handler(mainLooper))
         setContent {
             DesignScale {
             // Rien n'est dessiné (fond uni) tant que le thème et l'affichage ne sont pas lus : pas de flash.
@@ -305,18 +315,30 @@ class HomeActivity : ComponentActivity() {
         super.onStart()
         // Retour sur l'accueil : l'appli quittée est notée, puis nettoyage si besoin (sans bloquer l'affichage).
         container.autoCleaner.onForeground(packageName)
-        container.ensureAdBlock()
-        com.vantaflow.kairo.media.NowPlaying.start(this)
-        refreshCatalog()
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            kotlinx.coroutines.delay(3_000)
-            runCatching { container.autoCleaner.check() }
+        if (!safeMode) {
+            container.ensureAdBlock()
+            com.vantaflow.kairo.media.NowPlaying.start(this)
+            refreshCatalog()
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
+                kotlinx.coroutines.delay(3_000)
+                runCatching { container.autoCleaner.check() }
+            }
+            // Accueil resté au premier plan assez longtemps : le démarrage est réussi (recompté s'il le quitte avant).
+            stableJob = lifecycleScope.launch(SafeHandler) {
+                kotlinx.coroutines.delay(STABLE_AFTER_MS)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { (application as TvHomeApp).markStable() }
+            }
         }
         homeViewModel.setForeground(true)
         container.ourApps.homeVisible = true
     }
 
+    /** Attente de l'accueil stable, annulée quand l'accueil quitte le premier plan. */
+    private var stableJob: kotlinx.coroutines.Job? = null
+
     override fun onStop() {
+        stableJob?.cancel()
+        stableJob = null
         homeViewModel.setForeground(false)
         // Écran éteint ou autre appli : les réglages du profil enfant se reverrouillent.
         settingsUnlocked = false
@@ -326,14 +348,15 @@ class HomeActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        container.ourApps.refresh()
+        // Mode sans échec : pas de contrôle des mises à jour (réseau).
+        if (!safeMode) container.ourApps.refresh()
         // Après l'attachement de la vue Compose (elle relit alors les services d'accessibilité).
         window.decorView.post { disableComposeAccessibilityTracking(window.decorView) }
         homeViewModel.refreshReco()
     }
 
     override fun onDestroy() {
-        getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback)
+        if (!safeMode) getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback)
         super.onDestroy()
     }
 
@@ -366,7 +389,7 @@ class HomeActivity : ComponentActivity() {
 
         // Réglages ouverts : l'écran d'où ils ont été ouverts reste affiché derrière le panneau.
         when (if (destination == Destination.Settings) settingsReturn else destination) {
-            Destination.Home, Destination.Settings -> {
+            Destination.Home, Destination.Settings -> if (safeMode) SafeModeHome(launch, profile.kids) else {
                 val state by homeViewModel.state.collectAsStateWithLifecycle()
                 val apps by appsViewModel.visibleApps.collectAsStateWithLifecycle()
                 val net by networkMonitor.state.collectAsStateWithLifecycle(networkMonitor.current())
@@ -604,6 +627,49 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Accueil du mode sans échec : le même écran, réduit à l'en-tête (applications, réglages), aux favoris
+     * et à « Toutes les applis », sur le fond uni du thème, avec le bandeau du mode sans échec.
+     */
+    @Composable
+    private fun SafeModeHome(launch: (AppInfo) -> Unit, kids: Boolean) {
+        val state by homeViewModel.state.collectAsStateWithLifecycle()
+        val apps by appsViewModel.visibleApps.collectAsStateWithLifecycle()
+        val solid = Background.toArgb().toLong() and 0xFFFFFFFFL
+        HomeScreen(
+            state = state.copy(
+                watchNext = emptyList(), recoRows = emptyList(), liveChannels = emptyList(), tvInputs = emptyList(),
+                weatherText = null, wallpaper = WallpaperConfig.Solid(solid), wallpaperImageUrl = null,
+            ),
+            focus = homeFocus,
+            onLaunch = launch,
+            onFavoriteLongClick = { if (!kids) actionsFor = it },
+            onOpenApps = { destination = Destination.Apps },
+            onOpenSettings = { openSettingsPanel() },
+            appLabels = remember(apps) { apps.associate { it.packageName to it.label } },
+            onOpenSearch = null,
+            otherApps = if (kids) emptyList() else remember(apps, state.favorites) {
+                val favs = state.favorites.map { it.packageName }.toSet()
+                apps.filterNot { it.packageName in favs }
+            },
+            movingFavorite = movingFavorite,
+            onMoveFavorite = appsViewModel::moveFavoriteBy,
+            onMoveDone = { movingFavorite = null },
+            onSafeModeRestart = ::restartNormally,
+            onAndroidSettings = { startSafely(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
+        )
+    }
+
+    /**
+     * « Redémarrer Kairo normalement » : historique des démarrages effacé, puis nouveau process (le mode
+     * sans échec est fixé pour toute la vie du process, une simple recréation de l'activité ne suffit pas).
+     */
+    private fun restartNormally() {
+        (application as TvHomeApp).crashGuard.reset()
+        startActivity(Intent.makeRestartActivityTask(android.content.ComponentName(this, HomeActivity::class.java)))
+        Runtime.getRuntime().exit(0)
+    }
+
     private fun toolsFor(kids: Boolean) = if (kids) Tool.entries - Tool.Cleaner else Tool.entries
 
     private fun openTool(tool: Tool) {
@@ -641,7 +707,7 @@ class HomeActivity : ComponentActivity() {
     private fun launchApp(pkg: String) {
         val intent = container.appRepository.launchIntent(pkg) ?: return
         startSafely(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        lifecycleScope.launch { container.prefs.recordLaunch(pkg) }
+        lifecycleScope.launch(SafeHandler) { container.prefs.recordLaunch(pkg) }
     }
 }
 

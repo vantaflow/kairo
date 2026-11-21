@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
  */
 class MediaListener : NotificationListenerService() {
     override fun onListenerConnected() {
+        // Mode sans échec : la lecture en cours n'est pas suivie.
+        if ((application as? com.vantaflow.kairo.TvHomeApp)?.safeMode == true) return
         NowPlaying.start(applicationContext)
     }
 }
