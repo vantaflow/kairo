@@ -58,6 +58,7 @@ fun HeaderBar(
             tabs()
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                netState?.let { NetworkIndicator(it, Modifier.padding(end = 8.dp)) }
                 nowPlaying?.let { name ->
                     Button(onClick = onOpenNowPlaying, colors = PillColors()) {
                         Text("♪ " + name.take(22), maxLines = 1)

@@ -5,6 +5,7 @@ import android.provider.Settings
 import com.vantaflow.kairo.system.SettingsShortcuts
 import com.vantaflow.kairo.system.playStoreIntents
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -64,5 +65,29 @@ class NetworkTest {
     fun playStoreHomeWithoutPackage() {
         val intents = playStoreIntents(null)
         assertEquals("com.android.vending", intents.first().`package`)
+    }
+
+    @Test
+    fun wpaPasswordLength() {
+        assertFalse(validWpaPassword("1234567"))
+        assertTrue(validWpaPassword("12345678"))
+        assertTrue(validWpaPassword("a".repeat(63)))
+        assertFalse(validWpaPassword("z".repeat(64)))
+        assertTrue(validWpaPassword("0aF9".repeat(16)))
+    }
+
+    @Test
+    fun connectResultFromAndroidStatus() {
+        val ok = android.net.wifi.WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS
+        assertEquals(WifiConnectResult.Saved, connectResultOf(ok, wifiEnabled = true))
+        assertEquals(WifiConnectResult.WifiOff, connectResultOf(ok, wifiEnabled = false))
+        assertEquals(
+            WifiConnectResult.NeedsApproval,
+            connectResultOf(android.net.wifi.WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED, wifiEnabled = true),
+        )
+        assertEquals(
+            WifiConnectResult.Failed,
+            connectResultOf(android.net.wifi.WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL, wifiEnabled = true),
+        )
     }
 }

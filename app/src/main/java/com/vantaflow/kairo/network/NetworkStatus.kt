@@ -15,6 +15,9 @@ import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
+import android.net.wifi.WifiNetworkSuggestion
+import androidx.annotation.StringRes
+import com.vantaflow.kairo.R
 import android.os.Handler
 import android.os.Looper
 import java.net.Inet4Address
@@ -26,8 +29,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 /** Connexion actuelle de la box. */
 sealed interface NetState {
     data object Offline : NetState
-    data class Ethernet(val ip: String?) : NetState
-    data class Wifi(val ssid: String?, val signalLevel: Int, val ip: String?) : NetState
+    data class Ethernet(val ip: String?, val gateway: String? = null, val dns: String? = null) : NetState
+    data class Wifi(
+        val ssid: String?, val signalLevel: Int, val ip: String?,
+        val gateway: String? = null, val dns: String? = null,
+    ) : NetState
 }
 
 /** Sécurité d'un Wi-Fi ; Unsupported (WEP…) se configure dans les paramètres Android. */
@@ -57,6 +63,28 @@ fun securityOf(capabilities: String): WifiSecurity = when {
     "SAE" in capabilities && "PSK" !in capabilities -> WifiSecurity.Wpa3
     "WPA" in capabilities || "RSN" in capabilities || "PSK" in capabilities -> WifiSecurity.Wpa2
     else -> WifiSecurity.Open
+}
+
+/** Issue d'une demande de connexion à un Wi-Fi. */
+enum class WifiConnectResult(@StringRes val message: Int) {
+    Saved(R.string.network_saved),
+    WifiOff(R.string.network_wifi_off),
+    NeedsApproval(R.string.network_needs_approval),
+    BadPassword(R.string.network_bad_password),
+    Unsupported(R.string.network_unsupported_type),
+    Failed(R.string.network_connect_failed),
+}
+
+/** Un mot de passe WPA fait 8 à 63 caractères (ou 64 chiffres hexadécimaux). */
+fun validWpaPassword(password: String): Boolean =
+    password.length in 8..63 || (password.length == 64 && password.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' })
+
+/** Traduit le code renvoyé par Android à l'enregistrement d'un réseau. */
+fun connectResultOf(status: Int, wifiEnabled: Boolean): WifiConnectResult = when {
+    status == WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED -> WifiConnectResult.NeedsApproval
+    status != WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS -> WifiConnectResult.Failed
+    !wifiEnabled -> WifiConnectResult.WifiOff
+    else -> WifiConnectResult.Saved
 }
 
 /** Suit la connexion par défaut (Ethernet ou Wi-Fi). */
@@ -92,15 +120,53 @@ class NetworkMonitor(private val context: Context) {
     @SuppressLint("MissingPermission")
     private fun describe(caps: NetworkCapabilities, lp: LinkProperties?): NetState {
         val ip = lp?.linkAddresses?.map { it.address }?.firstOrNull { it is Inet4Address }?.hostAddress
+        val gateway = lp?.routes?.firstOrNull { it.isDefaultRoute && it.gateway is Inet4Address }?.gateway?.hostAddress
+        val dns = lp?.dnsServers?.mapNotNull { it.hostAddress }?.takeIf { it.isNotEmpty() }?.joinToString(", ")
         return when {
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetState.Ethernet(ip)
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetState.Ethernet(ip, gateway, dns)
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
                 @Suppress("DEPRECATION")
                 val info = wifi?.connectionInfo
-                NetState.Wifi(cleanSsid(info?.ssid), signalLevel(info?.rssi ?: -100), ip)
+                NetState.Wifi(cleanSsid(info?.ssid), signalLevel(info?.rssi ?: -100), ip, gateway, dns)
             }
             else -> NetState.Offline
         }
+    }
+
+    /**
+     * Enregistre le réseau auprès d'Android, qui s'y connecte seul dès qu'il est à portée.
+     * L'écran système d'ajout (ACTION_WIFI_ADD_NETWORKS) n'existe pas sur Android TV : il ouvre
+     * les paramètres réseau et ignore le mot de passe.
+     */
+    @SuppressLint("MissingPermission")
+    fun connect(net: WifiNetwork, password: String): WifiConnectResult {
+        val manager = wifi ?: return WifiConnectResult.Failed
+        val builder = WifiNetworkSuggestion.Builder().setSsid(net.ssid)
+        when (net.security) {
+            WifiSecurity.Open -> Unit
+            WifiSecurity.Unsupported -> return WifiConnectResult.Unsupported
+            WifiSecurity.Wpa2, WifiSecurity.Wpa3 -> {
+                if (!validWpaPassword(password)) return WifiConnectResult.BadPassword
+                runCatching {
+                    if (net.security == WifiSecurity.Wpa3) builder.setWpa3Passphrase(password) else builder.setWpa2Passphrase(password)
+                }.onFailure { return WifiConnectResult.BadPassword }
+            }
+        }
+        val suggestion = runCatching { builder.build() }.getOrElse { return WifiConnectResult.BadPassword }
+        return runCatching {
+            // Un ancien mot de passe enregistré pour ce réseau est remplacé.
+            manager.removeNetworkSuggestions(listOf(suggestion))
+            connectResultOf(manager.addNetworkSuggestions(listOf(suggestion)), manager.isWifiEnabled)
+        }.getOrDefault(WifiConnectResult.Failed)
+    }
+
+    /** Noms des réseaux que Kairo a enregistrés auprès d'Android. */
+    fun savedByKairo(): List<String> =
+        runCatching { wifi?.networkSuggestions.orEmpty().mapNotNull { it.ssid } }.getOrDefault(emptyList())
+
+    /** Retire tous les réseaux enregistrés par Kairo (ceux des paramètres Android ne bougent pas). */
+    fun forgetSaved() {
+        runCatching { wifi?.removeNetworkSuggestions(emptyList()) }
     }
 
     fun locationEnabled(): Boolean =
