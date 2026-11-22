@@ -87,16 +87,36 @@ fun planStartup(withdrawn: Boolean, homeEnabled: Boolean, recoveryEnabled: Boole
  * Issue du démarrage une fois le [plan] appliqué ([homeApplied] : l'état voulu de l'accueil a pu
  * être écrit). L'accueil ne peut pas être désactivé : remise en place ([restore]) ; si elle échoue
  * aussi, Kairo reste retiré (un autre accueil existe). Plus d'autre accueil : remise en place,
- * réessayée une fois, puis démarrage en mode sans échec quoi qu'il arrive.
+ * réessayée une fois ; si les deux essais échouent, [StartupOutcome.RestoreFailed] (Kairo démarre
+ * quand même, en mode sans échec : c'est le seul accueil).
  */
 fun resolveStartup(plan: StartupPlan, homeApplied: Boolean, restore: () -> Boolean): StartupOutcome = when {
     plan.stop && homeApplied -> StartupOutcome.Withdrawn
     plan.stop -> if (restore()) StartupOutcome.Restored else StartupOutcome.Withdrawn
-    plan.restore -> {
-        restore() || restore()
-        StartupOutcome.Restored
-    }
+    plan.restore -> if (restore() || restore()) StartupOutcome.Restored else StartupOutcome.RestoreFailed
     else -> StartupOutcome.Normal
+}
+
+/** Décision de démarrage : Kairo reste ou vient d'être retiré ([withdrawn]), sinon [safeMode] ou non. */
+data class StartupDecision(val withdrawn: Boolean, val safeMode: Boolean)
+
+/**
+ * Orchestration du démarrage, dans l'ordre : Kairo encore retiré ([repair] = Withdrawn) → arrêt,
+ * rien d'autre n'est fait ; retrait maintenant ([withdrawNow], mode sans échec qui plante encore) →
+ * arrêt ; sinon la garde anti-boucle note TOUJOURS le démarrage ([loopDetected]), et le mode sans
+ * échec vient d'une boucle, d'une remise en place automatique (réussie ou non) ou de l'indicateur
+ * de mode sans échec imposé ([safeModeForced]).
+ */
+fun decideStartup(
+    repair: StartupOutcome,
+    withdrawNow: () -> Boolean,
+    loopDetected: () -> Boolean,
+    safeModeForced: Boolean,
+): StartupDecision {
+    if (repair == StartupOutcome.Withdrawn || withdrawNow()) return StartupDecision(withdrawn = true, safeMode = false)
+    val loop = loopDetected()
+    val restored = repair == StartupOutcome.Restored || repair == StartupOutcome.RestoreFailed
+    return StartupDecision(withdrawn = false, safeMode = loop || restored || safeModeForced)
 }
 
 /** Issue de la vérification de démarrage. */
@@ -110,6 +130,8 @@ enum class StartupOutcome {
      * sans échec jusqu'à « Redémarrer Kairo normalement ».
      */
     Restored,
+    /** Comme [Restored], mais la remise en place a échoué deux fois : Kairo démarre quand même, en mode sans échec. */
+    RestoreFailed,
 }
 
 /**
@@ -147,9 +169,10 @@ class HomeFallback(private val context: Context) {
             if (component == HOME_ACTIVITY) homeApplied = ok
         }
         resolveStartup(plan, homeApplied, ::restore).also { outcome ->
+            if (outcome == StartupOutcome.RestoreFailed) log("remise en place automatique impossible, démarrage en mode sans échec")
             // Remise en place automatique : le mode sans échec tient au-delà de ce process (restore()
             // a effacé l'historique) ; « Redémarrer Kairo normalement » le lève.
-            if (outcome == StartupOutcome.Restored) runCatching { prefs.edit().putBoolean(KEY_FORCED_SAFE_MODE, true).commit() }
+            if (outcome == StartupOutcome.Restored) prefs.edit().putBoolean(KEY_FORCED_SAFE_MODE, true).commitOrLog("mode sans échec imposé")
         }
     }.getOrElse { if (isWithdrawn()) StartupOutcome.Withdrawn else StartupOutcome.Normal }
 
@@ -161,7 +184,7 @@ class HomeFallback(private val context: Context) {
         val previousRunWasSafeMode = prefs.getBoolean(KEY_LAST_RUN_SAFE_MODE, false)
         val before = prefs.getInt(KEY_SAFE_MODE_CRASHES, 0)
         val crashes = nextSafeModeCrashCount(previousExitWasCrash, previousRunWasSafeMode, before)
-        if (crashes != before) prefs.edit().putInt(KEY_SAFE_MODE_CRASHES, crashes).commit()
+        if (crashes != before) prefs.edit().putInt(KEY_SAFE_MODE_CRASHES, crashes).commitOrLog("plantages en mode sans échec")
         // Les autres accueils (requête au PackageManager) ne sont cherchés qu'après un plantage du mode sans échec.
         val crashedInSafeMode = previousExitWasCrash && previousRunWasSafeMode
         crashedInSafeMode &&
@@ -173,12 +196,15 @@ class HomeFallback(private val context: Context) {
      * À chaque démarrage (retiré compris), en tout premier : le process précédent a-t-il planté ?
      * Les traces de sortie jamais vues au démarrage précédent sont celles des sorties survenues depuis,
      * sans se fier à leur date (voir [newExitTraces]) ; les traces actuelles sont mémorisées pour le
-     * démarrage suivant. Traces illisibles : rien n'est compté ni mémorisé.
+     * démarrage suivant. Traces illisibles : rien n'est compté ni mémorisé. Mémoire impossible à
+     * écrire (disque plein) : rien n'est compté, sinon les mêmes traces le seraient à chaque démarrage.
      */
     fun previousExit(): PreviousExit = runCatching {
         val current = exitTraces(context) ?: return NO_EXIT
         val seen = decodeSeenExitKeys(prefs.getString(KEY_SEEN_EXITS, null))
-        prefs.edit().putString(KEY_SEEN_EXITS, encodeSeenExitKeys(rememberExitKeys(seen, current))).commit()
+        if (!prefs.edit().putString(KEY_SEEN_EXITS, encodeSeenExitKeys(rememberExitKeys(seen, current))).commitOrLog("traces de sortie vues")) {
+            return NO_EXIT
+        }
         previousExit(seen, current, bootIsRecent(android.os.SystemClock.elapsedRealtime()))
     }.getOrDefault(NO_EXIT)
 
@@ -189,7 +215,7 @@ class HomeFallback(private val context: Context) {
     fun recordRun(safeMode: Boolean, previousExitWasCrash: Boolean) {
         runCatching {
             if (prefs.getBoolean(KEY_LAST_RUN_SAFE_MODE, false) != safeMode) {
-                prefs.edit().putBoolean(KEY_LAST_RUN_SAFE_MODE, safeMode).commit()
+                prefs.edit().putBoolean(KEY_LAST_RUN_SAFE_MODE, safeMode).commitOrLog("mode du lancement")
             }
         }
         if (forgetsSafeModeCrashes(safeMode, previousExitWasCrash)) resetCrashes()
@@ -216,7 +242,7 @@ class HomeFallback(private val context: Context) {
     fun resetCrashes() {
         runCatching {
             if (prefs.contains(KEY_SAFE_MODE_CRASHES) || prefs.contains(KEY_FORCED_SAFE_MODE)) {
-                prefs.edit().remove(KEY_SAFE_MODE_CRASHES).remove(KEY_FORCED_SAFE_MODE).commit()
+                prefs.edit().remove(KEY_SAFE_MODE_CRASHES).remove(KEY_FORCED_SAFE_MODE).commitOrLog("remise à zéro des plantages")
             }
         }
     }
@@ -225,31 +251,49 @@ class HomeFallback(private val context: Context) {
      * « Remettre Kairo comme accueil » : accueil de Kairo réactivé, toute la garde remise à zéro
      * (démarrages notés, compteurs, indicateur de retrait ; seules les traces de sortie déjà vues
      * sont gardées), activité de réparation désactivée.
-     * Faux si l'accueil n'a pas pu être réactivé (rien d'autre n'est alors changé).
+     * Faux si l'accueil n'a pas pu être réactivé (rien d'autre n'est alors changé) ou si la garde n'a
+     * pas pu être écrite (disque plein : l'indicateur de retrait reste, l'accueil est réactivé).
      */
     fun restore(): Boolean = runCatching {
         setEnabled(HOME_ACTIVITY, true)
         val seenExits = prefs.getString(KEY_SEEN_EXITS, null)
         // Sur un éditeur, clear() passe avant les écritures : les traces vues restent.
-        prefs.edit().clear().apply { if (seenExits != null) putString(KEY_SEEN_EXITS, seenExits) }.commit()
+        val written = prefs.edit().clear().apply { if (seenExits != null) putString(KEY_SEEN_EXITS, seenExits) }
+            .commitOrLog("remise en place")
+        if (!written) return false
         runCatching { setEnabled(RECOVERY_ACTIVITY, false) }
         true
     }.getOrDefault(false)
 
     /**
-     * Activité de réparation activée, accueil de Kairo désactivé, puis indicateur écrit. L'indicateur
-     * n'est écrit qu'une fois l'accueil réellement désactivé : sinon l'accueil démarrerait dans un
-     * process sans conteneur.
+     * Retrait : l'indicateur est écrit D'ABORD (les composants sont réalignés sur lui à chaque
+     * démarrage, voir [planStartup]). Écriture impossible (disque plein) : pas de retrait, rien n'est
+     * touché. Puis activité de réparation activée et accueil de Kairo désactivé ; si la désactivation
+     * échoue, l'indicateur est effacé et la réparation re-désactivée (sinon l'accueil, encore actif,
+     * démarrerait dans un process sans conteneur).
      */
     private fun withdraw(): Boolean {
+        if (!prefs.edit().putBoolean(KEY_WITHDRAWN, true).commitOrLog("indicateur de retrait")) return false
         runCatching { setEnabled(RECOVERY_ACTIVITY, true) }
         val disabled = runCatching { setEnabled(HOME_ACTIVITY, false) }.isSuccess
         if (!disabled) {
+            log("accueil impossible à désactiver, pas de retrait")
+            prefs.edit().remove(KEY_WITHDRAWN).commitOrLog("effacement de l'indicateur de retrait")
             runCatching { setEnabled(RECOVERY_ACTIVITY, false) }
             return false
         }
-        runCatching { prefs.edit().putBoolean(KEY_WITHDRAWN, true).commit() }
         return true
+    }
+
+    /** `commit()` rend faux sans lever quand l'écriture échoue (disque plein) : on le journalise. */
+    private fun android.content.SharedPreferences.Editor.commitOrLog(what: String): Boolean {
+        val ok = runCatching { commit() }.getOrDefault(false)
+        if (!ok) log("écriture impossible : $what")
+        return ok
+    }
+
+    private fun log(message: String) {
+        runCatching { android.util.Log.w("Kairo", "dernier filet : $message") }
     }
 
     /**

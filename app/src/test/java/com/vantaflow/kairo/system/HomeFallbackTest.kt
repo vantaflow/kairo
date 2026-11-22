@@ -177,7 +177,8 @@ class HomeFallbackTest {
     @Test
     fun noOtherHomeRetriesRestoreOnceThenStartsInSafeMode() {
         var calls = 0
-        assertEquals(StartupOutcome.Restored, resolveStartup(giveBack, homeApplied = true) { calls++; false })
+        // Les deux essais échouent : l'issue le dit (démarrage quand même, en mode sans échec).
+        assertEquals(StartupOutcome.RestoreFailed, resolveStartup(giveBack, homeApplied = true) { calls++; false })
         assertEquals(2, calls)
         calls = 0
         assertEquals(StartupOutcome.Restored, resolveStartup(giveBack, homeApplied = true) { calls++; true })
@@ -187,6 +188,54 @@ class HomeFallbackTest {
     @Test
     fun notWithdrawnIsNormal() {
         assertEquals(StartupOutcome.Normal, resolveStartup(nothing, homeApplied = true) { error("pas de remise en place") })
+    }
+
+    // --- Orchestration du démarrage ---
+
+    private class Steps(val withdraw: Boolean = false, val loop: Boolean = false) {
+        var withdrawCalls = 0
+        var loopCalls = 0
+        fun decide(repair: StartupOutcome, forced: Boolean = false) = decideStartup(
+            repair,
+            withdrawNow = { withdrawCalls++; withdraw },
+            loopDetected = { loopCalls++; loop },
+            safeModeForced = forced,
+        )
+    }
+
+    @Test
+    fun stillWithdrawnStopsBeforeAnything() {
+        val steps = Steps(withdraw = true, loop = true)
+        assertEquals(StartupDecision(withdrawn = true, safeMode = false), steps.decide(StartupOutcome.Withdrawn))
+        assertEquals(0, steps.withdrawCalls)
+        assertEquals(0, steps.loopCalls)
+    }
+
+    @Test
+    fun withdrawalNowStopsBeforeTheLoopGuard() {
+        val steps = Steps(withdraw = true, loop = true)
+        assertEquals(StartupDecision(withdrawn = true, safeMode = false), steps.decide(StartupOutcome.Normal))
+        assertEquals(0, steps.loopCalls)
+    }
+
+    @Test
+    fun loopGuardAlwaysRecordsTheStartAndDecidesSafeMode() {
+        val normal = Steps()
+        assertEquals(StartupDecision(withdrawn = false, safeMode = false), normal.decide(StartupOutcome.Normal))
+        assertEquals(1, normal.loopCalls)
+        val loop = Steps(loop = true)
+        assertEquals(StartupDecision(withdrawn = false, safeMode = true), loop.decide(StartupOutcome.Normal))
+    }
+
+    @Test
+    fun automaticRestoreOrForcedFlagMeansSafeMode() {
+        for (repair in listOf(StartupOutcome.Restored, StartupOutcome.RestoreFailed)) {
+            val steps = Steps()
+            assertEquals(StartupDecision(withdrawn = false, safeMode = true), steps.decide(repair))
+            // Le démarrage est noté quand même.
+            assertEquals(1, steps.loopCalls)
+        }
+        assertEquals(StartupDecision(withdrawn = false, safeMode = true), Steps().decide(StartupOutcome.Normal, forced = true))
     }
 
     private companion object {

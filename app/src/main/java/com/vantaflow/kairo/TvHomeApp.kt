@@ -234,22 +234,20 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         // Dernier filet, avant la langue, le conteneur et tout le reste : Kairo retiré de l'accueil ne
         // démarre plus rien jusqu'à « Remettre Kairo comme accueil ». Les composants sont réalignés sur
         // l'indicateur à chaque démarrage ; plus d'autre accueil : Kairo le reprend, en mode sans échec.
-        val restored = when (homeFallback.repairAtStartup()) {
-            com.vantaflow.kairo.system.StartupOutcome.Withdrawn -> {
-                withdrawn = true
-                return
-            }
-            com.vantaflow.kairo.system.StartupOutcome.Restored -> true
-            com.vantaflow.kairo.system.StartupOutcome.Normal -> false
-        }
-        // Le mode sans échec plante encore : Kairo se retire et la box retombe sur l'autre accueil.
-        if (homeFallback.withdrawIfSafeModeKeepsCrashing(previousExitWasCrash)) {
+        // Puis : le mode sans échec plante encore → Kairo se retire et la box retombe sur l'autre accueil ;
+        // sinon une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre (mode
+        // sans échec : plantages, et ANR ou échecs de démarrage loin du boot de la box).
+        val decision = com.vantaflow.kairo.system.decideStartup(
+            repair = homeFallback.repairAtStartup(),
+            withdrawNow = { homeFallback.withdrawIfSafeModeKeepsCrashing(previousExitWasCrash) },
+            loopDetected = { crashGuard.recordStart(previousExit.countsForSafeMode) },
+            safeModeForced = homeFallback.isSafeModeForced(),
+        )
+        if (decision.withdrawn) {
             withdrawn = true
             return
         }
-        // Une boucle de plantage est repérée avant que quoi que ce soit d'autre ne démarre.
-        // Mode sans échec : plantages, et ANR ou échecs de démarrage loin du boot de la box.
-        safeMode = crashGuard.recordStart(previousExit.countsForSafeMode) || restored || homeFallback.isSafeModeForced()
+        safeMode = decision.safeMode
         homeFallback.recordRun(safeMode, previousExit.countsForSafeMode)
         // Langue choisie dans Kairo (sinon celle de la box) pour les services et les textes formatés.
         com.vantaflow.kairo.i18n.AppLocale.applyToApp(this)
