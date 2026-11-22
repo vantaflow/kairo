@@ -74,7 +74,7 @@ val OurApps: List<OurApp> = listOf(
         id = "ultratv",
         name = "Ultra TV",
         tagline = R.string.apps_tagline_ultratv,
-        packages = listOf("com.ultratv.tv.nativeapp", "com.ultratv.tv.nativeapp.debug"),
+        packages = listOf("com.ultratv.tv.nativeapp.debug"),
         repo = "vantaflow/ultra-tv",
         banner = R.drawable.app_ultratv,
         // Un APK par processeur : celui de la box (32 bits sur les petites box).

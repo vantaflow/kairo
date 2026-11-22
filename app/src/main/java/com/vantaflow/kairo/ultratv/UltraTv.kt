@@ -4,17 +4,14 @@ package com.vantaflow.kairo.ultratv
 // Logique pure : la lecture du curseur et l'affichage sont ailleurs. L'autre appli évolue
 // (colonnes en plus, en moins, nulles ou d'un type inattendu) : rien ici ne lève d'exception.
 
-const val ULTRA_TV_RELEASE = "com.ultratv.tv.nativeapp"
-const val ULTRA_TV_DEBUG = "com.ultratv.tv.nativeapp.debug"
+// Seul paquet publié d'Ultra TV, versions stables comprises (le suffixe .debug fait partie du nom).
+// Le nom sans suffixe n'existe pas : ne pas l'accepter, une autre appli pourrait le prendre.
+const val ULTRA_TV = "com.ultratv.tv.nativeapp.debug"
 
 fun ultraTvAuthority(pkg: String) = "$pkg.kairo"
 
-/** Paquet Ultra TV à interroger : la version publiée d'abord, sinon celle de mise au point. */
-fun pickUltraTvPackage(installed: Set<String>): String? = when {
-    ULTRA_TV_RELEASE in installed -> ULTRA_TV_RELEASE
-    ULTRA_TV_DEBUG in installed -> ULTRA_TV_DEBUG
-    else -> null
-}
+/** Paquet Ultra TV à interroger, s'il est installé. */
+fun pickUltraTvPackage(installed: Set<String>): String? = ULTRA_TV.takeIf { it in installed }
 
 // Colonnes du fournisseur
 const val COL_PROVIDER_ID = "provider_id"

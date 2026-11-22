@@ -11,7 +11,7 @@ class UltraTvRowModelTest {
         nextTitle = null, nextStartMs = 0L, nextEndMs = 0L,
         deepLink = "ultratv://channel/1", locked = false,
     )
-    private val installed = UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel))
+    private val installed = UtvState(pkg = ULTRA_TV, channels = listOf(channel))
 
     @Test
     fun shownWhenInstalledAndAllowed() {
@@ -21,7 +21,7 @@ class UltraTvRowModelTest {
     @Test
     fun shownWithoutChannels() {
         // Raccourcis seuls : la rangée existe dès qu'Ultra TV est installée.
-        assertTrue(utvRowVisible(UtvState(pkg = ULTRA_TV_DEBUG), kairoKids = false, shown = true))
+        assertTrue(utvRowVisible(UtvState(pkg = ULTRA_TV), kairoKids = false, shown = true))
     }
 
     @Test
@@ -44,6 +44,6 @@ class UltraTvRowModelTest {
     @Test
     fun hiddenForUltraTvKidsProfile() {
         assertFalse(utvRowVisible(installed.copy(kids = true), kairoKids = false, shown = true))
-        assertFalse(utvRowVisible(UtvState(pkg = ULTRA_TV_RELEASE, kids = true), kairoKids = false, shown = true))
+        assertFalse(utvRowVisible(UtvState(pkg = ULTRA_TV, kids = true), kairoKids = false, shown = true))
     }
 }

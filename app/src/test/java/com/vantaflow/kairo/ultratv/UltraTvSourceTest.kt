@@ -81,12 +81,11 @@ class UltraTvSourceTest {
         owner: (String) -> String? = { it.removeSuffix(".kairo") },
     ) = UltraTvSource(installed, provider.query, provider.changes, owner, { bootMs + testScheduler.currentTime }, backgroundScope)
 
-    private val release = ultraTvAuthority(ULTRA_TV_RELEASE)
-    private val debug = ultraTvAuthority(ULTRA_TV_DEBUG)
+    private val release = ultraTvAuthority(ULTRA_TV)
 
     @Test fun nothingIsReadBeforeStart() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.refresh()
         at(120_000)
         assertEquals(emptyList<String>(), provider.calls)
@@ -111,11 +110,11 @@ class UltraTvSourceTest {
             answer(release, "now", listOf(row("B"), row("A"), mapOf(COL_NAME to "sans lien")))
             answer(release, "profile", listOf(mapOf(COL_KIDS to 1L)))
         }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE, "org.autre.appli")))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV, "org.autre.appli")))
         source.start()
         at(0)
         val state = source.state.value
-        assertEquals(ULTRA_TV_RELEASE, state.pkg)
+        assertEquals(ULTRA_TV, state.pkg)
         // Ordre du fournisseur, ligne invalide écartée
         assertEquals(listOf("B", "A"), state.channels.map { it.name })
         assertTrue(state.kids)
@@ -128,7 +127,7 @@ class UltraTvSourceTest {
             answer(release, "now", listOf(row("A")))
             answer(release, "profile", listOf(mapOf(COL_KIDS to 1L)))
         }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.start()
         at(0)
         val loaded = source.state.value
@@ -146,7 +145,7 @@ class UltraTvSourceTest {
 
     @Test fun slowQueryTimesOutAndKeepsPreviousState() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.start()
         at(0)
         val loaded = source.state.value
@@ -167,7 +166,7 @@ class UltraTvSourceTest {
             answer(release, "now", listOf(row("A")))
             answer(release, "profile", listOf(mapOf(COL_KIDS to 0L)))
         }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.start()
         at(0)
         assertEquals(1, source.state.value.channels.size)
@@ -176,13 +175,13 @@ class UltraTvSourceTest {
         provider.notify(release)
         at(32_000)
         // Plus de chaînes ; le profil, lu dans la foulée, garde les raccourcis possibles
-        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, channels = emptyList(), kids = false), source.state.value)
+        assertEquals(UtvState(pkg = ULTRA_TV, channels = emptyList(), kids = false), source.state.value)
         assertEquals(2, provider.count(release, "profile"))
     }
 
     @Test fun changesAreRateLimitedToOnePerThirtySeconds() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.start()
         at(0)
         assertEquals(1, provider.count(release, "now"))
@@ -204,7 +203,7 @@ class UltraTvSourceTest {
 
     @Test fun uninstallClearsStateAndStopsObserving() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val installed = MutableStateFlow(setOf(ULTRA_TV_RELEASE))
+        val installed = MutableStateFlow(setOf(ULTRA_TV))
         val source = source(provider, installed)
         source.start()
         at(0)
@@ -219,34 +218,9 @@ class UltraTvSourceTest {
         assertEquals(before, provider.calls.size)
     }
 
-    @Test fun switchingFromDebugToReleaseUsesReleaseAuthority() = runTest {
-        val provider = FakeProvider().apply {
-            answer(debug, "now", listOf(row("Debug")))
-            answer(release, "now", listOf(row("Release")))
-        }
-        val installed = MutableStateFlow(setOf(ULTRA_TV_DEBUG))
-        val source = source(provider, installed)
-        source.start()
-        at(0)
-        assertEquals(ULTRA_TV_DEBUG, source.state.value.pkg)
-        assertEquals(1, provider.observing(debug))
-        assertNull(provider.observers[release])
-        installed.value = setOf(ULTRA_TV_DEBUG, ULTRA_TV_RELEASE)
-        at(1_000)
-        assertEquals(ULTRA_TV_RELEASE, source.state.value.pkg)
-        assertEquals(listOf("Release"), source.state.value.channels.map { it.name })
-        assertEquals(0, provider.observing(debug))
-        assertEquals(1, provider.observing(release))
-        // Une notification de l'ancienne autorité ne déclenche plus rien
-        val before = provider.calls.size
-        provider.notify(debug)
-        at(120_000)
-        assertEquals(before, provider.calls.size)
-    }
-
     @Test fun refreshReadsAtMostOncePerFiveMinutes() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.start()
         at(0)
         assertEquals(1, provider.count(release, "now"))
@@ -277,7 +251,7 @@ class UltraTvSourceTest {
     @Test fun noReadDuringQuietPeriodAfterBoot() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
         // Box allumée depuis 40 s au début du test
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)), bootMs = 40_000L)
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)), bootMs = 40_000L)
         source.start()
         at(10_000)
         provider.notify(release)
@@ -285,7 +259,7 @@ class UltraTvSourceTest {
         at(139_999)
         assertEquals(emptyList<String>(), provider.calls)
         // Paquet connu, profil pas encore lu : mode enfants supposé (rangée masquée)
-        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, kids = true), source.state.value)
+        assertEquals(UtvState(pkg = ULTRA_TV, kids = true), source.state.value)
         // 180 s de vie de la box : une seule lecture
         at(140_000)
         assertEquals(1, provider.count(release, "now"))
@@ -297,7 +271,7 @@ class UltraTvSourceTest {
 
     @Test fun startLongAfterBootReadsImmediately() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)), bootMs = 600_000L)
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)), bootMs = 600_000L)
         source.start()
         runCurrent()
         assertEquals(1, provider.count(release, "now"))
@@ -306,7 +280,7 @@ class UltraTvSourceTest {
 
     @Test fun authorityOwnedByAnotherAppIsNeverRead() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)), owner = { "org.imposteur" })
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)), owner = { "org.imposteur" })
         source.start()
         at(0)
         provider.notify(release)
@@ -319,12 +293,12 @@ class UltraTvSourceTest {
 
     @Test fun missingOwnerIsNeverRead() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)), owner = { null })
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)), owner = { null })
         source.start()
         at(60_000)
         assertEquals(emptyList<String>(), provider.calls)
         // Profil jamais lu : mode enfants supposé, rangée masquée
-        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, kids = true), source.state.value)
+        assertEquals(UtvState(pkg = ULTRA_TV, kids = true), source.state.value)
     }
 
     @Test fun briefMissingOwnerKeepsStateAndDoesNotCountAsRead() = runTest {
@@ -332,8 +306,8 @@ class UltraTvSourceTest {
             answer(release, "now", listOf(row("A")))
             answer(release, "profile", listOf(mapOf(COL_KIDS to 0L)))
         }
-        var owner: String? = ULTRA_TV_RELEASE
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)), owner = { owner })
+        var owner: String? = ULTRA_TV
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)), owner = { owner })
         source.start()
         at(0)
         val loaded = source.state.value
@@ -346,7 +320,7 @@ class UltraTvSourceTest {
         assertEquals(1, provider.count(release, "now"))
         assertEquals(loaded, source.state.value)
         // Aucune requête partie : le retour suivant sur l'accueil relit dès que le fournisseur revient
-        owner = ULTRA_TV_RELEASE
+        owner = ULTRA_TV
         at(331_000)
         source.refresh()
         runCurrent()
@@ -361,7 +335,7 @@ class UltraTvSourceTest {
         }
         val warnings = mutableListOf<String>()
         val source = UltraTvSource(
-            MutableStateFlow(setOf(ULTRA_TV_RELEASE)), provider.query, provider.changes,
+            MutableStateFlow(setOf(ULTRA_TV)), provider.query, provider.changes,
             { it.removeSuffix(".kairo") }, { 600_000L + testScheduler.currentTime }, backgroundScope,
             warn = { warnings += it },
         )
@@ -390,13 +364,13 @@ class UltraTvSourceTest {
             latencyMs = 60_000
             ignoresCancel = true
         }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.start()
         at(0)
         assertEquals(1, provider.count(release, "now"))
         // Délai dépassé à 10 s : la boucle reprend, état inchangé
         at(10_000)
-        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, kids = source.state.value.kids), source.state.value)
+        assertEquals(UtvState(pkg = ULTRA_TV, kids = source.state.value.kids), source.state.value)
         // Requête toujours bloquée : la lecture suivante échoue sans nouvelle requête
         at(31_000)
         provider.notify(release)
@@ -416,7 +390,7 @@ class UltraTvSourceTest {
             answer(release, "now", listOf(row("A")))
             failingObserves = 1
         }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         source.start()
         at(0)
         // Inscription en échec : la lecture a lieu quand même, aucun observateur
@@ -443,7 +417,7 @@ class UltraTvSourceTest {
 
     @Test fun unreadableProfileLeansToKids() = runTest {
         val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
-        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV)))
         // Avant start : état vide (aucun paquet, rangée masquée)
         assertEquals(UtvState(), source.state.value)
         source.start()

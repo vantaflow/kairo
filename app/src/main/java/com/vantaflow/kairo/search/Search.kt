@@ -44,8 +44,7 @@ fun searchTargets(query: String, installed: Set<String>, canResolve: (Intent) ->
 
 /** Recherche dans les principales applis vidéo et le Play Store (celles absentes sont ignorées à l'affichage). */
 fun appSearchIntents(query: String): List<SearchTarget> = listOf(
-    // Nos applis d'abord (Ultra TV : version publiée ou de développement).
-    searchIn("Ultra TV", "com.ultratv.tv.nativeapp", query),
+    // Nos applis d'abord (Ultra TV : son seul paquet publié porte le suffixe .debug).
     searchIn("Ultra TV", "com.ultratv.tv.nativeapp.debug", query),
     searchIn("Kairo Player", "com.vantaflow.kairo.player", query),
     searchIn("YouTube", "com.google.android.youtube.tv", query),

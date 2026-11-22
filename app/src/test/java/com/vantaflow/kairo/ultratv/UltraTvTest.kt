@@ -11,11 +11,11 @@ class UltraTvTest {
     private val link = "ultratv://channel/42"
 
     @Test
-    fun releasePackageIsPreferred() {
-        assertEquals(ULTRA_TV_RELEASE, pickUltraTvPackage(setOf(ULTRA_TV_RELEASE, ULTRA_TV_DEBUG)))
-        assertEquals(ULTRA_TV_DEBUG, pickUltraTvPackage(setOf(ULTRA_TV_DEBUG, "com.autre.appli")))
+    fun onlyThePublishedPackageIsAccepted() {
+        assertEquals(ULTRA_TV, pickUltraTvPackage(setOf(ULTRA_TV, "com.autre.appli")))
+        assertNull(pickUltraTvPackage(setOf("com.ultratv.tv.nativeapp")))
         assertNull(pickUltraTvPackage(emptySet()))
-        assertEquals("com.ultratv.tv.nativeapp.kairo", ultraTvAuthority(ULTRA_TV_RELEASE))
+        assertEquals("com.ultratv.tv.nativeapp.debug.kairo", ultraTvAuthority(ULTRA_TV))
     }
 
     @Test

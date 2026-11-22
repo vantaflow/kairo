@@ -50,7 +50,7 @@ class UltraTvRowTest {
         deepLink = "ultratv://channel/$i", locked = locked,
     )
 
-    private val state = UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1), channel(2)))
+    private val state = UtvState(pkg = ULTRA_TV, channels = listOf(channel(1), channel(2)))
 
     @Test
     fun shortcutsAndChannelsReachableWithRemote() {
@@ -87,7 +87,7 @@ class UltraTvRowTest {
     @Test
     fun lockedChannelShowsNoProgramNorProgress() {
         // Chaîne verrouillée en premier : sa tuile est composée (5e élément, visible).
-        val locked = UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1, locked = true)))
+        val locked = UtvState(pkg = ULTRA_TV, channels = listOf(channel(1, locked = true)))
         rule.setContent {
             TvHomeTheme { UltraTvRow(locked, now, onOpenSection = {}, onOpenChannel = {}, onFocused = {}) }
         }
@@ -105,7 +105,7 @@ class UltraTvRowTest {
     fun freeChannelShowsProgramAndProgress() {
         // Contre-épreuve du test précédent : la même chaîne libre montre tout.
         rule.setContent {
-            TvHomeTheme { UltraTvRow(UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1))), now, onOpenSection = {}, onOpenChannel = {}, onFocused = {}) }
+            TvHomeTheme { UltraTvRow(UtvState(pkg = ULTRA_TV, channels = listOf(channel(1))), now, onOpenSection = {}, onOpenChannel = {}, onFocused = {}) }
         }
         rule.onNodeWithText("En cours 1", useUnmergedTree = true).assertExists()
         rule.onNodeWithText("Suivant 1", substring = true, useUnmergedTree = true).assertExists()
@@ -134,7 +134,7 @@ class UltraTvRowTest {
 
     @Test
     fun removedFocusedChannelNeverSendsFocusAbove() {
-        val utv = mutableStateOf(UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1), channel(2), channel(3))))
+        val utv = mutableStateOf(UtvState(pkg = ULTRA_TV, channels = listOf(channel(1), channel(2), channel(3))))
         var aboveFocused = 0
         rule.setContent {
             TvHomeTheme {
