@@ -10,7 +10,7 @@
     <string name="home_watch_next">À suivre</string>
     <string name="home_my_list">Ma liste</string>
     <string name="home_live_tv">Chaînes TV</string>
-    <string name="utv_row_title">Ultra TV</string>
+    <string name="utv_row_title" translatable="false">Ultra TV</string>
     <string name="utv_section_guide">Guide TV</string>
     <string name="utv_section_live">Direct</string>
     <string name="utv_section_movies">Films</string>

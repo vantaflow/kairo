@@ -97,6 +97,9 @@ private const val STATE_SETTINGS = "kairo.settings"
 
 enum class Destination { Home, Apps, Settings, Search, Radio, Weather, Cleaner }
 
+/** Rangée Ultra TV absente (masquée, pas installée) : une seule instance, pas une nouvelle à chaque recomposition. */
+private val NoUltraTv = com.vantaflow.kairo.ultratv.UtvState()
+
 class HomeActivity : ComponentActivity() {
     private val container by lazy { (application as TvHomeApp).container }
     /** Mode sans échec (démarrages répétés) : accueil réduit, aucun travail de fond. */
@@ -452,9 +455,10 @@ class HomeActivity : ComponentActivity() {
                 val utv by container.ultraTv.state.collectAsStateWithLifecycle()
                 val utvShown = com.vantaflow.kairo.ultratv.utvRowVisible(utv, profile.kids, LocalHomeLayout.current.showUltraTv)
                 HomeScreen(
-                    ultraTv = if (utvShown) utv else com.vantaflow.kairo.ultratv.UtvState(),
-                    // Horloge de l'accueil : une valeur par minute (l'heure affichée change), pas à chaque image.
-                    ultraTvNowMs = remember(state.timeText) { container.clock.now() },
+                    ultraTv = if (utvShown) utv else NoUltraTv,
+                    // Horloge de l'accueil : une valeur par minute (l'heure affichée change), pas à chaque image ;
+                    // rien quand la rangée est masquée.
+                    ultraTvNowMs = if (utvShown) remember(state.timeText) { container.clock.now() } else 0L,
                     onOpenUtvSection = { openUltraTv(utv.pkg, it.uri) },
                     onOpenUtvChannel = { openUltraTv(utv.pkg, it.deepLink) },
                     // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
@@ -753,10 +757,15 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
-    /** Lien Ultra TV ([link]) ouvert dans [pkg] ; appli désinstallée entre-temps : rien ne se passe. */
+    /**
+     * Lien Ultra TV ([link]) ouvert dans [pkg] ; lien que l'appli ne gère pas : elle s'ouvre normalement.
+     * Appli désinstallée entre-temps : rien ne se passe.
+     */
     private fun openUltraTv(pkg: String?, link: String) {
         if (pkg == null) return
-        startSafely(Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        if (!startSafely(Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
+            launchApp(pkg)
+        }
     }
 
     private fun launchApp(pkg: String) {

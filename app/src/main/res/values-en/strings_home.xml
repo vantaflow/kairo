@@ -10,7 +10,6 @@
     <string name="home_watch_next">Continue watching</string>
     <string name="home_my_list">My list</string>
     <string name="home_live_tv">TV channels</string>
-    <string name="utv_row_title">Ultra TV</string>
     <string name="utv_section_guide">TV guide</string>
     <string name="utv_section_live">Live TV</string>
     <string name="utv_section_movies">Movies</string>
