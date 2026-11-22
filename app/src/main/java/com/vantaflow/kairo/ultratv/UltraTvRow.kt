@@ -19,11 +19,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import kotlinx.coroutines.CancellationException
 import com.vantaflow.kairo.R
 import com.vantaflow.kairo.home.TileFrame
 import com.vantaflow.kairo.reco.rememberRowState
@@ -88,32 +89,48 @@ fun UltraTvRow(
     val width = layout.tileWidthDp.dp
     // Une tuile par lien (la première occurrence) : le lien sert de clé stable, la tuile sélectionnée
     // survit à un ajout, un retrait ou un nouvel ordre des chaînes.
-    val channels = remember(state.channels) { state.channels.distinctBy { it.deepLink } }
-    val currentChannels by rememberUpdatedState(channels)
+    val incoming = remember(state.channels) { state.channels.distinctBy { it.deepLink } }
     val rowState = rememberRowState()
     val firstSection = remember { FocusRequester() }
     val requesters = remember { HashMap<String, FocusRequester>() }
     val selected = remember { SelectedChannel() }
 
-    // Chaîne sélectionnée disparue de la liste : le focus passe à la tuile voisine (la dernière
-    // restante au besoin), sinon au premier raccourci ; il ne reste jamais perdu.
-    val previous = remember { arrayOf(channels) }
-    LaunchedEffect(channels) {
-        // Position de la chaîne disparue cherchée dans la liste d'avant (elle a pu être réordonnée).
+    // Chaîne focalisée disparue de la liste : sur Android TV, retirer le nœud focalisé donnerait le focus
+    // au premier élément de l'écran (l'en-tête). Sa tuile reste donc à sa place, sans effet, le temps de
+    // passer le focus à la voisine (la dernière restante au besoin, sinon le premier raccourci), puis
+    // elle est retirée.
+    val previous = remember { arrayOf(incoming) }
+    var settled by remember { mutableIntStateOf(0) }
+    val channels = remember(incoming, settled) {
+        val link = selected.link
         val before = previous[0]
-        previous[0] = channels
+        val old = if (link == null || incoming.any { it.deepLink == link }) -1 else before.indexOfFirst { it.deepLink == link }
+        val shown = if (old < 0) incoming else incoming.toMutableList().apply { add(old.coerceAtMost(size), before[old]) }
+        previous[0] = shown
+        shown
+    }
+    // Clé [incoming] aussi : la liste affichée (tuile gardée comprise) peut être égale à la précédente.
+    LaunchedEffect(incoming, channels) {
         requesters.keys.retainAll(channels.mapTo(HashSet()) { it.deepLink })
         val link = selected.link ?: return@LaunchedEffect
-        if (channels.any { it.deepLink == link }) return@LaunchedEffect
-        selected.link = null
-        val position = before.indexOfFirst { it.deepLink == link }.coerceAtLeast(0)
-        val target = if (channels.isEmpty()) null else channels[position.coerceIn(0, channels.lastIndex)]
-        runCatching { rowState.scrollToItem(if (target == null) 0 else UtvSection.entries.size + channels.indexOf(target)) }
+        if (incoming.any { it.deepLink == link }) return@LaunchedEffect
+        val position = channels.indexOfFirst { it.deepLink == link }
+        if (position < 0) return@LaunchedEffect
+        val target = if (incoming.isEmpty()) null else incoming[position.coerceAtMost(incoming.lastIndex)]
         val requester = target?.let { requesters.getOrPut(it.deepLink) { FocusRequester() } } ?: firstSection
         for (attempt in 1..10) {
+            // Focus parti (vers la voisine, ou ailleurs à la télécommande) : la tuile peut partir.
+            if (selected.link != link) break
+            if (attempt == 3) {
+                // Voisine toujours pas atteinte (pas encore composée) : la rangée défile jusqu'à elle.
+                ignoringErrors { rowState.scrollToItem(if (target == null) 0 else UtvSection.entries.size + channels.indexOf(target)) }
+            }
+            ignoringErrors { requester.requestFocus() }
             withFrameNanos { }
-            if (runCatching { requester.requestFocus() }.isSuccess) break
         }
+        // Lien remis à zéro seulement maintenant : la tuile gardée est retirée.
+        if (selected.link == link) selected.link = null
+        settled++
     }
 
     Column(modifier.testTag("utv-row")) {
@@ -141,9 +158,11 @@ fun UltraTvRow(
             }
             itemsIndexed(channels, key = { _, c -> "channel-${c.deepLink}" }) { index, channel ->
                 Column(Modifier.width(width)) {
+                    // Chaîne gardée le temps de passer le focus : plus dans Ultra TV, OK sans effet.
+                    val leaving = incoming.none { it.deepLink == channel.deepLink }
                     UtvChannelTile(
                         channel,
-                        onClick = { onOpenChannel(channel) },
+                        onClick = { if (!leaving) onOpenChannel(channel) },
                         width = width,
                         modifier = Modifier
                             .testTag("utv-channel-$index")
@@ -152,8 +171,8 @@ fun UltraTvRow(
                                 if (it.isFocused) {
                                     selected.link = channel.deepLink
                                     onFocused()
-                                } else if (selected.link == channel.deepLink && currentChannels.any { c -> c.deepLink == channel.deepLink }) {
-                                    // Focus parti ailleurs (la chaîne existe toujours) : plus rien à reprendre.
+                                } else if (selected.link == channel.deepLink) {
+                                    // Focus parti ailleurs : plus rien à reprendre.
                                     selected.link = null
                                 }
                             },
@@ -166,9 +185,20 @@ fun UltraTvRow(
     }
 }
 
-/** Lien de la chaîne qui a le focus ; lu seulement dans les rappels de focus et l'effet de reprise. */
+/** Lien de la chaîne qui a le focus ; lu seulement dans les rappels de focus, le calcul de la liste et l'effet de reprise. */
 private class SelectedChannel {
     var link: String? = null
+}
+
+/** Exécute [block] en ignorant ses erreurs, sauf l'annulation de la coroutine, qui est relancée. */
+private inline fun ignoringErrors(block: () -> Unit) {
+    try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        // Focus ou défilement impossible pour l'instant : nouvel essai à l'image suivante.
+    }
 }
 
 /** Raccourci vers une rubrique d'Ultra TV : icône au trait (couleur du thème) et libellé. */

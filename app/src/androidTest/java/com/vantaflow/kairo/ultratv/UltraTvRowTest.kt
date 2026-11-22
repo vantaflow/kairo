@@ -2,9 +2,11 @@ package com.vantaflow.kairo.ultratv
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.key.Key
@@ -29,6 +31,7 @@ import com.vantaflow.kairo.reco.LiveChannel
 import com.vantaflow.kairo.remote.HomeFocus
 import com.vantaflow.kairo.ui.theme.TvHomeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -126,6 +129,37 @@ class UltraTvRowTest {
         // Plus aucune chaîne : le focus va au premier raccourci.
         utv.value = state.copy(channels = emptyList())
         rule.waitForIdle()
+        rule.onNodeWithTag("utv-section-guide").assertIsFocused()
+    }
+
+    @Test
+    fun removedFocusedChannelNeverSendsFocusAbove() {
+        val utv = mutableStateOf(UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1), channel(2), channel(3))))
+        var aboveFocused = 0
+        rule.setContent {
+            TvHomeTheme {
+                Column {
+                    // Premier élément de l'écran, comme l'en-tête de l'accueil.
+                    Box(Modifier.size(40.dp).testTag("above").onFocusChanged { if (it.isFocused) aboveFocused++ }.focusable())
+                    UltraTvRow(utv.value, now, onOpenSection = {}, onOpenChannel = {}, onFocused = {})
+                }
+            }
+        }
+        rule.onNodeWithTag("utv-channel-0").requestFocus()
+        rule.onNodeWithTag("utv-channel-0").assertIsFocused()
+        rule.waitForIdle()
+        aboveFocused = 0
+        // La chaîne focalisée disparaît : le focus va directement à la voisine, jamais au-dessus.
+        utv.value = utv.value.copy(channels = listOf(channel(2), channel(3)))
+        rule.waitForIdle()
+        assertEquals(0, aboveFocused)
+        rule.onNodeWithTag("utv-channel-0").assertIsFocused()
+        rule.onNodeWithTag("utv-channel-0", useUnmergedTree = true)
+            .assert(hasAnyDescendant(hasContentDescription("2 Chaîne 2", substring = true)))
+        // Plus aucune chaîne : premier raccourci, toujours sans passer au-dessus.
+        utv.value = utv.value.copy(channels = emptyList())
+        rule.waitForIdle()
+        assertEquals(0, aboveFocused)
         rule.onNodeWithTag("utv-section-guide").assertIsFocused()
     }
 
@@ -257,5 +291,41 @@ class UltraTvRowTest {
         rule.waitForIdle()
         rule.onNodeWithTag("utv-row").assertDoesNotExist()
         rule.onNodeWithTag("favorite-2").assertIsFocused()
+    }
+
+    @Test
+    fun retainedRowIsInertAndKeepsItsProgress() {
+        val ultraTv = mutableStateOf(state)
+        val nowMs = mutableStateOf(now)
+        var opened: UtvChannel? = null
+        val focus = HomeFocus()
+        rule.setContent {
+            TvHomeTheme {
+                HomeScreen(
+                    homeWithRowsBelow, focus, {}, {}, {}, {},
+                    ultraTv = ultraTv.value, ultraTvNowMs = nowMs.value, onOpenUtvChannel = { opened = it },
+                )
+            }
+        }
+        rule.onNodeWithTag("favorite-1").requestFocus()
+        rule.onNodeWithTag("utv-channel-0").requestFocus()
+        rule.onNodeWithTag("utv-channel-0").assertIsFocused()
+        rule.waitForIdle()
+        // Rangée retirée (profil enfant) : l'accueil reçoit l'état vide et l'heure 0, comme depuis l'activité.
+        rule.mainClock.autoAdvance = false
+        ultraTv.value = UtvState()
+        nowMs.value = 0L
+        rule.mainClock.advanceTimeByFrame()
+        // Rangée encore affichée le temps de rendre le focus : barre gardée, OK sans effet.
+        rule.onNodeWithTag("utv-row").assertExists()
+        rule.onNodeWithTag("utv-progress-0", useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag("utv-channel-0").assertIsFocused()
+        rule.onNodeWithTag("utv-channel-0").performKeyInput { pressKey(Key.DirectionCenter) }
+        assertNull(opened)
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        rule.onNodeWithTag("utv-row").assertDoesNotExist()
+        rule.onNodeWithTag("favorite-1").assertIsFocused()
+        assertNull(opened)
     }
 }

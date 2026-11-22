@@ -182,8 +182,11 @@ fun HomeScreen(
     // affichée (dernier état connu) le temps de rendre le focus au favori courant, puis elle est retirée.
     val utvWanted = forYou && ultraTv.pkg != null
     val utvHasFocus = remember { mutableStateOf(false) }
-    val lastUtv = remember { arrayOf(ultraTv) }
-    if (utvWanted) lastUtv[0] = ultraTv
+    // Dernier état voulu, heure comprise (l'activité passe l'heure 0 quand la rangée est masquée) ; mis à
+    // jour comme rememberUpdatedState, mais seulement tant que la rangée est voulue. Écrit dans un état :
+    // une composition abandonnée n'en laisse rien.
+    val lastUtv = remember { mutableStateOf(ultraTv to ultraTvNowMs) }
+    if (utvWanted) lastUtv.value = ultraTv to ultraTvNowMs
     // Indicateur lu seulement quand la rangée n'est plus voulue : aucune recomposition sinon.
     val utvShown = utvWanted || utvHasFocus.value
     LaunchedEffect(utvWanted) {
@@ -414,8 +417,12 @@ fun HomeScreen(
                 if (utvShown) {
                     key("ultra-tv") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            val (utvState, utvNowMs) = lastUtv.value
+                            // Rangée retenue (plus voulue) : affichée sans effet, OK n'ouvre plus rien.
                             UltraTvRow(
-                                lastUtv[0], ultraTvNowMs, onOpenUtvSection, onOpenUtvChannel,
+                                utvState, utvNowMs,
+                                if (utvWanted) onOpenUtvSection else { _ -> },
+                                if (utvWanted) onOpenUtvChannel else { _ -> },
                                 measureUtvRow
                                     .onFocusChanged { utvHasFocus.value = it.hasFocus }
                                     .alignRowOnFocus(RowPlace.UltraTv),
