@@ -97,12 +97,17 @@ fun UltraTvRow(
 
     // Chaîne sélectionnée disparue de la liste : le focus passe à la tuile voisine (la dernière
     // restante au besoin), sinon au premier raccourci ; il ne reste jamais perdu.
+    val previous = remember { arrayOf(channels) }
     LaunchedEffect(channels) {
+        // Position de la chaîne disparue cherchée dans la liste d'avant (elle a pu être réordonnée).
+        val before = previous[0]
+        previous[0] = channels
         requesters.keys.retainAll(channels.mapTo(HashSet()) { it.deepLink })
         val link = selected.link ?: return@LaunchedEffect
         if (channels.any { it.deepLink == link }) return@LaunchedEffect
         selected.link = null
-        val target = if (channels.isEmpty()) null else channels[selected.index.coerceIn(0, channels.lastIndex)]
+        val position = before.indexOfFirst { it.deepLink == link }.coerceAtLeast(0)
+        val target = if (channels.isEmpty()) null else channels[position.coerceIn(0, channels.lastIndex)]
         runCatching { rowState.scrollToItem(if (target == null) 0 else UtvSection.entries.size + channels.indexOf(target)) }
         val requester = target?.let { requesters.getOrPut(it.deepLink) { FocusRequester() } } ?: firstSection
         for (attempt in 1..10) {
@@ -146,7 +151,6 @@ fun UltraTvRow(
                             .onFocusChanged {
                                 if (it.isFocused) {
                                     selected.link = channel.deepLink
-                                    selected.index = index
                                     onFocused()
                                 } else if (selected.link == channel.deepLink && currentChannels.any { c -> c.deepLink == channel.deepLink }) {
                                     // Focus parti ailleurs (la chaîne existe toujours) : plus rien à reprendre.
@@ -162,10 +166,9 @@ fun UltraTvRow(
     }
 }
 
-/** Chaîne qui a le focus (lien et position) ; lue seulement dans les rappels de focus et l'effet de reprise. */
+/** Lien de la chaîne qui a le focus ; lu seulement dans les rappels de focus et l'effet de reprise. */
 private class SelectedChannel {
     var link: String? = null
-    var index: Int = 0
 }
 
 /** Raccourci vers une rubrique d'Ultra TV : icône au trait (couleur du thème) et libellé. */

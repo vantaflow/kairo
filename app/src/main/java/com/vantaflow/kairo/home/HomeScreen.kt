@@ -63,6 +63,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.layout.layout
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -165,9 +166,7 @@ fun HomeScreen(
     // et plus rien n'a le focus : il revient sur les favoris au lieu de rester perdu.
     var hasFocus by remember { mutableStateOf(true) }
     val lostFocusView = LocalView.current
-    // Rangée Ultra TV : elle peut disparaître pendant qu'elle a le focus (profil enfant, désinstallation).
-    val utvShown = forYou && ultraTv.pkg != null
-    LaunchedEffect(state.favorites.size, otherApps.size, recentApps.size, utvShown) {
+    LaunchedEffect(state.favorites.size, otherApps.size, recentApps.size) {
         for (attempt in 1..120) {
             if (lostFocusView.hasWindowFocus()) break
             withFrameNanos { }
@@ -176,6 +175,30 @@ fun HomeScreen(
         if (!hasFocus && focus.followFavorite == null && requesters.isNotEmpty()) {
             runCatching { requesters[focus.index.coerceIn(0, requesters.lastIndex)].requestFocus() }
         }
+    }
+
+    // Rangée Ultra TV retirée (profil enfant, désinstallation, réglage) pendant qu'elle a le focus : sur
+    // Android TV, le système donnerait aussitôt le focus au premier élément de l'écran. Elle reste donc
+    // affichée (dernier état connu) le temps de rendre le focus au favori courant, puis elle est retirée.
+    val utvWanted = forYou && ultraTv.pkg != null
+    val utvHasFocus = remember { mutableStateOf(false) }
+    val lastUtv = remember { arrayOf(ultraTv) }
+    if (utvWanted) lastUtv[0] = ultraTv
+    // Indicateur lu seulement quand la rangée n'est plus voulue : aucune recomposition sinon.
+    val utvShown = utvWanted || utvHasFocus.value
+    LaunchedEffect(utvWanted) {
+        if (utvWanted || !utvHasFocus.value) return@LaunchedEffect
+        if (requesters.isNotEmpty()) {
+            val target = focus.index.coerceIn(0, requesters.lastIndex)
+            runCatching { rowState.scrollToItem(target) }
+            for (attempt in 1..10) {
+                withFrameNanos { }
+                runCatching { requesters[target].requestFocus() }
+                if (!utvHasFocus.value) break
+            }
+        }
+        // Aucun favori où aller : la rangée est retirée quand même.
+        utvHasFocus.value = false
     }
 
     Box(Modifier.fillMaxSize().onFocusChanged { hasFocus = it.hasFocus }) {
@@ -289,12 +312,16 @@ fun HomeScreen(
             val utvSpace = remember { UtvSpace() }
             SideEffect { utvSpace.present = utvShown }
             val keepFocusedRowInPlace = Modifier.layout { measurable, constraints ->
+                // Valeur d'avant la mesure : quand le contenu raccourcit, la borne du défilement, remise à
+                // jour pendant la mesure, a déjà ramené la valeur sous le nouveau maximum. On vise donc une
+                // valeur absolue (avant + écart), pas un écart de plus.
+                val before = Snapshot.withoutReadObservation { columnState.value }
                 val placeable = measurable.measure(constraints)
                 val target = if (utvSpace.present) utvSpace.height + rowGap else 0
                 val delta = target - utvSpace.counted
                 utvSpace.counted = target
                 if (delta != 0 && focusedRow.id != null && focusedRow.place == RowPlace.BelowUltraTv) {
-                    columnState.dispatchRawDelta(delta.toFloat())
+                    Snapshot.withoutReadObservation { columnState.dispatchRawDelta((before + delta - columnState.value).toFloat()) }
                 }
                 layout(placeable.width, placeable.height) { placeable.place(0, 0) }
             }
@@ -388,8 +415,10 @@ fun HomeScreen(
                     key("ultra-tv") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                             UltraTvRow(
-                                ultraTv, ultraTvNowMs, onOpenUtvSection, onOpenUtvChannel,
-                                measureUtvRow.alignRowOnFocus(RowPlace.UltraTv),
+                                lastUtv[0], ultraTvNowMs, onOpenUtvSection, onOpenUtvChannel,
+                                measureUtvRow
+                                    .onFocusChanged { utvHasFocus.value = it.hasFocus }
+                                    .alignRowOnFocus(RowPlace.UltraTv),
                             ) { heroProgram.value = null }
                         }
                     }
