@@ -62,6 +62,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.layout.layout
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -163,7 +165,9 @@ fun HomeScreen(
     // et plus rien n'a le focus : il revient sur les favoris au lieu de rester perdu.
     var hasFocus by remember { mutableStateOf(true) }
     val lostFocusView = LocalView.current
-    LaunchedEffect(state.favorites.size, otherApps.size, recentApps.size) {
+    // Rangée Ultra TV : elle peut disparaître pendant qu'elle a le focus (profil enfant, désinstallation).
+    val utvShown = forYou && ultraTv.pkg != null
+    LaunchedEffect(state.favorites.size, otherApps.size, recentApps.size, utvShown) {
         for (attempt in 1..120) {
             if (lostFocusView.hasWindowFocus()) break
             withFrameNanos { }
@@ -243,15 +247,21 @@ fun HomeScreen(
             val rowMargin = with(LocalDensity.current) { 14.dp.toPx() }
             val scrollScope = rememberCoroutineScope()
             var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
-            // Rangée qui a le focus : lue seulement dans les rappels de placement, jamais à la composition.
-            val focusedRow = remember { arrayOfNulls<LayoutCoordinates>(1) }
-            val rowGap = with(LocalDensity.current) { ROW_GAP.toPx() }
-            fun Modifier.alignRowOnFocus(): Modifier = composed {
+            // Rangée qui a le focus : jamais lue à la composition (pas de recomposition), seulement à la mesure.
+            val focusedRow = remember { FocusedRow() }
+            val rowGap = with(LocalDensity.current) { ROW_GAP.roundToPx() }
+            fun Modifier.alignRowOnFocus(place: RowPlace = RowPlace.BelowUltraTv): Modifier = composed {
                 var row by remember { mutableStateOf<LayoutCoordinates?>(null) }
+                val id = remember { Any() }
                 onPlaced { row = it }.onFocusChanged { state ->
+                    if (state.hasFocus) {
+                        focusedRow.id = id
+                        focusedRow.place = place
+                    } else if (focusedRow.id === id) {
+                        focusedRow.id = null
+                    }
                     val r = row ?: return@onFocusChanged
                     val v = viewport ?: return@onFocusChanged
-                    if (state.hasFocus) focusedRow[0] = r else if (focusedRow[0] === r) focusedRow[0] = null
                     if (!state.hasFocus || !r.isAttached || !v.isAttached) return@onFocusChanged
                     val delta = r.positionInRoot().y - v.positionInRoot().y - rowMargin
                     val target = (columnState.value + delta).toInt().coerceIn(0, columnState.maxValue)
@@ -270,23 +280,28 @@ fun HomeScreen(
                 }
             }
             /**
-             * Rangée qui apparaît ou change de hauteur après coup (Ultra TV lue en arrière-plan) : si la
-             * rangée sélectionnée est plus bas, l'accueil défile d'autant, sans animation, pour qu'elle
-             * reste à sa place à l'écran. Au-dessus (favoris, « À suivre »), rien ne bouge.
+             * Rangée Ultra TV qui apparaît, disparaît ou change de hauteur après coup (lue en arrière-plan) :
+             * si la rangée sélectionnée est plus bas, l'accueil défile d'autant pour qu'elle reste à sa place
+             * à l'écran. Fait pendant la mesure de la colonne, après celle du défilement (borne à jour) et
+             * avant son placement : aucune image où la rangée sélectionnée saute. Rangée sélectionnée au-dessus
+             * (favoris, « À suivre ») ou dans l'en-tête : rien ne bouge. Sans Ultra TV, rien ne change.
              */
-            fun Modifier.keepFocusedRowInPlace(): Modifier = composed {
-                val height = remember { intArrayOf(-1) }
-                onPlaced { coords ->
-                    val old = height[0]
-                    val new = coords.size.height
-                    height[0] = new
-                    // Première apparition : sa hauteur plus l'écart entre deux rangées.
-                    val grown = if (old < 0) new + rowGap else (new - old).toFloat()
-                    val focused = focusedRow[0]
-                    if (grown == 0f || focused == null || !focused.isAttached) return@onPlaced
-                    if (focused.positionInRoot().y <= coords.positionInRoot().y) return@onPlaced
-                    columnState.dispatchRawDelta(grown)
+            val utvSpace = remember { UtvSpace() }
+            SideEffect { utvSpace.present = utvShown }
+            val keepFocusedRowInPlace = Modifier.layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                val target = if (utvSpace.present) utvSpace.height + rowGap else 0
+                val delta = target - utvSpace.counted
+                utvSpace.counted = target
+                if (delta != 0 && focusedRow.id != null && focusedRow.place == RowPlace.BelowUltraTv) {
+                    columnState.dispatchRawDelta(delta.toFloat())
                 }
+                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+            }
+            val measureUtvRow = Modifier.layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                utvSpace.height = placeable.height
+                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
             }
             CompositionLocalProvider(LocalBringIntoViewSpec provides NoVerticalAutoScroll) {
             // Toutes les rangées sont construites une fois (Column, pas LazyColumn) : monter ou
@@ -295,6 +310,7 @@ fun HomeScreen(
                 Modifier
                     .clipToBounds()
                     .onPlaced { viewport = it }
+                    .then(keepFocusedRowInPlace)
                     .verticalScroll(columnState)
                     // Peu de marge en bas : la dernière rangée remonte juste assez pour être entière, sans vide dessous.
                     .padding(top = 24.dp, bottom = 48.dp),
@@ -302,7 +318,7 @@ fun HomeScreen(
             ) {
                 if (showApps) key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                    Column(Modifier.alignRowOnFocus()) {
+                    Column(Modifier.alignRowOnFocus(RowPlace.AboveUltraTv)) {
                         if (layout.showFavoritesLabel || movingFavorite != null) {
                             Text(
                                 stringResource(if (movingFavorite != null) R.string.home_favorites_moving else R.string.home_favorites),
@@ -360,7 +376,7 @@ fun HomeScreen(
                 if (forYou && state.watchNext.isNotEmpty()) {
                     key("watch-next") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
-                            RecoRow(stringResource(R.string.home_watch_next), state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
+                            RecoRow(stringResource(R.string.home_watch_next), state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus(RowPlace.AboveUltraTv)) {
                                 heroProgram.value = it
                             }
                         }
@@ -368,12 +384,12 @@ fun HomeScreen(
                 }
                 // Ultra TV juste après « À suivre » (ou les favoris). Elle peut apparaître après coup :
                 // elle ne prend pas le focus et ne décale pas la rangée sélectionnée.
-                if (forYou && ultraTv.pkg != null) {
+                if (utvShown) {
                     key("ultra-tv") {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                             UltraTvRow(
                                 ultraTv, ultraTvNowMs, onOpenUtvSection, onOpenUtvChannel,
-                                Modifier.keepFocusedRowInPlace().alignRowOnFocus(),
+                                measureUtvRow.alignRowOnFocus(RowPlace.UltraTv),
                             ) { heroProgram.value = null }
                         }
                     }
@@ -660,6 +676,22 @@ private fun AppsRow(
             }
         }
     }
+}
+
+/** Place d'une rangée par rapport à la rangée Ultra TV (au-dessus : favoris et « À suivre »). */
+private enum class RowPlace { AboveUltraTv, UltraTv, BelowUltraTv }
+
+/** Rangée qui a le focus ([id] null : aucune, par exemple l'en-tête) et sa place. */
+private class FocusedRow {
+    var id: Any? = null
+    var place = RowPlace.BelowUltraTv
+}
+
+/** Rangée Ultra TV : présente, sa dernière hauteur mesurée, et la place (écart compris) déjà comptée dans le défilement. */
+private class UtvSpace {
+    var present = false
+    var height = 0
+    var counted = 0
 }
 
 /** Écart vertical entre deux rangées de l'accueil. */

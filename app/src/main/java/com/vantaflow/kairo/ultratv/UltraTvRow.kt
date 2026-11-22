@@ -18,6 +18,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,12 +86,37 @@ fun UltraTvRow(
 ) {
     val layout = LocalHomeLayout.current
     val width = layout.tileWidthDp.dp
+    // Une tuile par lien (la première occurrence) : le lien sert de clé stable, la tuile sélectionnée
+    // survit à un ajout, un retrait ou un nouvel ordre des chaînes.
+    val channels = remember(state.channels) { state.channels.distinctBy { it.deepLink } }
+    val currentChannels by rememberUpdatedState(channels)
+    val rowState = rememberRowState()
+    val firstSection = remember { FocusRequester() }
+    val requesters = remember { HashMap<String, FocusRequester>() }
+    val selected = remember { SelectedChannel() }
+
+    // Chaîne sélectionnée disparue de la liste : le focus passe à la tuile voisine (la dernière
+    // restante au besoin), sinon au premier raccourci ; il ne reste jamais perdu.
+    LaunchedEffect(channels) {
+        requesters.keys.retainAll(channels.mapTo(HashSet()) { it.deepLink })
+        val link = selected.link ?: return@LaunchedEffect
+        if (channels.any { it.deepLink == link }) return@LaunchedEffect
+        selected.link = null
+        val target = if (channels.isEmpty()) null else channels[selected.index.coerceIn(0, channels.lastIndex)]
+        runCatching { rowState.scrollToItem(if (target == null) 0 else UtvSection.entries.size + channels.indexOf(target)) }
+        val requester = target?.let { requesters.getOrPut(it.deepLink) { FocusRequester() } } ?: firstSection
+        for (attempt in 1..10) {
+            withFrameNanos { }
+            if (runCatching { requester.requestFocus() }.isSuccess) break
+        }
+    }
+
     Column(modifier.testTag("utv-row")) {
         if (layout.showRowTitles) {
             Text(stringResource(R.string.utv_row_title), fontSize = 20.sp, color = OnBackground, modifier = Modifier.padding(start = 72.dp, bottom = 12.dp))
         }
         LazyRow(
-            state = rememberRowState(),
+            state = rowState,
             contentPadding = PaddingValues(horizontal = 72.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
@@ -98,12 +128,13 @@ fun UltraTvRow(
                         width = width,
                         modifier = Modifier
                             .testTag("utv-section-${section.name.lowercase()}")
+                            .then(if (section == UtvSection.entries.first()) Modifier.focusRequester(firstSection) else Modifier)
                             .onFocusChanged { if (it.isFocused) onFocused() },
                     )
                     Spacer(Modifier.height(10.dp + InfoHeight))
                 }
             }
-            itemsIndexed(state.channels, key = { index, c -> "channel-$index-${c.deepLink}" }) { index, channel ->
+            itemsIndexed(channels, key = { _, c -> "channel-${c.deepLink}" }) { index, channel ->
                 Column(Modifier.width(width)) {
                     UtvChannelTile(
                         channel,
@@ -111,7 +142,17 @@ fun UltraTvRow(
                         width = width,
                         modifier = Modifier
                             .testTag("utv-channel-$index")
-                            .onFocusChanged { if (it.isFocused) onFocused() },
+                            .focusRequester(requesters.getOrPut(channel.deepLink) { FocusRequester() })
+                            .onFocusChanged {
+                                if (it.isFocused) {
+                                    selected.link = channel.deepLink
+                                    selected.index = index
+                                    onFocused()
+                                } else if (selected.link == channel.deepLink && currentChannels.any { c -> c.deepLink == channel.deepLink }) {
+                                    // Focus parti ailleurs (la chaîne existe toujours) : plus rien à reprendre.
+                                    selected.link = null
+                                }
+                            },
                     )
                     Spacer(Modifier.height(10.dp))
                     ProgramInfo(channel, nowMs, index)
@@ -119,6 +160,12 @@ fun UltraTvRow(
             }
         }
     }
+}
+
+/** Chaîne qui a le focus (lien et position) ; lue seulement dans les rappels de focus et l'effet de reprise. */
+private class SelectedChannel {
+    var link: String? = null
+    var index: Int = 0
 }
 
 /** Raccourci vers une rubrique d'Ultra TV : icône au trait (couleur du thème) et libellé. */
