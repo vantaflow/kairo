@@ -155,6 +155,7 @@ class AppContainer(val app: Application) {
         ownerOf = { authority -> runCatching { app.packageManager.resolveContentProvider(authority, 0)?.packageName }.getOrNull() },
         uptimeMs = android.os.SystemClock::elapsedRealtime,
         scope = scope,
+        warn = { message -> android.util.Log.w("Kairo", message) },
     )
 
     /** Un seul fil, à part, pour les requêtes vers Ultra TV : une appli bloquée n'affame jamais le pool IO. */

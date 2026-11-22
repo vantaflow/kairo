@@ -50,8 +50,8 @@ data class UtvState(
  * jamais de nouvel essai automatique après un échec.
  * Sans dépendance Android : [installed] (paquets installés), [query] (lecture d'un chemin, null en
  * cas d'échec ; doit s'interrompre vite quand la coroutine est annulée), [changes] (notifications du
- * fournisseur), [ownerOf] (paquet qui déclare une autorité) et [uptimeMs] (temps depuis l'allumage
- * de la box, horloge monotone) sont fournis par le conteneur.
+ * fournisseur), [ownerOf] (paquet qui déclare une autorité), [uptimeMs] (temps depuis l'allumage
+ * de la box, horloge monotone) et [warn] (journal des anomalies) sont fournis par le conteneur.
  */
 class UltraTvSource(
     private val installed: Flow<Set<String>>,
@@ -60,6 +60,7 @@ class UltraTvSource(
     private val ownerOf: (authority: String) -> String?,
     private val uptimeMs: () -> Long,
     private val scope: CoroutineScope,
+    private val warn: (String) -> Unit = {},
 ) {
     private val mutableState = MutableStateFlow(UtvState())
     val state: StateFlow<UtvState> = mutableState.asStateFlow()
@@ -78,7 +79,7 @@ class UltraTvSource(
     /** Mode enfants lu dans le dernier profil lisible du paquet suivi ; null tant qu'aucun ne l'a été. */
     @Volatile private var profileKids: Boolean? = null
 
-    /** Moment de la dernière lecture selon [uptimeMs] ; null avant la première. */
+    /** Moment de la dernière lecture réellement envoyée à Ultra TV, selon [uptimeMs] ; null avant la première. */
     @Volatile private var lastReadAt: Long? = null
 
     /** Suit le paquet Ultra TV installé, l'observe et le lit ; les appels suivants sont sans effet. */
@@ -150,9 +151,18 @@ class UltraTvSource(
     }
 
     private suspend fun read(pkg: String, authority: String) {
+        val owner = ownerOf(authority)
+        // Fournisseur introuvable (souvent passager : Ultra TV en cours de mise à jour) : rien n'est lu,
+        // l'état reste (pas de rangée qui clignote).
+        if (owner == null) return
         // Autorité déclarée par une autre appli que le paquet retenu : rien n'est lu ni montré.
-        if (ownerOf(authority) != pkg) {
+        if (owner != pkg) {
             mutableState.value = UtvState()
+            return
+        }
+        // Requête précédente toujours bloquée : lecture refusée, sans compter comme une lecture.
+        if (inFlight?.isCompleted == false) {
+            warn("Ultra TV : lecture refusée, la requête précédente n'a pas rendu la main")
             return
         }
         lastReadAt = uptimeMs()

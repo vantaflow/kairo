@@ -323,7 +323,65 @@ class UltraTvSourceTest {
         source.start()
         at(60_000)
         assertEquals(emptyList<String>(), provider.calls)
-        assertEquals(UtvState(), source.state.value)
+        // Profil jamais lu : mode enfants supposé, rangée masquée
+        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, kids = true), source.state.value)
+    }
+
+    @Test fun briefMissingOwnerKeepsStateAndDoesNotCountAsRead() = runTest {
+        val provider = FakeProvider().apply {
+            answer(release, "now", listOf(row("A")))
+            answer(release, "profile", listOf(mapOf(COL_KIDS to 0L)))
+        }
+        var owner: String? = ULTRA_TV_RELEASE
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)), owner = { owner })
+        source.start()
+        at(0)
+        val loaded = source.state.value
+        assertEquals(listOf("A"), loaded.channels.map { it.name })
+        // Fournisseur introuvable un instant (mise à jour d'Ultra TV) : rien n'est lu, l'état reste
+        owner = null
+        at(300_000)
+        source.refresh()
+        runCurrent()
+        assertEquals(1, provider.count(release, "now"))
+        assertEquals(loaded, source.state.value)
+        // Aucune requête partie : le retour suivant sur l'accueil relit dès que le fournisseur revient
+        owner = ULTRA_TV_RELEASE
+        at(331_000)
+        source.refresh()
+        runCurrent()
+        assertEquals(2, provider.count(release, "now"))
+    }
+
+    @Test fun readRefusedByBlockedQueryWarnsOnceAndDoesNotCountAsRead() = runTest {
+        val provider = FakeProvider().apply {
+            answer(release, "now", listOf(row("A")))
+            latencyMs = 100_000
+            ignoresCancel = true
+        }
+        val warnings = mutableListOf<String>()
+        val source = UltraTvSource(
+            MutableStateFlow(setOf(ULTRA_TV_RELEASE)), provider.query, provider.changes,
+            { it.removeSuffix(".kairo") }, { 600_000L + testScheduler.currentTime }, backgroundScope,
+            warn = { warnings += it },
+        )
+        source.start()
+        at(0)
+        assertEquals(1, provider.count(release, "now"))
+        assertEquals(0, warnings.size)
+        // Requête toujours bloquée (délai à 10 s, puis 30 s de pause : lecture suivante à 40 s) :
+        // lecture refusée, un seul avertissement
+        at(31_000)
+        provider.notify(release)
+        at(41_000)
+        assertEquals(1, provider.count(release, "now"))
+        assertEquals(1, warnings.size)
+        // Requête finie à 100 s ; lecture refusée à 31 s non comptée : le retour à 300 s relit
+        provider.latencyMs = 0
+        at(300_000)
+        source.refresh()
+        runCurrent()
+        assertEquals(2, provider.count(release, "now"))
     }
 
     @Test fun blockedQueryIsNeverStackedUp() = runTest {
