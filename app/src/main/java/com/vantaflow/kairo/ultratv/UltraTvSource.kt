@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -76,6 +75,9 @@ class UltraTvSource(
      */
     @Volatile private var inFlight: Job? = null
 
+    /** Mode enfants lu dans le dernier profil lisible du paquet suivi ; null tant qu'aucun ne l'a été. */
+    @Volatile private var profileKids: Boolean? = null
+
     /** Moment de la dernière lecture selon [uptimeMs] ; null avant la première. */
     @Volatile private var lastReadAt: Long? = null
 
@@ -89,7 +91,9 @@ class UltraTvSource(
                     mutableState.value = UtvState()
                 } else {
                     // Nouveau paquet : rien de l'ancien n'est gardé (ses liens ouvriraient la mauvaise appli).
-                    mutableState.value = UtvState(pkg = pkg)
+                    // Profil pas encore lu : mode enfants supposé (sens prudent).
+                    profileKids = null
+                    mutableState.value = UtvState(pkg = pkg, kids = true)
                     follow(pkg)
                 }
             }
@@ -114,9 +118,22 @@ class UltraTvSource(
         requests = pending
         try {
             pending.trySend(Unit)
-            // Observateur en échec : plus de notifications, les retours sur l'accueil suffisent.
-            launch { changes(authority).catch { }.collect { pending.trySend(Unit) } }
+            // Observateur en échec ou terminé : réinscrit à la prochaine demande (retour sur l'accueil) ;
+            // l'inscription ne démarre aucun process.
+            val observerDown = AtomicBoolean(false)
+            fun observe() = launch {
+                try {
+                    changes(authority).collect { pending.trySend(Unit) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Pas de notifications : la prochaine demande réessaiera l'inscription.
+                }
+                observerDown.set(true)
+            }
+            observe()
             for (request in pending) {
+                if (observerDown.compareAndSet(true, false)) observe()
                 // Box allumée il y a peu : une seule attente, jusqu'à la fin de la période calme.
                 val quiet = ULTRA_TV_QUIET_AFTER_BOOT_MS - uptimeMs()
                 if (quiet > 0) {
@@ -141,14 +158,12 @@ class UltraTvSource(
         lastReadAt = uptimeMs()
         // Échec ou délai dépassé : l'état précédent reste.
         val rows = timedQuery(authority, "now") ?: return
-        if (rows.isEmpty()) {
-            mutableState.value = UtvState(pkg = pkg)
-            return
-        }
         val channels = rows.take(UTV_MAX_ROWS).mapNotNull(::utvChannelOf)
-        // Profil illisible ou vide : pas de mode enfants.
-        val kids = utvKidsOf(timedQuery(authority, "profile")?.firstOrNull())
-        mutableState.value = UtvState(pkg = pkg, channels = channels, kids = kids)
+        // Ultra TV vient de répondre : le profil est lu même sans chaîne (les raccourcis en dépendent).
+        // Profil illisible, vide ou sans la colonne : valeur précédente, sinon mode enfants (sens prudent).
+        val profile = timedQuery(authority, "profile")?.firstOrNull()?.takeIf { it[COL_KIDS] != null }
+        if (profile != null) profileKids = utvKidsOf(profile)
+        mutableState.value = UtvState(pkg = pkg, channels = channels, kids = profileKids ?: true)
     }
 
     /**

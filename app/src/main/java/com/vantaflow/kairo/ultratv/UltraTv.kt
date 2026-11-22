@@ -96,7 +96,15 @@ private const val MAX_URL_LENGTH = 2_000
 /** Longueur maximale d'un texte affiché (nom, numéro, titres) ; au-delà, il est coupé. */
 private const val MAX_TEXT_LENGTH = 200
 
-private fun shortTextOf(v: Any?): String? = textOf(v)?.take(MAX_TEXT_LENGTH)
+private val CONTROL_CHARS = Regex("[\\x00-\\x1F]")
+
+// Texte affiché : caractères de contrôle remplacés par des espaces, coupé sans séparer une paire de substitution.
+private fun shortTextOf(v: Any?): String? {
+    val text = textOf(v)?.replace(CONTROL_CHARS, " ")?.trim()?.ifEmpty { null } ?: return null
+    if (text.length <= MAX_TEXT_LENGTH) return text
+    val end = if (text[MAX_TEXT_LENGTH - 1].isHighSurrogate()) MAX_TEXT_LENGTH - 1 else MAX_TEXT_LENGTH
+    return text.substring(0, end)
+}
 
 private fun urlOf(v: Any?): String? = textOf(v)?.takeIf { it.length <= MAX_URL_LENGTH }
 

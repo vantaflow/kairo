@@ -197,6 +197,19 @@ class UltraTvTest {
         }
     }
 
+    @Test
+    fun textsAreCutOnCodePointsAndControlCharsBecomeSpaces() {
+        val name = "a".repeat(199) + "\uD83D\uDE00"
+        val ch = utvChannelOf(mapOf(COL_NAME to name, COL_DEEP_LINK to link, COL_NOW_TITLE to "Al\nAoula\tdirect", COL_NEXT_TITLE to "\u0001"))!!
+        assertEquals("a".repeat(199), ch.name)
+        assertFalse(ch.name.last().isHighSurrogate())
+        assertEquals("Al Aoula direct", ch.nowTitle)
+        assertNull(ch.nextTitle)
+        // Paire entière sous la limite : gardée
+        val fits = "a".repeat(198) + "\uD83D\uDE00"
+        assertEquals(fits, utvChannelOf(mapOf(COL_NAME to fits, COL_DEEP_LINK to link))!!.name)
+    }
+
     private fun channel(start: Long, end: Long, locked: Boolean = false) = UtvChannel(
         providerId = 1L, remoteId = "r", name = "n", number = null, logo = null,
         nowTitle = "t", nowStartMs = start, nowEndMs = end, nowImage = null,

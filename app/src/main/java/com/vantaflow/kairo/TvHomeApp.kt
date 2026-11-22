@@ -172,7 +172,8 @@ class AppContainer(val app: Application) {
         val done = kotlinx.coroutines.CompletableDeferred<List<Map<String, Any?>>?>()
         ultraTvExecutor.execute {
             try {
-                done.complete(readUltraTv(authority, path, signal))
+                // Annulée pendant son attente : surtout ne pas interroger (cela démarrerait Ultra TV).
+                done.complete(if (signal.isCanceled) null else readUltraTv(authority, path, signal))
             } finally {
                 done.complete(null)
             }
@@ -195,6 +196,7 @@ class AppContainer(val app: Application) {
                     cursor.getColumnName(i) to when (cursor.getType(i)) {
                         android.database.Cursor.FIELD_TYPE_INTEGER -> cursor.getLong(i)
                         android.database.Cursor.FIELD_TYPE_STRING -> cursor.getString(i)
+                        android.database.Cursor.FIELD_TYPE_FLOAT -> cursor.getDouble(i)
                         else -> null
                     }
                 }

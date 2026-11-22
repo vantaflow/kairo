@@ -39,6 +39,9 @@ class UltraTvSourceTest {
         /** Requête bloquante qui ignore l'annulation (appli figée). */
         var ignoresCancel = false
         val observers = mutableMapOf<String, MutableSharedFlow<Unit>>()
+        /** Inscriptions de l'observateur qui échoueront encore. */
+        var failingObserves = 0
+        var observeCalls = 0
 
         fun answer(authority: String, path: String, rows: List<Map<String, Any?>>?) {
             answers["$authority/$path"] = rows
@@ -52,8 +55,14 @@ class UltraTvSourceTest {
             answers["$authority/$path"]
         }
 
-        val changes: (String) -> MutableSharedFlow<Unit> = { authority ->
-            observers.getOrPut(authority) { MutableSharedFlow(extraBufferCapacity = 16) }
+        val changes: (String) -> kotlinx.coroutines.flow.Flow<Unit> = { authority ->
+            observeCalls++
+            if (failingObserves > 0) {
+                failingObserves--
+                kotlinx.coroutines.flow.flow { throw IllegalStateException("fournisseur absent") }
+            } else {
+                observers.getOrPut(authority) { MutableSharedFlow(extraBufferCapacity = 16) }
+            }
         }
 
         fun observing(authority: String) = observers[authority]?.subscriptionCount?.value ?: 0
@@ -156,7 +165,7 @@ class UltraTvSourceTest {
     @Test fun emptyResultClearsState() = runTest {
         val provider = FakeProvider().apply {
             answer(release, "now", listOf(row("A")))
-            answer(release, "profile", listOf(mapOf(COL_KIDS to 1L)))
+            answer(release, "profile", listOf(mapOf(COL_KIDS to 0L)))
         }
         val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
         source.start()
@@ -166,8 +175,9 @@ class UltraTvSourceTest {
         at(31_000)
         provider.notify(release)
         at(32_000)
-        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE), source.state.value)
-        assertFalse(source.state.value.kids)
+        // Plus de chaînes ; le profil, lu dans la foulée, garde les raccourcis possibles
+        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, channels = emptyList(), kids = false), source.state.value)
+        assertEquals(2, provider.count(release, "profile"))
     }
 
     @Test fun changesAreRateLimitedToOnePerThirtySeconds() = runTest {
@@ -274,7 +284,8 @@ class UltraTvSourceTest {
         source.refresh()
         at(139_999)
         assertEquals(emptyList<String>(), provider.calls)
-        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE), source.state.value)
+        // Paquet connu, profil pas encore lu : mode enfants supposé (rangée masquée)
+        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, kids = true), source.state.value)
         // 180 s de vie de la box : une seule lecture
         at(140_000)
         assertEquals(1, provider.count(release, "now"))
@@ -340,5 +351,72 @@ class UltraTvSourceTest {
         runCurrent()
         assertEquals(2, provider.count(release, "now"))
         assertEquals(listOf("A"), source.state.value.channels.map { it.name })
+    }
+
+    @Test fun failedObserverIsRetriedOnAcceptedRefresh() = runTest {
+        val provider = FakeProvider().apply {
+            answer(release, "now", listOf(row("A")))
+            failingObserves = 1
+        }
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        source.start()
+        at(0)
+        // Inscription en échec : la lecture a lieu quand même, aucun observateur
+        assertEquals(1, provider.count(release, "now"))
+        assertEquals(0, provider.observing(release))
+        assertEquals(1, provider.observeCalls)
+        // Retour sur l'accueil refusé (moins de 5 min) : pas de nouvel essai d'inscription
+        at(100_000)
+        source.refresh()
+        runCurrent()
+        assertEquals(1, provider.observeCalls)
+        // Retour accepté : inscription réessayée, réussie
+        at(300_000)
+        source.refresh()
+        runCurrent()
+        assertEquals(2, provider.observeCalls)
+        assertEquals(1, provider.observing(release))
+        assertEquals(2, provider.count(release, "now"))
+        at(331_000)
+        provider.notify(release)
+        runCurrent()
+        assertEquals(3, provider.count(release, "now"))
+    }
+
+    @Test fun unreadableProfileLeansToKids() = runTest {
+        val provider = FakeProvider().apply { answer(release, "now", listOf(row("A"))) }
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        // Avant start : état vide (aucun paquet, rangée masquée)
+        assertEquals(UtvState(), source.state.value)
+        source.start()
+        runCurrent()
+        // Profil jamais lu (null) : vrai
+        assertEquals(listOf("A"), source.state.value.channels.map { it.name })
+        assertTrue(source.state.value.kids)
+        // Profil lu à 0 : faux
+        provider.answer(release, "profile", listOf(mapOf(COL_KIDS to 0L)))
+        at(31_000)
+        provider.notify(release)
+        runCurrent()
+        assertFalse(source.state.value.kids)
+        // Profil de nouveau illisible, vide ou sans colonne : valeur précédente gardée
+        for ((t, answer) in listOf(62_000L to null, 93_000L to emptyList(), 124_000L to listOf(mapOf(COL_NAME to "x")))) {
+            provider.answer(release, "profile", answer)
+            at(t)
+            provider.notify(release)
+            runCurrent()
+            assertFalse("à $t", source.state.value.kids)
+        }
+        // Profil lu à 1 puis illisible : reste vrai
+        provider.answer(release, "profile", listOf(mapOf(COL_KIDS to 1L)))
+        at(155_000)
+        provider.notify(release)
+        runCurrent()
+        assertTrue(source.state.value.kids)
+        provider.answer(release, "profile", null)
+        at(186_000)
+        provider.notify(release)
+        runCurrent()
+        assertTrue(source.state.value.kids)
     }
 }
