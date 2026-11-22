@@ -95,7 +95,22 @@ class StartupGateTest {
         assertEquals(listOf(1, 2), ran)
     }
 
-    @Test fun whenOpenDuringOpeningRuns() = runTest {
+    @Test fun whenOpenAtTheMomentOfOpeningRunsOnce() = runTest {
+        val gate = StartupGate(backgroundScope)
+        // Horloge sur l'instant d'ouverture, avant que la porte n'ait traité ses travaux.
+        advanceTimeBy(120_000)
+        assertFalse(gate.open.value)
+        var ran = 0
+        gate.whenOpen { ran++ }
+        runCurrent()
+        assertTrue(gate.open.value)
+        assertEquals(1, ran)
+        at(600_000)
+        assertEquals(1, ran)
+    }
+
+    /** Un travail lancé à l'ouverture qui demande lui-même un travail : celui-ci part aussitôt. */
+    @Test fun whenOpenFromABlockStartedAtOpeningRuns() = runTest {
         val gate = StartupGate(backgroundScope)
         val ran = mutableListOf<Int>()
         gate.whenOpen {
