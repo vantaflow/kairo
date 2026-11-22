@@ -210,6 +210,39 @@ class UltraTvTest {
         assertEquals(fits, utvChannelOf(mapOf(COL_NAME to fits, COL_DEEP_LINK to link))!!.name)
     }
 
+    @Test
+    fun unreadableFlagTextLeansToSafeSide() {
+        // Texte non reconnu : vrai (prudent) ; texte vide : absent, donc faux
+        for (v in listOf("oui?", "abc", "enabled", "1x")) {
+            assertTrue("kids $v", utvKidsOf(mapOf(COL_KIDS to v)))
+            assertTrue("locked $v", utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to link, COL_LOCKED to v))!!.locked)
+        }
+        for (v in listOf("", "  ", "no", " NO ", "0.0")) {
+            assertFalse("kids '$v'", utvKidsOf(mapOf(COL_KIDS to v)))
+        }
+    }
+
+    @Test
+    fun nameMadeOfInvisibleCharsDropsRow() {
+        for (name in listOf("​", "​‌‍", " ﻿ ", "⁠ ", "‎‏")) {
+            assertNull("nom ${name.map { it.code }}", utvChannelOf(mapOf(COL_NAME to name, COL_DEEP_LINK to link)))
+        }
+        assertEquals("​2M", utvChannelOf(mapOf(COL_NAME to "​2M", COL_DEEP_LINK to link))!!.name)
+    }
+
+    @Test
+    fun allControlCharsAndLineSeparatorsBecomeSpaces() {
+        val ch = utvChannelOf(
+            mapOf(COL_NAME to "Al\u007FAoula", COL_DEEP_LINK to link, COL_NOW_TITLE to "a\u0085b c d\u009Fe"),
+        )!!
+        assertEquals("Al Aoula", ch.name)
+        assertEquals("a b c d e", ch.nowTitle)
+        // Lien avec caractère de contrôle (y compris DEL, C1) ou séparateur de ligne : ligne refusée
+        for (bad in listOf("\u007F", "\u0085", " ", " ")) {
+            assertNull(utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to "ultratv://a${bad}b")))
+        }
+    }
+
     private fun channel(start: Long, end: Long, locked: Boolean = false) = UtvChannel(
         providerId = 1L, remoteId = "r", name = "n", number = null, logo = null,
         nowTitle = "t", nowStartMs = start, nowEndMs = end, nowImage = null,

@@ -82,11 +82,17 @@ private fun longOf(v: Any?): Long = when (v) {
 }
 
 // Indicateur (verrou, mode enfants) : en cas de doute, on penche vers le côté prudent (vrai).
-// Booléen tel quel ; nombre non nul ; texte « true » / « yes » (casse et espaces ignorés) ou nombre non nul.
+// Booléen tel quel ; nombre non nul ; texte : vide → faux, « false » / « no » ou nombre nul → faux,
+// tout autre texte (« true », « yes », nombre non nul, illisible) → vrai (casse et espaces ignorés).
 private fun flagOf(v: Any?): Boolean = when (v) {
     is Boolean -> v
     is Number -> v.toDouble() != 0.0
-    is String -> v.trim().lowercase().let { t -> t == "true" || t == "yes" || (t.toDoubleOrNull()?.let { it != 0.0 } ?: false) }
+    is String -> v.trim().lowercase().let { t ->
+        when {
+            t.isEmpty() || t == "false" || t == "no" -> false
+            else -> t.toDoubleOrNull()?.let { it != 0.0 } ?: true
+        }
+    }
     else -> false
 }
 
@@ -96,7 +102,12 @@ private const val MAX_URL_LENGTH = 2_000
 /** Longueur maximale d'un texte affiché (nom, numéro, titres) ; au-delà, il est coupé. */
 private const val MAX_TEXT_LENGTH = 200
 
-private val CONTROL_CHARS = Regex("[\\x00-\\x1F]")
+/** Caractères de contrôle (C0, DEL, C1) et séparateurs de ligne / paragraphe Unicode. */
+private val CONTROL_CHARS = Regex("[\\p{Cc}\\u2028\\u2029]")
+
+// Texte sans rien de visible : seulement des espaces ou des caractères de format invisibles (U+200B, U+FEFF…).
+private fun isInvisible(text: String): Boolean =
+    text.all { it.isWhitespace() || Character.getType(it) == Character.FORMAT.toInt() }
 
 // Texte affiché : caractères de contrôle remplacés par des espaces, coupé sans séparer une paire de substitution.
 private fun shortTextOf(v: Any?): String? {
@@ -117,11 +128,12 @@ fun utvChannelOf(row: Map<String, Any?>): UtvChannel? = try {
 }
 
 private fun channelOf(row: Map<String, Any?>): UtvChannel? {
-    val name = shortTextOf(row[COL_NAME]) ?: return null
+    // Nom sans aucun caractère visible : tuile vide, ligne refusée.
+    val name = shortTextOf(row[COL_NAME])?.takeUnless(::isInvisible) ?: return null
     val deepLink = textOf(row[COL_DEEP_LINK]) ?: return null
     if (!deepLink.startsWith(DEEP_LINK_SCHEME)) return null
     // Lien trop long ou avec caractère de contrôle : ligne refusée.
-    if (deepLink.length > MAX_URL_LENGTH || deepLink.any { it.code < 32 }) return null
+    if (deepLink.length > MAX_URL_LENGTH || CONTROL_CHARS.containsMatchIn(deepLink)) return null
     return UtvChannel(
         providerId = longOf(row[COL_PROVIDER_ID]),
         remoteId = textOf(row[COL_REMOTE_ID]) ?: "",
