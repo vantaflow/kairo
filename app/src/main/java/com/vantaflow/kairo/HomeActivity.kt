@@ -448,7 +448,15 @@ class HomeActivity : ComponentActivity() {
                 val radioName = com.vantaflow.kairo.radio.Radio.state.collectAsStateWithLifecycle().value
                     .let { r -> r.station?.name?.takeIf { r.active } }
                 val media by com.vantaflow.kairo.media.NowPlaying.state.collectAsStateWithLifecycle()
+                // Ultra TV : rangée seulement si installée, réglage actif et hors profil enfant (Kairo ou Ultra TV).
+                val utv by container.ultraTv.state.collectAsStateWithLifecycle()
+                val utvShown = com.vantaflow.kairo.ultratv.utvRowVisible(utv, profile.kids, LocalHomeLayout.current.showUltraTv)
                 HomeScreen(
+                    ultraTv = if (utvShown) utv else com.vantaflow.kairo.ultratv.UtvState(),
+                    // Horloge de l'accueil : une valeur par minute (l'heure affichée change), pas à chaque image.
+                    ultraTvNowMs = remember(state.timeText) { container.clock.now() },
+                    onOpenUtvSection = { openUltraTv(utv.pkg, it.uri) },
+                    onOpenUtvChannel = { openUltraTv(utv.pkg, it.deepLink) },
                     // Dernières applis ouvertes, hors favoris (déjà en tête) et applis masquées.
                     recentApps = if (!showRecent) emptyList() else remember(recent, apps, state.favorites) {
                         val favs = state.favorites.map { it.packageName }.toSet()
@@ -743,6 +751,12 @@ class HomeActivity : ComponentActivity() {
         if (!startSafely(Intent(Intent.ACTION_VIEW, Uri.parse(channel.uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
             launchApp(channel.packageName)
         }
+    }
+
+    /** Lien Ultra TV ([link]) ouvert dans [pkg] ; appli désinstallée entre-temps : rien ne se passe. */
+    private fun openUltraTv(pkg: String?, link: String) {
+        if (pkg == null) return
+        startSafely(Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     private fun launchApp(pkg: String) {

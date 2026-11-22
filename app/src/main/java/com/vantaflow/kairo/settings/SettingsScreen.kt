@@ -277,7 +277,10 @@ private fun SectionContent(
                 Section.Favorites -> FavoritesSettings(vm, installedApps)
                 Section.Wallpaper -> WallpaperSettings(vm)
                 Section.Theme -> ThemeSettings(vm)
-                Section.Layout -> LayoutSettings(vm)
+                Section.Layout -> LayoutSettings(
+                    vm,
+                    ultraTvInstalled = remember(installedApps) { com.vantaflow.kairo.ultratv.pickUltraTvPackage(installedApps.mapTo(HashSet()) { it.packageName }) != null },
+                )
                 Section.Weather -> WeatherSettings(vm)
                 Section.AdBlock -> com.vantaflow.kairo.adblock.AdBlockSettings()
                 Section.Dream -> DreamSettings()

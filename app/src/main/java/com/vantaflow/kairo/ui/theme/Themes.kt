@@ -60,6 +60,8 @@ data class HomeLayout(
     val showRecentApps: Boolean = true,
     /** Rangées « Chaînes TV » et « Entrées » (seulement sur une box avec tuner ou HDMI). */
     val showLiveTv: Boolean = true,
+    /** Rangée « Ultra TV » (chaînes et raccourcis), seulement si l'appli est installée. */
+    val showUltraTv: Boolean = true,
     /** Rangée « Nos applications » (nos applis pas encore installées). */
     val showOurApps: Boolean = true,
     /** Carte « Mise à jour » de Kairo sur l'accueil quand une version plus récente est publiée. */

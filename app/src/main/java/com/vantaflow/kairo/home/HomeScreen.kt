@@ -11,6 +11,10 @@ import com.vantaflow.kairo.reco.Channel
 import com.vantaflow.kairo.apps.InstallState
 import com.vantaflow.kairo.apps.OurApp
 import com.vantaflow.kairo.reco.LiveChannel
+import com.vantaflow.kairo.ultratv.UltraTvRow
+import com.vantaflow.kairo.ultratv.UtvChannel
+import com.vantaflow.kairo.ultratv.UtvSection
+import com.vantaflow.kairo.ultratv.UtvState
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.MutatePriority
@@ -135,6 +139,12 @@ fun HomeScreen(
     /** Mode sans échec : non nul, le bandeau s'affiche au-dessus des favoris avec ses deux boutons. */
     onSafeModeRestart: (() -> Unit)? = null,
     onAndroidSettings: () -> Unit = {},
+    /** Rangée « Ultra TV » sous « À suivre » ; paquet null = rangée absente (pas installée ou masquée). */
+    ultraTv: UtvState = UtvState(),
+    /** Heure de la rangée Ultra TV (avancement des programmes), rafraîchie chaque minute. */
+    ultraTvNowMs: Long = 0L,
+    onOpenUtvSection: (UtvSection) -> Unit = {},
+    onOpenUtvChannel: (UtvChannel) -> Unit = {},
 ) {
     val forYou = tab == null || tab == HomeTab.ForYou
     val tabRequesters = remember { HomeTab.entries.associateWith { FocusRequester() } }
@@ -233,11 +243,15 @@ fun HomeScreen(
             val rowMargin = with(LocalDensity.current) { 14.dp.toPx() }
             val scrollScope = rememberCoroutineScope()
             var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
+            // Rangée qui a le focus : lue seulement dans les rappels de placement, jamais à la composition.
+            val focusedRow = remember { arrayOfNulls<LayoutCoordinates>(1) }
+            val rowGap = with(LocalDensity.current) { ROW_GAP.toPx() }
             fun Modifier.alignRowOnFocus(): Modifier = composed {
                 var row by remember { mutableStateOf<LayoutCoordinates?>(null) }
                 onPlaced { row = it }.onFocusChanged { state ->
                     val r = row ?: return@onFocusChanged
                     val v = viewport ?: return@onFocusChanged
+                    if (state.hasFocus) focusedRow[0] = r else if (focusedRow[0] === r) focusedRow[0] = null
                     if (!state.hasFocus || !r.isAttached || !v.isAttached) return@onFocusChanged
                     val delta = r.positionInRoot().y - v.positionInRoot().y - rowMargin
                     val target = (columnState.value + delta).toInt().coerceIn(0, columnState.maxValue)
@@ -255,6 +269,25 @@ fun HomeScreen(
                     }
                 }
             }
+            /**
+             * Rangée qui apparaît ou change de hauteur après coup (Ultra TV lue en arrière-plan) : si la
+             * rangée sélectionnée est plus bas, l'accueil défile d'autant, sans animation, pour qu'elle
+             * reste à sa place à l'écran. Au-dessus (favoris, « À suivre »), rien ne bouge.
+             */
+            fun Modifier.keepFocusedRowInPlace(): Modifier = composed {
+                val height = remember { intArrayOf(-1) }
+                onPlaced { coords ->
+                    val old = height[0]
+                    val new = coords.size.height
+                    height[0] = new
+                    // Première apparition : sa hauteur plus l'écart entre deux rangées.
+                    val grown = if (old < 0) new + rowGap else (new - old).toFloat()
+                    val focused = focusedRow[0]
+                    if (grown == 0f || focused == null || !focused.isAttached) return@onPlaced
+                    if (focused.positionInRoot().y <= coords.positionInRoot().y) return@onPlaced
+                    columnState.dispatchRawDelta(grown)
+                }
+            }
             CompositionLocalProvider(LocalBringIntoViewSpec provides NoVerticalAutoScroll) {
             // Toutes les rangées sont construites une fois (Column, pas LazyColumn) : monter ou
             // descendre ne fait que déplacer l'image, sans construire 7 cartes pendant l'animation.
@@ -265,7 +298,7 @@ fun HomeScreen(
                     .verticalScroll(columnState)
                     // Peu de marge en bas : la dernière rangée remonte juste assez pour être entière, sans vide dessous.
                     .padding(top = 24.dp, bottom = 48.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(ROW_GAP),
             ) {
                 if (showApps) key("favorites") {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
@@ -330,6 +363,18 @@ fun HomeScreen(
                             RecoRow(stringResource(R.string.home_watch_next), state.watchNext, appLabels, onProgramClick, Modifier.alignRowOnFocus()) {
                                 heroProgram.value = it
                             }
+                        }
+                    }
+                }
+                // Ultra TV juste après « À suivre » (ou les favoris). Elle peut apparaître après coup :
+                // elle ne prend pas le focus et ne décale pas la rangée sélectionnée.
+                if (forYou && ultraTv.pkg != null) {
+                    key("ultra-tv") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                            UltraTvRow(
+                                ultraTv, ultraTvNowMs, onOpenUtvSection, onOpenUtvChannel,
+                                Modifier.keepFocusedRowInPlace().alignRowOnFocus(),
+                            ) { heroProgram.value = null }
                         }
                     }
                 }
@@ -616,6 +661,9 @@ private fun AppsRow(
         }
     }
 }
+
+/** Écart vertical entre deux rangées de l'accueil. */
+private val ROW_GAP = 24.dp
 
 /** Durée normale du défilement (ajustée par la vitesse des animations). */
 private const val SCROLL_MS = 350

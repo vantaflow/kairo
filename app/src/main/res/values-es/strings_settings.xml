@@ -31,6 +31,7 @@
     <string name="settings_layout_show_row_titles">Mostrar los títulos de las filas</string>
     <string name="settings_layout_show_recent">Mostrar las apps recientes</string>
     <string name="settings_layout_show_live_tv">Mostrar canales de TV y entradas (box con sintonizador o HDMI)</string>
+    <string name="settings_layout_show_ultra_tv">Mostrar Ultra TV (canales y accesos)</string>
     <string name="settings_layout_tab_movies">Pestaña Películas</string>
     <string name="settings_layout_tab_shows">Pestaña Series</string>
     <string name="settings_layout_tab_apps">Pestaña Apps</string>

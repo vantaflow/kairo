@@ -109,10 +109,10 @@ private fun ColorRow(selected: Long, onPick: (Long) -> Unit) {
     }
 }
 
-/** Éléments affichés sur l'accueil et leurs tailles. */
+/** Éléments affichés sur l'accueil et leurs tailles ; le réglage Ultra TV n'apparaît que si [ultraTvInstalled]. */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun LayoutSettings(vm: SettingsViewModel) {
+fun LayoutSettings(vm: SettingsViewModel, ultraTvInstalled: Boolean = false) {
     val layout by vm.homeLayout.collectAsStateWithLifecycle()
     // Marge haut et bas : le 1er et le dernier bouton grossissent au focus.
     LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp)) {
@@ -122,6 +122,7 @@ fun LayoutSettings(vm: SettingsViewModel) {
         item { Toggle(stringResource(R.string.settings_layout_show_row_titles), layout.showRowTitles) { vm.setHomeLayout(layout.copy(showRowTitles = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_show_recent), layout.showRecentApps) { vm.setHomeLayout(layout.copy(showRecentApps = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_show_live_tv), layout.showLiveTv) { vm.setHomeLayout(layout.copy(showLiveTv = it)) } }
+        if (ultraTvInstalled) item { Toggle(stringResource(R.string.settings_layout_show_ultra_tv), layout.showUltraTv) { vm.setHomeLayout(layout.copy(showUltraTv = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_tab_movies), layout.showTabMovies) { vm.setHomeLayout(layout.copy(showTabMovies = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_tab_shows), layout.showTabShows) { vm.setHomeLayout(layout.copy(showTabShows = it)) } }
         item { Toggle(stringResource(R.string.settings_layout_tab_apps), layout.showTabApps) { vm.setHomeLayout(layout.copy(showTabApps = it)) } }

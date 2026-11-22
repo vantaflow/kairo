@@ -31,6 +31,7 @@
     <string name="settings_layout_show_row_titles">إظهار عناوين الصفوف</string>
     <string name="settings_layout_show_recent">إظهار التطبيقات الأخيرة</string>
     <string name="settings_layout_show_live_tv">إظهار القنوات والمداخل (جهاز بموالف أو HDMI)</string>
+    <string name="settings_layout_show_ultra_tv">إظهار Ultra TV (القنوات والاختصارات)</string>
     <string name="settings_layout_tab_movies">تبويب الأفلام</string>
     <string name="settings_layout_tab_shows">تبويب المسلسلات</string>
     <string name="settings_layout_tab_apps">تبويب التطبيقات</string>

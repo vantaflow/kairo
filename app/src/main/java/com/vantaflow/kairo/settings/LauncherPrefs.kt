@@ -184,6 +184,7 @@ class LauncherPrefs(
         val showRowTitles = booleanPreferencesKey("show_row_titles")
         val showRecentApps = booleanPreferencesKey("show_recent_apps")
         val showLiveTv = booleanPreferencesKey("show_live_tv")
+        val showUltraTv = booleanPreferencesKey("show_ultra_tv")
         val showOurApps = booleanPreferencesKey("show_our_apps")
         val showKairoUpdate = booleanPreferencesKey("show_kairo_update")
         val showTools = booleanPreferencesKey("show_tools")
@@ -447,6 +448,7 @@ class LauncherPrefs(
             showRowTitles = it[Keys.showRowTitles] ?: d.showRowTitles,
             showRecentApps = it[Keys.showRecentApps] ?: d.showRecentApps,
             showLiveTv = it[Keys.showLiveTv] ?: d.showLiveTv,
+            showUltraTv = it[Keys.showUltraTv] ?: d.showUltraTv,
             showOurApps = it[Keys.showOurApps] ?: d.showOurApps,
             showKairoUpdate = it[Keys.showKairoUpdate] ?: d.showKairoUpdate,
             showTools = it[Keys.showTools] ?: d.showTools,
@@ -468,6 +470,7 @@ class LauncherPrefs(
             it[Keys.showRowTitles] = layout.showRowTitles
             it[Keys.showRecentApps] = layout.showRecentApps
             it[Keys.showLiveTv] = layout.showLiveTv
+            it[Keys.showUltraTv] = layout.showUltraTv
             it[Keys.showOurApps] = layout.showOurApps
             it[Keys.showKairoUpdate] = layout.showKairoUpdate
             it[Keys.showTools] = layout.showTools

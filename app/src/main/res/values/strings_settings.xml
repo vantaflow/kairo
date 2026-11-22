@@ -31,6 +31,7 @@
     <string name="settings_layout_show_row_titles">Afficher les titres des rangées</string>
     <string name="settings_layout_show_recent">Afficher les applis récentes</string>
     <string name="settings_layout_show_live_tv">Afficher les chaînes TV et entrées (box avec tuner ou HDMI)</string>
+    <string name="settings_layout_show_ultra_tv">Afficher Ultra TV (chaînes et raccourcis)</string>
     <string name="settings_layout_tab_movies">Onglet Films</string>
     <string name="settings_layout_tab_shows">Onglet Séries</string>
     <string name="settings_layout_tab_apps">Onglet Applis</string>

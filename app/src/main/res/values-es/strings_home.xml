@@ -10,6 +10,12 @@
     <string name="home_watch_next">Seguir viendo</string>
     <string name="home_my_list">Mi lista</string>
     <string name="home_live_tv">Canales de TV</string>
+    <string name="utv_row_title">Ultra TV</string>
+    <string name="utv_section_guide">Guía de TV</string>
+    <string name="utv_section_live">En directo</string>
+    <string name="utv_section_movies">Películas</string>
+    <string name="utv_section_series">Series</string>
+    <string name="utv_next">A continuación: %1$s</string>
     <string name="home_inputs">Entradas</string>
     <string name="home_recent">Recientes</string>
     <string name="home_all_apps">Todas las apps</string>

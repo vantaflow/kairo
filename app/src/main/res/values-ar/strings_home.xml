@@ -10,6 +10,12 @@
     <string name="home_watch_next">متابعة المشاهدة</string>
     <string name="home_my_list">قائمتي</string>
     <string name="home_live_tv">القنوات التلفزيونية</string>
+    <string name="utv_row_title">Ultra TV</string>
+    <string name="utv_section_guide">دليل التلفزيون</string>
+    <string name="utv_section_live">البث المباشر</string>
+    <string name="utv_section_movies">أفلام</string>
+    <string name="utv_section_series">مسلسلات</string>
+    <string name="utv_next">التالي: %1$s</string>
     <string name="home_inputs">المداخل</string>
     <string name="home_recent">الأخيرة</string>
     <string name="home_all_apps">كل التطبيقات</string>

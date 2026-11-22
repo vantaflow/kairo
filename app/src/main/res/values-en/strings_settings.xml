@@ -31,6 +31,7 @@
     <string name="settings_layout_show_row_titles">Show row titles</string>
     <string name="settings_layout_show_recent">Show recent apps</string>
     <string name="settings_layout_show_live_tv">Show TV channels and inputs (box with tuner or HDMI)</string>
+    <string name="settings_layout_show_ultra_tv">Show Ultra TV (channels and shortcuts)</string>
     <string name="settings_layout_tab_movies">Movies tab</string>
     <string name="settings_layout_tab_shows">Shows tab</string>
     <string name="settings_layout_tab_apps">Apps tab</string>
