@@ -81,30 +81,56 @@ private fun longOf(v: Any?): Long = when (v) {
     else -> 0L
 }
 
-private fun flagOf(v: Any?): Boolean = longOf(v) != 0L
+// Indicateur (verrou, mode enfants) : en cas de doute, on penche vers le côté prudent (vrai).
+// Booléen tel quel ; nombre non nul ; texte « true » / « yes » (casse et espaces ignorés) ou nombre non nul.
+private fun flagOf(v: Any?): Boolean = when (v) {
+    is Boolean -> v
+    is Number -> v.toDouble() != 0.0
+    is String -> v.trim().lowercase().let { t -> t == "true" || t == "yes" || (t.toDoubleOrNull()?.let { it != 0.0 } ?: false) }
+    else -> false
+}
+
+/** Longueur maximale d'un lien (deep_link, logo, image) ; au-delà, la valeur est refusée. */
+private const val MAX_URL_LENGTH = 2_000
+
+/** Longueur maximale d'un texte affiché (nom, numéro, titres) ; au-delà, il est coupé. */
+private const val MAX_TEXT_LENGTH = 200
+
+private fun shortTextOf(v: Any?): String? = textOf(v)?.take(MAX_TEXT_LENGTH)
+
+private fun urlOf(v: Any?): String? = textOf(v)?.takeIf { it.length <= MAX_URL_LENGTH }
 
 /** Une ligne du curseur (nom de colonne → valeur) ; null si elle n'a pas de nom ou de lien Ultra TV. */
-fun utvChannelOf(row: Map<String, Any?>): UtvChannel? = runCatching {
-    val name = textOf(row[COL_NAME]) ?: return null
+fun utvChannelOf(row: Map<String, Any?>): UtvChannel? = try {
+    channelOf(row)
+} catch (e: Exception) {
+    // Seules les exceptions : une Error (mémoire épuisée…) n'est pas masquée.
+    null
+}
+
+private fun channelOf(row: Map<String, Any?>): UtvChannel? {
+    val name = shortTextOf(row[COL_NAME]) ?: return null
     val deepLink = textOf(row[COL_DEEP_LINK]) ?: return null
     if (!deepLink.startsWith(DEEP_LINK_SCHEME)) return null
-    UtvChannel(
+    // Lien trop long ou avec caractère de contrôle : ligne refusée.
+    if (deepLink.length > MAX_URL_LENGTH || deepLink.any { it.code < 32 }) return null
+    return UtvChannel(
         providerId = longOf(row[COL_PROVIDER_ID]),
         remoteId = textOf(row[COL_REMOTE_ID]) ?: "",
         name = name,
-        number = textOf(row[COL_NUMBER]),
-        logo = textOf(row[COL_LOGO]),
-        nowTitle = textOf(row[COL_NOW_TITLE]),
+        number = shortTextOf(row[COL_NUMBER]),
+        logo = urlOf(row[COL_LOGO]),
+        nowTitle = shortTextOf(row[COL_NOW_TITLE]),
         nowStartMs = longOf(row[COL_NOW_START_MS]),
         nowEndMs = longOf(row[COL_NOW_END_MS]),
-        nowImage = textOf(row[COL_NOW_IMAGE]),
-        nextTitle = textOf(row[COL_NEXT_TITLE]),
+        nowImage = urlOf(row[COL_NOW_IMAGE]),
+        nextTitle = shortTextOf(row[COL_NEXT_TITLE]),
         nextStartMs = longOf(row[COL_NEXT_START_MS]),
         nextEndMs = longOf(row[COL_NEXT_END_MS]),
         deepLink = deepLink,
         locked = flagOf(row[COL_LOCKED]),
     )
-}.getOrNull()
+}
 
 /** Avancement du programme en cours, de 0 à 100 ; null si la chaîne est verrouillée ou l'horaire inconnu. */
 fun nowProgressPercent(channel: UtvChannel, nowMs: Long): Int? {

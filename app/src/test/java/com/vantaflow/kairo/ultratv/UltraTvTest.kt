@@ -105,7 +105,8 @@ class UltraTvTest {
             assertEquals(0L, ch.nowStartMs)
             assertNull(ch.nowTitle)
             assertEquals("", ch.remoteId)
-            assertFalse(ch.locked)
+            // Nombre non nul (même NaN ou infini) : verrouillé, côté prudent
+            assertEquals(v is Number && v.toDouble() != 0.0, ch.locked)
             // La table entière avec la valeur bizarre : jamais d'exception, ligne écartée
             assertNull(utvChannelOf(ALL_COLUMNS.associateWith { v }))
         }
@@ -133,11 +134,67 @@ class UltraTvTest {
 
     @Test
     fun kidsFlag() {
-        assertTrue(utvKidsOf(mapOf("kids" to 1)))
-        assertFalse(utvKidsOf(mapOf("kids" to "0")))
+        assertTrue(utvKidsOf(mapOf(COL_KIDS to 1)))
+        assertFalse(utvKidsOf(mapOf(COL_KIDS to "0")))
         assertFalse(utvKidsOf(null))
-        assertFalse(utvKidsOf(mapOf("kids" to byteArrayOf(1))))
-        assertTrue(utvKidsOf(mapOf("kids" to "1")))
+        assertFalse(utvKidsOf(mapOf(COL_KIDS to byteArrayOf(1))))
+        assertTrue(utvKidsOf(mapOf(COL_KIDS to "1")))
+    }
+
+    private val truthy = listOf<Any?>(true, "true", "TRUE", " yes ", 1, 1L, "1")
+    private val falsy = listOf<Any?>(false, "false", 0, "0", null, Any())
+
+    @Test
+    fun lockedFlagLeansToSafeSide() {
+        for (v in truthy) assertTrue("locked $v", utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to link, COL_LOCKED to v))!!.locked)
+        for (v in falsy) assertFalse("locked $v", utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to link, COL_LOCKED to v))!!.locked)
+    }
+
+    @Test
+    fun kidsFlagLeansToSafeSide() {
+        for (v in truthy) assertTrue("kids $v", utvKidsOf(mapOf(COL_KIDS to v)))
+        for (v in falsy) assertFalse("kids $v", utvKidsOf(mapOf(COL_KIDS to v)))
+    }
+
+    @Test
+    fun suspiciousDeepLinkDropsRow() {
+        val long = link + "x".repeat(2_001 - link.length)
+        assertNull(utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to long)))
+        assertNotNull(utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to long.dropLast(1))))
+        assertNull(utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to "ultratv://a\nb")))
+        assertNull(utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to "ultratv://a\u0000b")))
+        assertNull(utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to "ultratv://a\u001fb")))
+    }
+
+    @Test
+    fun longTextsAreCutAndLongImagesRefused() {
+        val text = "é".repeat(250)
+        val url = "https://x/" + "a".repeat(1_990)
+        val ch = utvChannelOf(
+            mapOf(
+                COL_NAME to text, COL_NUMBER to text, COL_NOW_TITLE to text, COL_NEXT_TITLE to text,
+                COL_DEEP_LINK to link, COL_LOGO to url + "a", COL_NOW_IMAGE to url + "a",
+            ),
+        )!!
+        assertEquals(200, ch.name.length)
+        assertEquals(200, ch.number!!.length)
+        assertEquals(200, ch.nowTitle!!.length)
+        assertEquals(200, ch.nextTitle!!.length)
+        assertNull(ch.logo)
+        assertNull(ch.nowImage)
+        val ok = utvChannelOf(mapOf(COL_NAME to "2M", COL_DEEP_LINK to link, COL_LOGO to url, COL_NOW_IMAGE to url))!!
+        assertEquals(url, ok.logo)
+        assertEquals(url, ok.nowImage)
+    }
+
+    @Test
+    fun extremeIntervalsNeverThrow() {
+        for ((start, end) in listOf(Long.MAX_VALUE - 1 to Long.MAX_VALUE, 1L to Long.MAX_VALUE)) {
+            for (now in listOf(start, start + 1, end - 1, end, Long.MAX_VALUE / 2, 0L, Long.MIN_VALUE)) {
+                val p = nowProgressPercent(channel(start, end), now)
+                assertTrue("$start..$end à $now : $p", p == null || p in 0..100)
+            }
+        }
     }
 
     private fun channel(start: Long, end: Long, locked: Boolean = false) = UtvChannel(
