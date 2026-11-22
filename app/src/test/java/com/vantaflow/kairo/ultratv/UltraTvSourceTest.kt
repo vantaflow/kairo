@@ -1,6 +1,8 @@
 package com.vantaflow.kairo.ultratv
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,8 @@ class UltraTvSourceTest {
         val answers = mutableMapOf<String, List<Map<String, Any?>>?>()
         val calls = mutableListOf<String>()
         var latencyMs = 0L
+        /** Requête bloquante qui ignore l'annulation (appli figée). */
+        var ignoresCancel = false
         val observers = mutableMapOf<String, MutableSharedFlow<Unit>>()
 
         fun answer(authority: String, path: String, rows: List<Map<String, Any?>>?) {
@@ -42,7 +46,9 @@ class UltraTvSourceTest {
 
         val query: suspend (String, String) -> List<Map<String, Any?>>? = { authority, path ->
             calls += "$authority/$path"
-            if (latencyMs > 0) delay(latencyMs)
+            if (latencyMs > 0) {
+                if (ignoresCancel) withContext(NonCancellable) { delay(latencyMs) } else delay(latencyMs)
+            }
             answers["$authority/$path"]
         }
 
@@ -273,7 +279,8 @@ class UltraTvSourceTest {
         at(140_000)
         assertEquals(1, provider.count(release, "now"))
         assertEquals(listOf("A"), source.state.value.channels.map { it.name })
-        at(165_000)
+        // Les demandes reçues pendant l'attente ne donnent pas de seconde lecture
+        at(300_000)
         assertEquals(1, provider.count(release, "now"))
     }
 
@@ -306,5 +313,32 @@ class UltraTvSourceTest {
         at(60_000)
         assertEquals(emptyList<String>(), provider.calls)
         assertEquals(UtvState(), source.state.value)
+    }
+
+    @Test fun blockedQueryIsNeverStackedUp() = runTest {
+        val provider = FakeProvider().apply {
+            answer(release, "now", listOf(row("A")))
+            latencyMs = 60_000
+            ignoresCancel = true
+        }
+        val source = source(provider, MutableStateFlow(setOf(ULTRA_TV_RELEASE)))
+        source.start()
+        at(0)
+        assertEquals(1, provider.count(release, "now"))
+        // Délai dépassé à 10 s : la boucle reprend, état inchangé
+        at(10_000)
+        assertEquals(UtvState(pkg = ULTRA_TV_RELEASE, kids = source.state.value.kids), source.state.value)
+        // Requête toujours bloquée : la lecture suivante échoue sans nouvelle requête
+        at(31_000)
+        provider.notify(release)
+        at(45_000)
+        assertEquals(1, provider.count(release, "now"))
+        // Requête enfin terminée : une nouvelle lecture interroge de nouveau
+        provider.latencyMs = 0
+        at(70_000)
+        provider.notify(release)
+        runCurrent()
+        assertEquals(2, provider.count(release, "now"))
+        assertEquals(listOf("A"), source.state.value.channels.map { it.name })
     }
 }

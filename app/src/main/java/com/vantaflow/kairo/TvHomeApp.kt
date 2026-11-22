@@ -4,8 +4,6 @@ import com.vantaflow.kairo.apps.OurAppsStore
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asExecutor
-import kotlin.coroutines.resume
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CoroutineScope
 import com.vantaflow.kairo.remote.PhoneRemoteServer
@@ -159,18 +157,32 @@ class AppContainer(val app: Application) {
         scope = scope,
     )
 
+    /** Un seul fil, à part, pour les requêtes vers Ultra TV : une appli bloquée n'affame jamais le pool IO. */
+    private val ultraTvExecutor by lazy {
+        java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "kairo-ultratv").apply { isDaemon = true } }
+    }
+
     /**
-     * Lecture annulable : la requête tourne sur un fil IO ; si la coroutine est annulée (délai dépassé,
-     * changement de paquet), le signal interrompt la requête et l'attente rend la main aussitôt.
+     * Lecture annulable : la requête tourne sur le fil dédié ; si la coroutine est annulée (délai
+     * dépassé, changement de paquet), le signal interrompt la requête. La fonction ne rend la main
+     * qu'une fois la requête réellement terminée : la source sait ainsi qu'elle est encore en cours.
      */
     private suspend fun queryUltraTv(authority: String, path: String): List<Map<String, Any?>>? {
         val signal = android.os.CancellationSignal()
-        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-            cont.invokeOnCancellation { runCatching { signal.cancel() } }
-            Dispatchers.IO.asExecutor().execute {
-                // Réponse arrivée après l'annulation : ignorée.
-                cont.resume(readUltraTv(authority, path, signal))
+        val done = kotlinx.coroutines.CompletableDeferred<List<Map<String, Any?>>?>()
+        ultraTvExecutor.execute {
+            try {
+                done.complete(readUltraTv(authority, path, signal))
+            } finally {
+                done.complete(null)
             }
+        }
+        return try {
+            done.await()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            runCatching { signal.cancel() }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { done.await() }
+            throw e
         }
     }
 

@@ -2,6 +2,8 @@ package com.vantaflow.kairo.ultratv
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -68,6 +70,12 @@ class UltraTvSource(
     /** Demandes de lecture du paquet retenu ; null tant qu'aucun paquet Ultra TV n'est suivi. */
     @Volatile private var requests: Channel<Unit>? = null
 
+    /**
+     * Requête vers Ultra TV qui n'a pas encore réellement rendu la main (même après le délai) ; tant
+     * qu'elle tourne, aucune autre n'est lancée : une appli bloquée n'accumule pas de fils occupés.
+     */
+    @Volatile private var inFlight: Job? = null
+
     /** Moment de la dernière lecture selon [uptimeMs] ; null avant la première. */
     @Volatile private var lastReadAt: Long? = null
 
@@ -111,7 +119,11 @@ class UltraTvSource(
             for (request in pending) {
                 // Box allumée il y a peu : une seule attente, jusqu'à la fin de la période calme.
                 val quiet = ULTRA_TV_QUIET_AFTER_BOOT_MS - uptimeMs()
-                if (quiet > 0) delay(quiet)
+                if (quiet > 0) {
+                    delay(quiet)
+                    // Demandes reçues pendant l'attente : couvertes par la lecture qui suit.
+                    while (pending.tryReceive().isSuccess) Unit
+                }
                 read(pkg, authority)
                 delay(UTV_MIN_READ_INTERVAL_MS)
             }
@@ -139,9 +151,14 @@ class UltraTvSource(
         mutableState.value = UtvState(pkg = pkg, channels = channels, kids = kids)
     }
 
-    /** Lecture bornée à [UTV_READ_TIMEOUT_MS] ; au-delà la requête est annulée et vaut un échec. */
-    private suspend fun timedQuery(authority: String, path: String): List<Map<String, Any?>>? =
-        withTimeoutOrNull(UTV_READ_TIMEOUT_MS) {
+    /**
+     * Lecture bornée à [UTV_READ_TIMEOUT_MS] ; au-delà la requête est annulée et vaut un échec. Elle
+     * tourne à part : une requête qui ignore l'annulation ne retient pas la boucle, mais tant qu'elle
+     * n'a pas fini, toute nouvelle lecture échoue sans rien interroger.
+     */
+    private suspend fun timedQuery(authority: String, path: String): List<Map<String, Any?>>? {
+        if (inFlight?.isCompleted == false) return null
+        val reply = scope.async {
             try {
                 query(authority, path)
             } catch (e: CancellationException) {
@@ -150,4 +167,11 @@ class UltraTvSource(
                 null
             }
         }
+        inFlight = reply
+        try {
+            return withTimeoutOrNull(UTV_READ_TIMEOUT_MS) { reply.await() }
+        } finally {
+            reply.cancel()
+        }
+    }
 }
