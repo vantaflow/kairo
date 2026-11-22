@@ -28,7 +28,11 @@ import com.vantaflow.kairo.weather.WeatherRepository
 import com.vantaflow.kairo.wallpaper.PixabayClient
 import com.vantaflow.kairo.wallpaper.RotationFileStore
 import com.vantaflow.kairo.wallpaper.WallpaperRotator
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.io.File
 
 /** Fichier corrompu remplacé par des préférences vides : sinon chaque écriture échouerait à chaque lancement. */
@@ -137,6 +141,46 @@ class AppContainer(val app: Application) {
     @Volatile private var phoneToken = ""
     val phoneRemote = PhoneRemoteServer({ phoneToken }, PhoneRemoteActions(app)::route, { app.getString(R.string.phoneremote_forbidden) })
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + SafeHandler)
+
+    /**
+     * Chaînes d'Ultra TV (programme en cours et suivant), lues dans le fournisseur qu'elle réserve à
+     * Kairo. Démarrée par la porte de démarrage : la lecture démarre le process d'Ultra TV.
+     */
+    val ultraTv = com.vantaflow.kairo.ultratv.UltraTvSource(
+        // Inventaire partagé : aucun parcours du PackageManager en plus.
+        installed = appRepository.apps.filterNotNull().map { apps -> apps.mapTo(HashSet()) { it.packageName } },
+        query = { authority, path -> kotlinx.coroutines.withContext(Dispatchers.IO) { queryUltraTv(authority, path) } },
+        changes = ::ultraTvChanges,
+        scope = scope,
+    )
+
+    /** Lignes de content://[authority]/[path] (nom de colonne → valeur), 20 au plus ; null en cas d'échec. */
+    private fun queryUltraTv(authority: String, path: String): List<Map<String, Any?>>? = runCatching {
+        app.contentResolver.query(android.net.Uri.parse("content://$authority/$path"), null, null, null, null)?.use { cursor ->
+            val rows = ArrayList<Map<String, Any?>>()
+            while (rows.size < com.vantaflow.kairo.ultratv.UTV_MAX_ROWS && cursor.moveToNext()) {
+                rows += (0 until cursor.columnCount).associate { i ->
+                    cursor.getColumnName(i) to when (cursor.getType(i)) {
+                        android.database.Cursor.FIELD_TYPE_INTEGER -> cursor.getLong(i)
+                        android.database.Cursor.FIELD_TYPE_STRING -> cursor.getString(i)
+                        else -> null
+                    }
+                }
+            }
+            rows
+        }
+    }.getOrNull()
+
+    /** Notifications de changement du fournisseur d'Ultra TV ; l'observateur est retiré à l'arrêt de la collecte. */
+    private fun ultraTvChanges(authority: String): kotlinx.coroutines.flow.Flow<Unit> = kotlinx.coroutines.flow.callbackFlow {
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                trySend(Unit)
+            }
+        }
+        app.contentResolver.registerContentObserver(android.net.Uri.parse("content://$authority"), true, observer)
+        awaitClose { app.contentResolver.unregisterContentObserver(observer) }
+    }.buffer(kotlinx.coroutines.channels.Channel.CONFLATED)
 
     fun watchPhoneRemote() {
         scope.launch {
@@ -265,6 +309,7 @@ class TvHomeApp : Application(), coil.ImageLoaderFactory {
         }
         gate.whenOpen { com.vantaflow.kairo.media.NowPlaying.start(this) }
         gate.whenOpen { container.ourApps.checkUpdates() }
+        gate.whenOpen { container.ultraTv.start() }
         // Porte ouverte depuis 5 min sans plantage, accueil à l'écran ou non : le démarrage est réussi.
         gate.whenOpen {
             while (!com.vantaflow.kairo.system.isStable(gate.openForMs())) kotlinx.coroutines.delay(10_000)

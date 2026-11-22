@@ -39,6 +39,9 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
         </intent>
+        <package android:name="com.ultratv.tv.nativeapp" />
+        <package android:name="com.ultratv.tv.nativeapp.debug" />
+        <provider android:authorities="com.ultratv.tv.nativeapp.kairo;com.ultratv.tv.nativeapp.debug.kairo" />
     </queries>
 
     <application

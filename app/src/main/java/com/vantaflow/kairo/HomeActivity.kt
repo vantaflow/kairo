@@ -369,6 +369,7 @@ class HomeActivity : ComponentActivity() {
             if (gate?.open?.value == true) {
                 container.ensureAdBlock()
                 com.vantaflow.kairo.media.NowPlaying.start(this)
+                container.ultraTv.refresh()
                 lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO + SafeHandler) {
                     kotlinx.coroutines.delay(3_000)
                     runCatching { container.autoCleaner.check() }
