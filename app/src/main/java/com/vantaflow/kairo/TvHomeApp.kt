@@ -4,6 +4,8 @@ import com.vantaflow.kairo.apps.OurAppsStore
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
+import kotlin.coroutines.resume
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CoroutineScope
 import com.vantaflow.kairo.remote.PhoneRemoteServer
@@ -149,14 +151,32 @@ class AppContainer(val app: Application) {
     val ultraTv = com.vantaflow.kairo.ultratv.UltraTvSource(
         // Inventaire partagé : aucun parcours du PackageManager en plus.
         installed = appRepository.apps.filterNotNull().map { apps -> apps.mapTo(HashSet()) { it.packageName } },
-        query = { authority, path -> kotlinx.coroutines.withContext(Dispatchers.IO) { queryUltraTv(authority, path) } },
+        query = ::queryUltraTv,
         changes = ::ultraTvChanges,
+        // Paquet qui déclare l'autorité (sans démarrer son process) ; illisible → aucune lecture.
+        ownerOf = { authority -> runCatching { app.packageManager.resolveContentProvider(authority, 0)?.packageName }.getOrNull() },
+        uptimeMs = android.os.SystemClock::elapsedRealtime,
         scope = scope,
     )
 
-    /** Lignes de content://[authority]/[path] (nom de colonne → valeur), 20 au plus ; null en cas d'échec. */
-    private fun queryUltraTv(authority: String, path: String): List<Map<String, Any?>>? = runCatching {
-        app.contentResolver.query(android.net.Uri.parse("content://$authority/$path"), null, null, null, null)?.use { cursor ->
+    /**
+     * Lecture annulable : la requête tourne sur un fil IO ; si la coroutine est annulée (délai dépassé,
+     * changement de paquet), le signal interrompt la requête et l'attente rend la main aussitôt.
+     */
+    private suspend fun queryUltraTv(authority: String, path: String): List<Map<String, Any?>>? {
+        val signal = android.os.CancellationSignal()
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            cont.invokeOnCancellation { runCatching { signal.cancel() } }
+            Dispatchers.IO.asExecutor().execute {
+                // Réponse arrivée après l'annulation : ignorée.
+                cont.resume(readUltraTv(authority, path, signal))
+            }
+        }
+    }
+
+    /** Lignes de content://[authority]/[path] (nom de colonne → valeur), 20 au plus ; null en cas d'échec ou d'annulation. */
+    private fun readUltraTv(authority: String, path: String, signal: android.os.CancellationSignal): List<Map<String, Any?>>? = runCatching {
+        app.contentResolver.query(android.net.Uri.parse("content://$authority/$path"), null, null, null, null, signal)?.use { cursor ->
             val rows = ArrayList<Map<String, Any?>>()
             while (rows.size < com.vantaflow.kairo.ultratv.UTV_MAX_ROWS && cursor.moveToNext()) {
                 rows += (0 until cursor.columnCount).associate { i ->
