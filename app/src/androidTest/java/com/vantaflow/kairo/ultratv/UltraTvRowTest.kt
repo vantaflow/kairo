@@ -3,7 +3,13 @@ package com.vantaflow.kairo.ultratv
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.isFocusable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +20,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vantaflow.kairo.apps.AppInfo
 import com.vantaflow.kairo.home.HomeScreen
 import com.vantaflow.kairo.home.HomeUiState
+import com.vantaflow.kairo.reco.LiveChannel
 import com.vantaflow.kairo.remote.HomeFocus
 import com.vantaflow.kairo.ui.theme.TvHomeTheme
 import org.junit.Assert.assertEquals
@@ -68,17 +75,65 @@ class UltraTvRowTest {
 
     @Test
     fun lockedChannelShowsNoProgramNorProgress() {
-        val locked = UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1), channel(2, locked = true)))
+        // Chaîne verrouillée en premier : sa tuile est composée (5e élément, visible).
+        val locked = UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1, locked = true)))
         rule.setContent {
             TvHomeTheme { UltraTvRow(locked, now, onOpenSection = {}, onOpenChannel = {}, onFocused = {}) }
         }
-        // Chaîne libre : titre, barre et suivant affichés.
-        rule.onNodeWithText("En cours 1").assertExists()
-        rule.onNodeWithTag("utv-progress-0").assertExists()
-        // Chaîne verrouillée : seulement logo, numéro et nom.
-        rule.onNodeWithText("En cours 2").assertDoesNotExist()
-        rule.onNodeWithText("Suivant 2", substring = true).assertDoesNotExist()
-        rule.onNodeWithTag("utv-progress-1").assertDoesNotExist()
+        // La tuile existe bien, avec son numéro et son nom…
+        rule.onNodeWithTag("utv-channel-0").assertExists()
+        rule.onNode(hasContentDescription("1 Chaîne 1"), useUnmergedTree = true).assertExists()
+        // … mais rien du programme : ni titre, ni suivant, ni barre, ni titre dans l'accessibilité.
+        rule.onNodeWithText("En cours 1", useUnmergedTree = true).assertDoesNotExist()
+        rule.onNodeWithText("Suivant 1", substring = true, useUnmergedTree = true).assertDoesNotExist()
+        rule.onNodeWithTag("utv-progress-0", useUnmergedTree = true).assertDoesNotExist()
+        rule.onAllNodes(hasContentDescription("En cours 1", substring = true), useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun freeChannelShowsProgramAndProgress() {
+        // Contre-épreuve du test précédent : la même chaîne libre montre tout.
+        rule.setContent {
+            TvHomeTheme { UltraTvRow(UtvState(pkg = ULTRA_TV_RELEASE, channels = listOf(channel(1))), now, onOpenSection = {}, onOpenChannel = {}, onFocused = {}) }
+        }
+        rule.onNodeWithText("En cours 1", useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("Suivant 1", substring = true, useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag("utv-progress-0", useUnmergedTree = true).assertExists()
+        rule.onNode(hasContentDescription("En cours 1", substring = true), useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun removedChannelPassesFocusToNeighbourThenToFirstShortcut() {
+        val utv = mutableStateOf(state)
+        rule.setContent {
+            TvHomeTheme { UltraTvRow(utv.value, now, onOpenSection = {}, onOpenChannel = {}, onFocused = {}) }
+        }
+        rule.onNodeWithTag("utv-channel-0").requestFocus()
+        rule.onNodeWithTag("utv-channel-0").performKeyInput { pressKey(Key.DirectionRight) }
+        rule.onNodeWithTag("utv-channel-1").assertIsFocused()
+        // La 2e chaîne disparaît : le focus passe à la dernière restante.
+        utv.value = state.copy(channels = listOf(channel(1)))
+        rule.waitForIdle()
+        rule.onNodeWithTag("utv-channel-0").assertIsFocused()
+        // Plus aucune chaîne : le focus va au premier raccourci.
+        utv.value = state.copy(channels = emptyList())
+        rule.waitForIdle()
+        rule.onNodeWithTag("utv-section-guide").assertIsFocused()
+    }
+
+    @Test
+    fun reorderedChannelsKeepFocusOnSameChannel() {
+        val utv = mutableStateOf(state)
+        rule.setContent {
+            TvHomeTheme { UltraTvRow(utv.value, now, onOpenSection = {}, onOpenChannel = {}, onFocused = {}) }
+        }
+        rule.onNodeWithTag("utv-channel-0").requestFocus()
+        // Une chaîne arrive devant : la chaîne 1 passe en 2e position et garde le focus.
+        utv.value = state.copy(channels = listOf(channel(3), channel(1), channel(2)))
+        rule.waitForIdle()
+        rule.onNodeWithTag("utv-channel-1").assertIsFocused()
+        rule.onNodeWithTag("utv-channel-1", useUnmergedTree = true)
+            .assert(hasAnyDescendant(hasContentDescription("1 Chaîne 1", substring = true)))
     }
 
     @Test
@@ -100,5 +155,62 @@ class UltraTvRowTest {
         rule.waitForIdle()
         rule.onNodeWithTag("utv-row").assertExists()
         rule.onNodeWithTag("favorite-1").assertIsFocused()
+    }
+
+    private val homeWithRowsBelow = HomeUiState(
+        timeText = "20:45",
+        dateText = "Mercredi 28 octobre",
+        favorites = (1..3).map { AppInfo("com.example.app$it", "App $it", hasBanner = false) },
+        liveChannels = (1..3).map { LiveChannel("tv$it", "com.example.tv", "$it", "Télé $it", "content://tv/$it") },
+        tvInputs = listOf(LiveChannel("hdmi1", "com.example.tv", null, "HDMI 1", "content://tv/hdmi1")),
+    )
+
+    /** Tuile focalisable de l'appli [label] (rangées d'applis : la description est sur l'image). */
+    private fun appTile(label: String) = isFocusable() and hasAnyDescendant(hasContentDescription(label))
+
+    @Test
+    fun rowAppearingAboveKeepsFocusedRowInPlace() {
+        val ultraTv = mutableStateOf(UtvState())
+        val others = (1..3).map { AppInfo("com.example.other$it", "Autre $it", hasBanner = false) }
+        rule.setContent {
+            TvHomeTheme {
+                HomeScreen(homeWithRowsBelow, HomeFocus(), {}, {}, {}, {}, otherApps = others, ultraTv = ultraTv.value, ultraTvNowMs = now)
+            }
+        }
+        // Focus sur une rangée située sous la place d'Ultra TV (« Toutes les applis »).
+        rule.onNode(appTile("Autre 1"), useUnmergedTree = true).requestFocus()
+        rule.waitForIdle()
+        rule.onNode(appTile("Autre 1"), useUnmergedTree = true).assertIsFocused()
+        val before = rule.onNode(appTile("Autre 1"), useUnmergedTree = true).getBoundsInRoot().top
+        // Ultra TV apparaît au-dessus : la rangée sélectionnée reste à la même place à l'écran.
+        ultraTv.value = state
+        rule.waitForIdle()
+        rule.onNodeWithTag("utv-row").assertExists()
+        val after = rule.onNode(appTile("Autre 1"), useUnmergedTree = true).getBoundsInRoot().top
+        assertEquals(before.value, after.value, 1f)
+        rule.onNode(appTile("Autre 1"), useUnmergedTree = true).assertIsFocused()
+        // Puis elle disparaît : toujours à la même place.
+        ultraTv.value = UtvState()
+        rule.waitForIdle()
+        rule.onNodeWithTag("utv-row").assertDoesNotExist()
+        val gone = rule.onNode(appTile("Autre 1"), useUnmergedTree = true).getBoundsInRoot().top
+        assertEquals(before.value, gone.value, 1f)
+    }
+
+    @Test
+    fun rowDisappearingWithFocusReturnsToFavorite() {
+        val ultraTv = mutableStateOf(state)
+        val focus = HomeFocus()
+        rule.setContent {
+            TvHomeTheme { HomeScreen(homeWithRowsBelow, focus, {}, {}, {}, {}, ultraTv = ultraTv.value, ultraTvNowMs = now) }
+        }
+        rule.onNodeWithTag("favorite-2").requestFocus()
+        rule.onNodeWithTag("utv-section-live").requestFocus()
+        rule.onNodeWithTag("utv-section-live").assertIsFocused()
+        // Profil d'Ultra TV devenu enfant : la rangée disparaît, le focus revient au favori courant.
+        ultraTv.value = UtvState()
+        rule.waitForIdle()
+        rule.onNodeWithTag("utv-row").assertDoesNotExist()
+        rule.onNodeWithTag("favorite-2").assertIsFocused()
     }
 }
