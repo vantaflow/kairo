@@ -1,12 +1,17 @@
 package com.vantaflow.kairo.ultratv
 
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.isFocusable
@@ -65,7 +70,10 @@ class UltraTvRowTest {
         rule.setContent {
             TvHomeTheme { UltraTvRow(state, now, onOpenSection = { section = it }, onOpenChannel = { opened = it }, onFocused = {}) }
         }
-        rule.onNodeWithTag("utv-channel-1").requestFocus()
+        // La 2e chaîne (6e élément) n'est pas composée tant que la rangée n'a pas défilé : on y va à la télécommande.
+        rule.onNodeWithTag("utv-channel-0").requestFocus()
+        rule.onNodeWithTag("utv-channel-0").performKeyInput { pressKey(Key.DirectionRight) }
+        rule.onNodeWithTag("utv-channel-1").assertIsFocused()
         rule.onNodeWithTag("utv-channel-1").performKeyInput { pressKey(Key.DirectionCenter) }
         assertEquals(state.channels[1], opened)
         rule.onNodeWithTag("utv-section-movies").requestFocus()
@@ -177,24 +185,61 @@ class UltraTvRowTest {
                 HomeScreen(homeWithRowsBelow, HomeFocus(), {}, {}, {}, {}, otherApps = others, ultraTv = ultraTv.value, ultraTvNowMs = now)
             }
         }
-        // Focus sur une rangée située sous la place d'Ultra TV (« Toutes les applis »).
+        // Focus sur la dernière rangée (« Toutes les applis », sous la place d'Ultra TV) : l'accueil est
+        // défilé au maximum, le cas où la borne du défilement bouge pendant la mesure.
         rule.onNode(appTile("Autre 1"), useUnmergedTree = true).requestFocus()
         rule.waitForIdle()
         rule.onNode(appTile("Autre 1"), useUnmergedTree = true).assertIsFocused()
-        val before = rule.onNode(appTile("Autre 1"), useUnmergedTree = true).getBoundsInRoot().top
-        // Ultra TV apparaît au-dessus : la rangée sélectionnée reste à la même place à l'écran.
+        // Position non rognée (une tuile sortie de l'écran ne vaut pas 0).
+        fun y() = rule.onNode(appTile("Autre 1"), useUnmergedTree = true).fetchSemanticsNode().positionInRoot.y
+        val before = y()
+
+        // Apparition : même place dès la première image, puis à la fin.
+        rule.mainClock.autoAdvance = false
+        ultraTv.value = state
+        rule.mainClock.advanceTimeByFrame()
+        rule.onNodeWithTag("utv-row").assertExists()
+        assertEquals(before, y(), 1f)
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        assertEquals(before, y(), 1f)
+        rule.onNode(appTile("Autre 1"), useUnmergedTree = true).assertIsFocused()
+
+        // Disparition : même place dès la première image, puis à la fin.
+        rule.mainClock.autoAdvance = false
+        ultraTv.value = UtvState()
+        rule.mainClock.advanceTimeByFrame()
+        rule.onNodeWithTag("utv-row").assertDoesNotExist()
+        assertEquals(before, y(), 1f)
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        assertEquals(before, y(), 1f)
+        rule.onNode(appTile("Autre 1"), useUnmergedTree = true).assertIsFocused()
+    }
+
+    @Test
+    fun focusOutsideHomeStaysWhenRowAppearsAndDisappears() {
+        val ultraTv = mutableStateOf(UtvState())
+        rule.setContent {
+            TvHomeTheme {
+                Box {
+                    HomeScreen(homeWithRowsBelow, HomeFocus(), {}, {}, {}, {}, ultraTv = ultraTv.value, ultraTvNowMs = now)
+                    // Élément hors de l'accueil, comme le panneau des réglages ouvert par-dessus.
+                    Box(Modifier.size(40.dp).testTag("outside").focusable())
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag("outside").requestFocus()
+        rule.onNodeWithTag("outside").assertIsFocused()
         ultraTv.value = state
         rule.waitForIdle()
         rule.onNodeWithTag("utv-row").assertExists()
-        val after = rule.onNode(appTile("Autre 1"), useUnmergedTree = true).getBoundsInRoot().top
-        assertEquals(before.value, after.value, 1f)
-        rule.onNode(appTile("Autre 1"), useUnmergedTree = true).assertIsFocused()
-        // Puis elle disparaît : toujours à la même place.
+        rule.onNodeWithTag("outside").assertIsFocused()
         ultraTv.value = UtvState()
         rule.waitForIdle()
         rule.onNodeWithTag("utv-row").assertDoesNotExist()
-        val gone = rule.onNode(appTile("Autre 1"), useUnmergedTree = true).getBoundsInRoot().top
-        assertEquals(before.value, gone.value, 1f)
+        rule.onNodeWithTag("outside").assertIsFocused()
     }
 
     @Test
